@@ -12,3 +12,7 @@ Based on earlier unpublished models. The results of these earlier models have al
 
 Paul Smith and I have been trying to get around to publishing this model for years...
 
+## note on the data availability
+
+I will make the data part of this, of course. Right now the raw data files are too large to add to GitHub. I'll be exploring Git Large File Storage (haven't used it before)
+
