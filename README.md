@@ -10,5 +10,5 @@ Based on earlier unpublished models. The results of these earlier models have al
 * Rosenberg et al. 2019
 * Status of Birds in Canada, 2019
 
-
+Paul Smith and I have been trying to get around to publishing this model for years...
 
