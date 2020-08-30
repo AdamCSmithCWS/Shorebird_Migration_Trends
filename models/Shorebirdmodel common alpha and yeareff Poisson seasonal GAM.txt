@@ -1,0 +1,178 @@
+## WinBUGS model used to estimate annual indices of abundance and population trends from shorebird migration data
+## main trend model in Smith and Smith
+#	
+model
+{
+for(i in 1:ncounts){
+
+	loglambda[i] <-alpha+beta[strat[i]]*(year[i]-midyear) + ste[site[i]] + ann[year[i]] + zi[date[i],strat[i]]   ### common intercept, varying slopes, so that the site effect accounts for all of the variation in abundance.
+	loglambdan[i] ~ dnorm(loglambda[i],taunoise)
+	log(lambda[i]) <- loglambdan[i]
+	
+	count[i] ~ dpois(lambda[i])
+
+	
+	resid[i]<-(count[i]-lambda[i])/sqrt(lambda[i])
+	D[i] <- pow(resid[i],2)
+	
+
+##################################	
+#testing fit
+	countnew[i] ~ dpois(lambda[i])
+	residnew[i]<-(countnew[i]-lambda[i])/sqrt(lambda[i])
+	Dnew[i] <- pow(residnew[i],2)
+	zeronew[i] <- equals(countnew[i],0)
+
+##################################
+
+}#i
+
+
+
+	sdnoise ~ dunif(0,20)
+	taunoise <- 1/pow(sdnoise,2)
+ucl <- round(ncounts*0.975) # rank of 97.5percentile counts (used in calculation of a Bayesian posterior predictive check, see u95new below)
+##################################
+#goodness of fit stats
+   gof <- sum(D[1:ncounts])
+   gofnew <- sum(Dnew[1:ncounts])
+   diffgof <- gof-gofnew
+   posdiff <- step(diffgof)
+
+	nzeronew <- sum(zeronew[1:ncounts])
+	#u95new <- ranked(countnew[1:ncounts],ucl) #doesn't work in JAGS
+	meannew <- mean(countnew[1:ncounts])
+##################################
+
+
+### identifying base years for 10 and 15 year trends
+#ym10 <- nyears-10
+#ym15 <- nyears-15
+###
+
+
+for(s in 1:nstrata){
+
+#	for (t in 1:nyears){
+#		size[s,t]<- exp(alpha+beta[s]*(t-midyear)+ann[t])
+#
+#	}#t
+
+
+##################################
+### stratum level population interval-trends including annual variation
+#	pchange1[s]<-pow((size[s,nyears]/size[s,1]),(1/(nyears-1)))
+#	pchange2[s]<-pow((size[s,nyears]/size[s,ym15]),(1/(nyears-ym15)))
+#	pchange3[s]<-pow((size[s,nyears]/size[s,ym10]),(1/(nyears-ym10)))
+#	pchange4[s]<-pow((size[s,ym10]/size[s,1]),(1/(ym10-1)))
+##################################
+
+	beta[s]~dnorm(betaH,taubeta)
+	#expbeta1[s]<-exp(beta1[s])
+
+}#s
+
+
+#	for (t in 1:nyears){
+#		sizecont[t]<- exp(alpha+betaH*(t-midyear)+ann[t]) #continental annual index#
+#
+#	}#t
+
+##################################
+### continental level population interval-trends including annual variation
+#	pchange1c<-pow((sizecont[nyears]/sizecont[1]),(1/(nyears-1)))
+#	pchange2c<-pow((sizecont[nyears]/sizecont[ym15]),(1/(nyears-ym15)))
+#	pchange3c<-pow((sizecont[nyears]/sizecont[ym10]),(1/(nyears-ym10)))
+#	pchange4c<-pow((sizecont[ym10]/sizecont[1]),(1/(ym10-1)))
+##################################
+
+#r ~ dunif(0,50) #neg binom prior on dispersion - consider making strata-specific
+
+
+betaH~dnorm(0,100) ### mu-sub beta, continental slope-trend relatively strong shrinkage towards 0,
+
+taubeta<-1/pow(sdbeta,2)
+sdbeta~dunif(0,5)
+alpha~dnorm(0,0.001)
+#expalpha<-exp(alpha)
+		
+
+
+
+
+
+
+###########COMPUTING GAMs for Zero inflation
+# Addapted from Crainiceanu, C. M., Ruppert, D. & Wand, M. P. (2005). Bayesian Analysis for Penalized Spline Regression Using WinBUGS. Journal of Statistical Softare, 14 (14), 1-24.
+# X.basis is data computed in R
+
+#tauX~dgamma(1.0E-3,1.0E-7) #alternate prior, original from Cainiceanu et al.
+#tauX <- 1/pow(sdX,2) # prior on precision of gam hyperparameters
+#sdX <- 1/(pow(tauX,0.5)) # ~ dunif(0,5)
+taubetagam <- 1/pow(sdbetagam,2) # prior on precision of gam coefficients
+sdbetagam ~ dunif(0,5)
+
+   for(j in 1:nknots){ # Computation of GAM components
+         #B.X[j] ~ dnorm(0,tauX)
+
+################################################
+#alternate strategy for the beta.X - avoiding extreme values
+#          beta.X.tmp[j] ~ dnorm(0,tauX)    #I(-10,10)
+#          
+#         beta.X[j] <- max(min(beta.X.tmp[j],10),-10)
+################################################
+                 
+	for(k in 1:nstrata){
+		beta.X[k,j] ~ dnorm(0,taubetagam )
+		
+
+         for ( i in 1: dmax[k] )
+         {
+             X.part[i,j,k] <- beta.X[k,j]*(X.basis[i,j,k])
+           
+         }#i
+
+}#k
+    }#j
+
+	for(k in 1:nstrata){
+    for (i in 1: dmax[k])
+    {
+
+        zi[i,k] <- sum(X.part[i,1:nknots,k])
+    }#k
+    }#i
+
+
+       
+
+
+
+
+
+
+
+
+######################
+## site effects
+
+for (j in 1:nsites){
+	ste[j]~dnorm(0, tausite)
+	}#s
+sdsite ~ dunif(0,20)
+tausite <- 1/pow(sdsite,2)
+
+
+######################
+## year effects
+
+	for (y in 1:nyears){
+		ann[y]~dnorm(0, tauyear)
+		}#y
+	sdyear ~ dunif(0,20)
+	tauyear <- 1/pow(sdyear,2)
+	#tauyear.eps <- tauyear * 0.0001
+	#ann[1]~dnorm(0, tauyear.eps)
+
+
+}#end model
