@@ -5,7 +5,7 @@ model
 {
 for(i in 1:ncounts){
 
-	loglambda[i] <- alpha + ste[site[i],strat[s]] + sm_year[yr[i],strat[s]] + gam.sm_season[i] + noise[i]  ### common intercept, varying slopes, so that the site effect accounts for all of the variation in abundance.
+	loglambda[i] <- alpha + ste[site[i],strat[i]] + sm_year[yr[i],strat[i]] + gam.sm_season[i] + noise[i]  ### common intercept, varying slopes, so that the site effect accounts for all of the variation in abundance.
 	
 	noise[i] ~ dt(0,taunoise,nu)
 	log(lambda[i]) <- loglambda[i]
