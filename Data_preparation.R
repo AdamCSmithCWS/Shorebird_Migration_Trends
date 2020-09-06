@@ -331,6 +331,8 @@ save(list = c("ssData",
 # species data-prep -------------------------------------------------------
 
 
+source("functions/GAM_basis_function.R")
+
 for(sp in sps){
   
   
@@ -376,6 +378,7 @@ dts <- filter(dts,SurveyAreaIdentifier %in% sites_keep$SurveyAreaIdentifier)
 
 
 fday = min(dts$doy)-1
+
 dts <- dts %>% mutate(count = as.integer(ObservationCount),
               year = as.integer(YearCollected),
               yr = as.integer(year-1973),
@@ -387,11 +390,11 @@ nstrata = max(dts$strat)
 sByReg = unique(dts[,c("SurveyAreaIdentifier","strat")])
 sByReg <- arrange(sByReg,strat,SurveyAreaIdentifier)
 
-nsites_strat <- table(sByReg$strat)
+nsites <- table(sByReg$strat)
 
 site <- NULL
 for(s in 1:nstrata){
- site <- c(site,1:nsites_strat[s]) 
+ site <- c(site,1:nsites[s]) 
 }
 sByReg$site <- site
 sByReg <- select(sByReg,-strat)
@@ -411,52 +414,97 @@ nyears = max(dts$yr)
 # GAM seasonal basis function ---------------------------------------------
 
 nKnots_season = 5
+basis_season <- gam.basis.func(orig.preds = as.integer(unlist(dts[,"date"])),
+                           nknots = nKnots_season,
+                           standardize = "z",
+                           random = F,
+                           npredpoints = max(dts$date),
+                           even_gaps = FALSE,
+                           sm_name = "season")
 
-
-############ GAM basis function
-  knotsX_season<- round(seq(1,dmax,length=(nKnots_season+2))[-c(1,nKnots_season+2)])
-  X_K<-(abs(outer(1:dmax,knotsX_season,"-")))^3
-  X_OMEGA_all<-(abs(outer(knotsX_season,knotsX_season,"-")))^3
-  X_svd.OMEGA_all<-svd(X_OMEGA_all)
-  X_sqrt.OMEGA_all<-t(X_svd.OMEGA_all$v  %*% (t(X_svd.OMEGA_all$u)*sqrt(X_svd.OMEGA_all$d)))
-  X.basis_season<-t(solve(X_sqrt.OMEGA_all,t(X_K)))
-  
 
 
   
   # GAM annual basis function ---------------------------------------------
   
-nKnots_y = 13
-  
-  
-  ############ GAM basis function
-  knotsX_y<- round(seq(1,dmax,length=(nKnots_y+2))[-c(1,nKnots_y+2)])
-  X_K<-(abs(outer(1:dmax,knotsX_y,"-")))^3
-  X_OMEGA_all<-(abs(outer(knotsX_y,knotsX_y,"-")))^3
-  X_svd.OMEGA_all<-svd(X_OMEGA_all)
-  X_sqrt.OMEGA_all<-t(X_svd.OMEGA_all$v  %*% (t(X_svd.OMEGA_all$u)*sqrt(X_svd.OMEGA_all$d)))
-  X.basis_y<-t(solve(X_sqrt.OMEGA_all,t(X_K)))
-  
-  
-####### necessary columns
-# data.jags <- list(count = dts[,"count"], 
-#                   year = dts[,"yearx"], 
-#                   site = dts[,"sitex"],
-#                   strat = dts[,"stratx"],
-#                   date = dts[,"date"],
-#                   
-#                   
-#                   ncounts = ncounts,
-#                   nsites = nsites,
-#                   nyears = nyears,
-#                   nstrata = nstrata,
-#                   nknots = nknots,
-#                   X.basis = X.basis,
-#                   dmax = dmax,
-#                   nknotsy = nknotsy,
-#                   Y.basis = Y.basis)
+nKnots_year = 13
+basis_year <- gam.basis.func(orig.preds = as.integer(unlist(dts[,"yr"])),
+                               nknots = nKnots_year,
+                               standardize = "z",
+                               random = F,
+                               npredpoints = max(dts$yr),
+                               even_gaps = FALSE,
+                               sm_name = "year")
 
 
 
+  
+ 
+jags_data <- list(count = as.integer(unlist(dts$count)),
+                  yr = as.integer(unlist(dts$yr)),
+                  site = as.integer(unlist(dts$site)),
+                  strat = as.integer(unlist(dts$strat)),
+                  
+                  nyears = nyears,
+                  nstrata = nstrata,
+                  nsites = nsites,
+                  ncounts = ncounts,
+                  
+                  season_basis = basis_season$season_basis,
+                  season_basispred = basis_season$season_basispred,
+                  nknots_season = basis_season$nknots_season,
+                  
+                  year_basispred = basis_year$year_basispred,
+                  nknots_year = basis_year$nknots_year)
+
+
+
+mod.file = "models/AnnualSeasonalGAM.R"
+
+
+
+
+parms = c("sdnoise",
+          "nu",
+          "sdgam_season",
+          "sdgam_year",
+          "sdgam_year_b",
+          "b_year",
+          "B_year",
+          "beta_year",
+          "sdsite",
+          "N",
+          "n_s",
+          "alpha")
+
+
+#adaptSteps = 200              # Number of steps to "tune" the samplers.
+burnInSteps = 5000            # Number of steps to "burn-in" the samplers.
+nChains = 1                   # Number of chains to run.
+numSavedSteps=1000          # Total number of steps in each chain to save.
+thinSteps=10                   # Number of steps to "thin" (1=keep every step).
+nIter = ceiling( ( (numSavedSteps * thinSteps )+burnInSteps)) # Steps per chain.
+
+t1 = Sys.time()
+
+
+
+
+# MCMC sampling -----------------------------------------------------------
+
+
+
+out2 = jagsUI(data = jags_data,
+                  parameters.to.save = parms,
+                  n.chains = 3,
+                  n.burnin = burnInSteps,
+                  n.thin = thinSteps,
+                  n.iter = nIter,
+                  parallel = T,
+                  modules = NULL,
+                  model.file = mod.file)
+
+
+t2 = Sys.time()
 
 
