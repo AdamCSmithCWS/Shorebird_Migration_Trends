@@ -87,7 +87,7 @@ for(s in 1:nstrata){
 ##### hyperparameter smooth
 
  
-sm_year_B[1:nyears] <-	year_basispred %*% B_year[1:nKnots_year]
+sm_year_B[1:nyears] <-	year_basispred %*% B_year[1:nknots_year]
 
 
 
@@ -125,7 +125,7 @@ for(y in 1:nyears){
     n_s[s,y] <- mean(n_sj[1:nsites[s],s,y])#stratum predictions including strata-level yearly smooths and scaled to mean across stratum sites
     n_s_scaled[s,y] <- exp(alpha + sm_year[y,s] + vis.sm_season[76] + retrans + retrans_j) #stratum predictions including strata-level yearly smooths and on a common scale (visualisation only)
   }#s
-  N[s,y] <- exp(alpha + sm_year_B[y] + vis.sm_season[76] + retrans + retrans_j) #continental predictions including only the hyperparameter smooth
+  N[y] <- exp(alpha + sm_year_B[y] + vis.sm_season[76] + retrans + retrans_j) #continental predictions including only the hyperparameter smooth
 }
 
 }#end model

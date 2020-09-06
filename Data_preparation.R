@@ -328,13 +328,15 @@ save(list = c("ssData",
 
 
 
-# species data-prep -------------------------------------------------------
+# SPECIES MCMC data-prep -------------------------------------------------------
 
+library(jagsUI)
 
+load("data/allShorebirdPrismFallCounts.RData")
 source("functions/GAM_basis_function.R")
 
-for(sp in sps){
-  
+#for(sp in sps){
+  sp = sps[25]
   
 dts <- filter(ssData,CommonName == sp)
 dts$present <- FALSE
@@ -403,7 +405,6 @@ dts <- left_join(dts,sByReg,by = "SurveyAreaIdentifier")
 
 
 ncounts = nrow(dts)
-nsites = max(dts$site)
 
 dmin_pred <- tapply(dts$date,dts$strat,min)
 dmax_pred <- tapply(dts$date,dts$strat,max)
