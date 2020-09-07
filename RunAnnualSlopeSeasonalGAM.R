@@ -3,8 +3,30 @@
 library(jagsUI)
 library(ggmcmc)
 
-load("data/allShorebirdPrismFallCounts.RData")
-source("functions/GAM_basis_function.R")
+
+library(doParallel)
+library(foreach)
+
+
+# load("data/allShorebirdPrismFallCounts.RData")
+# source("functions/GAM_basis_function.R")
+
+n_cores <- 9
+cluster <- makeCluster(n_cores, type = "PSOCK")
+registerDoParallel(cluster)
+
+
+
+fullrun <- foreach(sp = sps[c(25,11,13,6,10,21,22,3,8)],
+                   .packages = c("jagsUI","tidyverse"),
+                   .inorder = FALSE,
+                   .errorhandling = "pass") %dopar%
+  {
+    
+    load("data/allShorebirdPrismFallCounts.RData")
+    
+    source("functions/GAM_basis_function.R")
+    
 
 #for(sp in sps){
 sp = sps[25]
@@ -167,17 +189,33 @@ out2 = jagsUI(data = jags_data,
 t2 = Sys.time()
 
 out2$n.eff
-out2$rhat
+out2$Rhat
 
-gg = ggs(out2$samples)
+# gg = ggs(out2$samples)
+# 
+# ggy = ggs(out2$samples,family = "B")
+# bby2 = ggs(out2$samples,family = "beta")
+# gga = ggs(out2$samples,family = "alpha")
+# ggall = rbind(ggy,gga)
+# ggmcmc(ggall,file = paste0("output/mcmc_",sp,".pdf"))
+# ggmcmc(bby2,file = paste0("output/mcmc_bby2_",sp,".pdf"))
+# 
+# ggsd = ggs(out2$samples,family = "sd")
+# ggmcmc(ggsd,file = paste0("output/mcmc_ggsd_",sp,".pdf"))
 
-ggy = ggs(out2$samples,family = "B_year")
-bby2 = ggs(out2$samples,family = "beta_year")
-gga = ggs(out2$samples,family = "alpha")
-ggall = rbind(ggy,gga)
-ggmcmc(ggall,file = paste0("output/mcmc_",sp,".pdf"))
-ggmcmc(bby2,file = paste0("output/mcmc_bby2_",sp,".pdf"))
 
-ggsd = ggs(out2$samples,family = "sd")
-ggmcmc(ggsd,file = paste0("output/mcmc_ggsd_",sp,".pdf"))
+save(list = c("jags.data",
+              "basis_season",
+              "basis_year",
+              "dts",
+              "t2",
+              "t1",
+              "out"),
+     file = paste0("output/",sp,"results.RData"))
+
+}#end species loops
+
+
+stopCluster(cl = cluster)
+
 

@@ -5,6 +5,7 @@ library(tidyverse)
 library(lubridate)
 library(sf)
 
+
 # untar("E:/eBird_all/ebd_sampling_relJun-2020.tar",exdir = "E:/eBird_all")
 # untar("E:/eBird_all/ebd_relJun-2020.tar",exdir = "E:/eBird_all")
 ### setting path to eBird full dataset
@@ -321,6 +322,8 @@ ssData[which(ssData$Region == "Northeast Coastal" &
 save(list = c("ssData",
               "sps",
               "map"),file = "data/allShorebirdPrismFallCounts.RData")
+
+
 
 
 
