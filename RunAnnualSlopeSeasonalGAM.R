@@ -8,21 +8,21 @@ library(doParallel)
 library(foreach)
 
 
-# load("data/allShorebirdPrismFallCounts.RData")
+ load("data/allShorebirdPrismFallCounts.RData")
 # source("functions/GAM_basis_function.R")
 
-n_cores <- 9
-cluster <- makeCluster(n_cores, type = "PSOCK")
-registerDoParallel(cluster)
-
-
-
-fullrun <- foreach(sp = sps[c(25,11,13,6,10,21,22,3,8)],
-                   .packages = c("jagsUI","tidyverse"),
-                   .inorder = FALSE,
-                   .errorhandling = "pass") %dopar%
-  {
-    
+# n_cores <- 9
+# cluster <- makeCluster(n_cores, type = "PSOCK")
+# registerDoParallel(cluster)
+# 
+# 
+# 
+# fullrun <- foreach(sp = sps[c(25,11,13,6,10,21,22,3,8)],
+#                    .packages = c("jagsUI","tidyverse"),
+#                    .inorder = FALSE,
+#                    .errorhandling = "pass") %dopar%
+#   {
+  sp = sps[25]  
     load("data/allShorebirdPrismFallCounts.RData")
     
     source("functions/GAM_basis_function.R")
@@ -211,7 +211,9 @@ save(list = c("jags.data",
               "t2",
               "t1",
               "out"),
-     file = paste0("output/",sp,"results.RData"))
+     file = paste0("output/",sp,"slope_results.RData"))
+
+
 
 }#end species loops
 
