@@ -194,7 +194,7 @@ out2 = jagsUI(data = jags_data,
               n.thin = thinSteps,
               n.iter = nIter,
               parallel = T,
-              modules = NULL,
+              #modules = NULL,
               model.file = mod.file)
 
 
