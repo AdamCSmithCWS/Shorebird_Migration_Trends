@@ -7,16 +7,16 @@ library(doParallel)
 library(foreach)
 
 
-# load("data/allShorebirdPrismFallCounts.RData")
+ load("data/allShorebirdPrismFallCounts.RData")
 # source("functions/GAM_basis_function.R")
 
-n_cores <- 9
+n_cores <- 3
 cluster <- makeCluster(n_cores, type = "PSOCK")
 registerDoParallel(cluster)
 
 
 
-fullrun <- foreach(sp = sps[c(25,11,13,6,10,21,22,3,8)],
+fullrun <- foreach(sp = sps[c(25,11,13)],
                    .packages = c("jagsUI","tidyverse"),
                    .inorder = FALSE,
                    .errorhandling = "pass") %dopar%
@@ -27,7 +27,7 @@ fullrun <- foreach(sp = sps[c(25,11,13,6,10,21,22,3,8)],
     source("functions/GAM_basis_function.R")
     
 #for(sp in sps){
-sp = sps[25]
+#sp = sps[25]
 
 dts <- filter(ssData,CommonName == sp)
 dts$present <- FALSE
@@ -173,7 +173,7 @@ parms = c("sdnoise",
 
 #adaptSteps = 200              # Number of steps to "tune" the samplers.
 burnInSteps = 5000            # Number of steps to "burn-in" the samplers.
-nChains = 1                   # Number of chains to run.
+nChains = 3                   # Number of chains to run.
 numSavedSteps=1000          # Total number of steps in each chain to save.
 thinSteps=10                   # Number of steps to "thin" (1=keep every step).
 nIter = ceiling( ( (numSavedSteps * thinSteps )+burnInSteps)) # Steps per chain.
@@ -189,12 +189,12 @@ t1 = Sys.time()
 
 out2 = jagsUI(data = jags_data,
               parameters.to.save = parms,
-              n.chains = 3,
+              n.chains = nChains,
               n.burnin = burnInSteps,
               n.thin = thinSteps,
               n.iter = nIter,
               parallel = T,
-              modules = NULL,
+              #modules = NULL,
               model.file = mod.file)
 
 
