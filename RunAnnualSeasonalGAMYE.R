@@ -215,7 +215,7 @@ save(list = c("jags.data",
               "t2",
               "t1",
               "out"),
-     file = paste0("output/",sp,"results.RData"))
+     file = paste0("output/",sp,"GAMYE_results.RData"))
 
 gg = ggs(out2$samples)
 
