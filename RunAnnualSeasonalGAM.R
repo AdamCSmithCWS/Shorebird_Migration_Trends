@@ -204,14 +204,14 @@ out2$n.eff
 out2$Rhat
 
 
-save(list = c("jags.data",
+save(list = c("jags_data",
               "basis_season",
               "basis_year",
               "dts",
               "t2",
               "t1",
-              "out"),
-     file = paste0("output/",sp,"results.RData"))
+              "out2"),
+     file = paste0("output/",sp,"GAM_results.RData"))
 
 gg = ggs(out2$samples)
 
