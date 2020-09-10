@@ -18,7 +18,7 @@ library(foreach)
 # 
 # 
 # fullrun <- foreach(sp = sps[c(25,11,13,6,10,21,22,3,8)],
-#                    .packages = c("jagsUI","tidyverse"),
+#                    .packages = c("jagsUI","tidyverse","ggmcmc"),
 #                    .inorder = FALSE,
 #                    .errorhandling = "pass") %dopar%
 #   {
@@ -190,6 +190,15 @@ t2 = Sys.time()
 
 out2$n.eff
 out2$Rhat
+save(list = c("jags.data",
+              "basis_season",
+              "basis_year",
+              "dts",
+              "t2",
+              "t1",
+              "out"),
+     file = paste0("output/",sp,"slope_results.RData"))
+
 
 # gg = ggs(out2$samples)
 # 
@@ -203,15 +212,6 @@ out2$Rhat
 # ggsd = ggs(out2$samples,family = "sd")
 # ggmcmc(ggsd,file = paste0("output/mcmc_ggsd_",sp,".pdf"))
 
-
-save(list = c("jags.data",
-              "basis_season",
-              "basis_year",
-              "dts",
-              "t2",
-              "t1",
-              "out"),
-     file = paste0("output/",sp,"slope_results.RData"))
 
 
 

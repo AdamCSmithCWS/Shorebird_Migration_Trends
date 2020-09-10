@@ -151,7 +151,7 @@ jags_data <- list(count = as.integer(unlist(dts$count)),
 
 
 
-mod.file = "models/AnnualSeasonalGAM.R"
+mod.file = "models/AnnualSeasonalGAMYE.R"
 
 
 
@@ -164,10 +164,15 @@ parms = c("sdnoise",
           "beta_season",
           "b_year",
           "B_year",
+          "sd_year",
+          "sd_ye",
+          "YE",
           "beta_year",
           "sdsite",
           "N",
           "n_s",
+          "N_sm",
+          "n_s_sm",
           "alpha")
 
 
@@ -175,7 +180,7 @@ parms = c("sdnoise",
 burnInSteps = 5000            # Number of steps to "burn-in" the samplers.
 nChains = 3                   # Number of chains to run.
 numSavedSteps=1000          # Total number of steps in each chain to save.
-thinSteps=10                   # Number of steps to "thin" (1=keep every step).
+thinSteps=20                   # Number of steps to "thin" (1=keep every step).
 nIter = ceiling( ( (numSavedSteps * thinSteps )+burnInSteps)) # Steps per chain.
 
 t1 = Sys.time()
@@ -203,7 +208,6 @@ t2 = Sys.time()
 out2$n.eff
 out2$Rhat
 
-
 save(list = c("jags.data",
               "basis_season",
               "basis_year",
@@ -224,6 +228,8 @@ ggmcmc(bby2,file = paste0("output/mcmc_bby2_",sp,".pdf"))
 
 ggsd = ggs(out2$samples,family = "sd")
 ggmcmc(ggsd,file = paste0("output/mcmc_ggsd_",sp,".pdf"))
+
+
 
   }#end species loops
 

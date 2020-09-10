@@ -5,7 +5,7 @@ model
 {
 for(i in 1:ncounts){
 
-	loglambda[i] <- alpha[strat[i]] + ste[site[i],strat[i]] + sm_year[yr[i],strat[i]] + gam.sm_season[i] + noise[i]  ### common intercept, varying slopes, so that the site effect accounts for all of the variation in abundance.
+	loglambda[i] <- alpha[strat[i]] + ste[site[i],strat[i]] + sm_year[yr[i],strat[i]] + gam.sm_season[i] + year_effect[yr[i],strat[i]] + noise[i]  ### common intercept, varying slopes, so that the site effect accounts for all of the variation in abundance.
 	
 	#noise[i] ~ dt(0,taunoise,nu)
 	noise[i] ~ dnorm(0,taunoise)
@@ -93,6 +93,23 @@ for(s in 1:nstrata){
 sm_year_B[1:nyears] <-	year_basispred %*% B_year[1:nknots_year]
 
 
+##############Year Effects
+tau_year <- 1/pow(sd_year,2) #variance in continental year effects, controls shrinkage towards the line
+sd_year ~ dt(0, 1, 10)T(0,) # half-t prior on sd (chung et al. 2013) DOI: 10.1007/S11336-013-9328-2 places ~95% of the prior < 2
+
+for(s in 1:nstrata){
+  tau_ye[s] <- 1/pow(sd_ye[s],2) #variance in strata-level departures from the continental year-effects - further shrinkage
+  sd_ye[s] ~ dt(0, 1, 10)T(0,) # half-t prior on sd (chung et al. 2013) DOI: 10.1007/S11336-013-9328-2 places ~95% of the prior < 2
+  
+}
+for(y in 1:nyears){
+  YE[y] ~ dnorm(0,tau_year)
+  for(s in 1:nstrata){
+    ye[y,s] ~ dnorm(0,tau_ye[s])
+    year_effect[y,s] <- YE[y]+ye[y,s]
+  }
+}
+
 
 
 ######################
@@ -125,12 +142,17 @@ retrans <- 0.5*(1/taunoise)
 for(y in 1:nyears){
   for(s in 1:nstrata){
     for(j in 1:nsites[s]){
-      n_sj[j,s,y] <- exp(alpha[s] + ste[j,s] + sm_year[y,s] + vis.sm_season[76] + retrans) #site-level predictions including strata-level yearly smooths
-    }#j
+      n_sj[j,s,y] <- exp(alpha[s] + ste[j,s] + sm_year[y,s] + year_effect[y,s] + vis.sm_season[76] + retrans) #site-level predictions including strata-level yearly smooths
+      n_sj_sm[j,s,y] <- exp(alpha[s] + ste[j,s] + sm_year[y,s] + vis.sm_season[76] + retrans) #site-level predictions including strata-level yearly smooths
+      
+      }#j
     n_s[s,y] <- mean(n_sj[1:nsites[s],s,y])#stratum predictions including strata-level yearly smooths and scaled to mean across stratum sites
-    n_s_scaled[s,y] <- exp(alpha[s] + sm_year[y,s] + vis.sm_season[76] + retrans + retrans_j) #stratum predictions including strata-level yearly smooths and on a common scale (visualisation only)
+    n_s_sm[s,y] <- mean(n_sj_sm[1:nsites[s],s,y])#stratum predictions including strata-level yearly smooths and scaled to mean across stratum sites
+    n_s_scaled[s,y] <- exp(alpha[s] + sm_year[y,s] + year_effect[y,s] + vis.sm_season[76] + retrans + retrans_j) #stratum predictions including strata-level yearly smooths and on a common scale (visualisation only)
+    n_s_scaled_sm[s,y] <- exp(alpha[s] + sm_year[y,s] + vis.sm_season[76] + retrans + retrans_j) #stratum predictions including strata-level yearly smooths and on a common scale (visualisation only)
   }#s
-  N[y] <- exp(sm_year_B[y] + vis.sm_season[76] + retrans + retrans_j) #continental predictions including only the hyperparameter smooth
+  N[y] <- exp(sm_year_B[y] + YE[y] + vis.sm_season[76] + retrans + retrans_j) #continental predictions including only the hyperparameter smooth
+  N_sm[y] <- exp(sm_year_B[y] + vis.sm_season[76] + retrans + retrans_j) #continental predictions including only the hyperparameter smooth
 }
 
 }#end model
