@@ -278,7 +278,7 @@ css_sps <- unique(css$CommonName)
 
 # dropping species not included, extra columns, and pres/abs --------------------------------
 css <- css[which(css$CommonName %in% sps &
-                   css$ObservationDescriptor == "Total Count"),c("SamplingEventIdentifier",
+                   css$ObservationDescriptor != "Presence/Absence"),c("SamplingEventIdentifier",
                                                                  "CommonName",
                                             "ObservationCount")]
 

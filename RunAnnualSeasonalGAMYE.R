@@ -6,7 +6,7 @@ library(ggmcmc)
 library(doParallel)
 library(foreach)
 
-l
+
  load("data/allShorebirdPrismFallCounts.RData")
 # source("functions/GAM_basis_function.R")
 
@@ -178,9 +178,9 @@ parms = c("sdnoise",
 
 
 #adaptSteps = 200              # Number of steps to "tune" the samplers.
-burnInSteps = 5000            # Number of steps to "burn-in" the samplers.
+burnInSteps = 10000            # Number of steps to "burn-in" the samplers.
 nChains = 3                   # Number of chains to run.
-numSavedSteps=1000          # Total number of steps in each chain to save.
+numSavedSteps=2000          # Total number of steps in each chain to save.
 thinSteps=20                   # Number of steps to "thin" (1=keep every step).
 nIter = ceiling( ( (numSavedSteps * thinSteps )+burnInSteps)) # Steps per chain.
 

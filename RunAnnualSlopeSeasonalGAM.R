@@ -11,25 +11,25 @@ library(foreach)
  load("data/allShorebirdPrismFallCounts.RData")
 # source("functions/GAM_basis_function.R")
 
-# n_cores <- 9
-# cluster <- makeCluster(n_cores, type = "PSOCK")
-# registerDoParallel(cluster)
-# 
-# 
-# 
-# fullrun <- foreach(sp = sps[c(25,11,13,6,10,21,22,3,8)],
-#                    .packages = c("jagsUI","tidyverse","ggmcmc"),
-#                    .inorder = FALSE,
-#                    .errorhandling = "pass") %dopar%
-#   {
-  sp = sps[25]  
+n_cores <- 3
+cluster <- makeCluster(n_cores, type = "PSOCK")
+registerDoParallel(cluster)
+
+
+
+fullrun <- foreach(sp = sps[c(25,11,13)],
+                   .packages = c("jagsUI","tidyverse","ggmcmc"),
+                   .inorder = FALSE,
+                   .errorhandling = "pass") %dopar%
+  {
+ # sp = sps[25]  
     load("data/allShorebirdPrismFallCounts.RData")
     
     source("functions/GAM_basis_function.R")
     
 
 #for(sp in sps){
-sp = sps[25]
+#sp = sps[25]
 
 dts <- filter(ssData,CommonName == sp)
 dts$present <- FALSE
@@ -150,20 +150,19 @@ parms = c("sdnoise",
           # "nu", #if optional heavy-tailed noise
           "sdgam_season",
           "B",
-          "b_year",
-          "B_year",
-          "beta_year",
+          "b",
           "sdsite",
           "N",
           "n_s",
-          "alpha")
+          "alpha",
+          "vis.sm_season")
 
 
 #adaptSteps = 200              # Number of steps to "tune" the samplers.
-burnInSteps = 5000            # Number of steps to "burn-in" the samplers.
+burnInSteps = 10000            # Number of steps to "burn-in" the samplers.
 nChains = 1                   # Number of chains to run.
-numSavedSteps=1000          # Total number of steps in each chain to save.
-thinSteps=10                   # Number of steps to "thin" (1=keep every step).
+numSavedSteps=2000          # Total number of steps in each chain to save.
+thinSteps=20                   # Number of steps to "thin" (1=keep every step).
 nIter = ceiling( ( (numSavedSteps * thinSteps )+burnInSteps)) # Steps per chain.
 
 t1 = Sys.time()
@@ -190,13 +189,13 @@ t2 = Sys.time()
 
 out2$n.eff
 out2$Rhat
-save(list = c("jags.data",
+save(list = c("jags_data",
               "basis_season",
               "basis_year",
               "dts",
               "t2",
               "t1",
-              "out"),
+              "out2"),
      file = paste0("output/",sp,"slope_results.RData"))
 
 
