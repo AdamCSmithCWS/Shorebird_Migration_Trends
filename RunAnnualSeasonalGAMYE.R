@@ -317,6 +317,7 @@ plot_by_st <- plot_ind(inds = n_inds,
                        axis_title_size = 18,
                        axis_text_size = 16)  
  
+print(plot_by_st)
 
 }
 

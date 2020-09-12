@@ -191,7 +191,6 @@ out2$n.eff
 out2$Rhat
 save(list = c("jags_data",
               "basis_season",
-              "basis_year",
               "dts",
               "t2",
               "t1",
@@ -219,4 +218,76 @@ save(list = c("jags_data",
 
 stopCluster(cl = cluster)
 
+
+
+
+
+# Plotting ----------------------------------------------------------------
+
+library(tidybayes)
+
+load("data/allShorebirdPrismFallCounts.RData")
+source("functions/Utility_functions.R")
+
+for(sp in sps){
+  
+  
+  
+  load(paste0("output/",sp,"slope_results.RData"))
+  
+  strats = unique(dts[,c("strat","Region")])
+  strats = rename(strats,s = strat)
+  
+  
+  
+  sums = data.frame(out2$summary)
+  names(sums) <- c("mean","sd","lci","lqrt","median","uqrt","uci","Rhat","n.eff","overlap0","f")
+  sums$Parameter = row.names(sums)
+  
+  # compiling indices -------------------------------------
+  
+  n_inds <- extr_inds(param = "n_s")
+  N_inds <- extr_inds(param = "N",regions = FALSE)
+ 
+  
+  
+  
+  # calculating trends  -----------------------------------------------------
+  
+  NSamples <- out2$samples %>% gather_draws(N[y])
+  NSamples$year <- NSamples$y + 1973
+  
+
+  
+  
+  n_sSamples <- out2$samples %>% gather_draws(n_s[s,y])
+  n_sSamples$year <- n_sSamples$y + 1973
+  n_sSamples <- left_join(n_sSamples,strats,by = "s")
+  
+ 
+  
+  
+ 
+  t_n_s <- ItoT(inds = n_sSamples,regions = TRUE)
+  
+  t_N <- ItoT(inds = NSamples,regions = FALSE)
+  
+ 
+  
+  # plotting indices --------------------------------------------------------
+  
+  
+  plot_by_st <- plot_ind(inds = n_inds,
+                         #smooth_inds = n_sm_inds,
+                         raw = dts,
+                         add_observed = TRUE,
+                         add_samplesize = TRUE,
+                         species = sp,
+                         regions = TRUE,
+                         title_size = 20,
+                         axis_title_size = 18,
+                         axis_text_size = 16)  
+  
+  
+}
 

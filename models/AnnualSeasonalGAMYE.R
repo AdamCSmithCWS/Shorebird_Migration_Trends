@@ -117,7 +117,7 @@ for(y in 1:nyears){
 for(s in 1:nstrata){
   alpha[s] ~ dnorm(0,1)
 for (j in 1:nsites[s]){
-	ste[j,s]~dnorm(0,tausite[s])
+	ste[j,s]~dt(0,tausite[s],nu_site[s])
 	}#j
 
 # sdsite[s] <- 1/pow(tausite[s],0.5)
@@ -126,6 +126,7 @@ for (j in 1:nsites[s]){
   tausite[s] <- 1/pow(sdsite[s],2)
 sdsite[s] ~ dt(0, 1, 4)T(0,) # half-t prior on sd (chung et al. 2013) DOI: 10.1007/S11336-013-9328-2 places ~95% of the prior < 3.0
 
+nu_site[s] ~ dgamma(2,0.2)
 
 retrans_js[s] <- 0.5*(1/tausite[s])
 }
