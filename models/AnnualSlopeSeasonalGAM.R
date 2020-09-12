@@ -112,6 +112,7 @@ retrans_j <- mean(retrans_js[1:nstrata])
 ######################
 ##  derived parameters
 for(s in 1:nstrata){
+  retrans_a1[s] <- 0.5*(1/taunoise[s])
   retrans[s] <- 0.5*(1/taunoise[s])/nu_ret[s]
   nu_ret[s] <- (1.422*nu[s]^0.906)/(1+(1.422*nu[s]^0.906)) #approximate retransformation to equate a t-distribution to a normal distribution - see appendix of Link et al. 2020 BBS model selection paper
 }
@@ -122,9 +123,14 @@ for(y in 1:nyears){
   for(s in 1:nstrata){
     for(j in 1:nsites[s]){
       n_sj[j,s,y] <- exp(alpha[s] + ste[j,s] + beta[s]*(y-midyear) + year_effect[y,s] + mn_sm_season + retrans[s]) #site-level predictions including strata-level yearly smooths
+      n_sj_a1[j,s,y] <- exp(alpha[s] + ste[j,s] + beta[s]*(y-midyear) + year_effect[y,s] + mn_sm_season + retrans_a1[s]) #site-level predictions including only the normal noise component (ignoring the t-distributed error)
+      n_sj_a2[j,s,y] <- exp(alpha[s] + ste[j,s] + beta[s]*(y-midyear) + year_effect[y,s] + mn_sm_season) #site-level predictions excluding the log-normal retransformation completely
     }#j
     n_s[s,y] <- mean(n_sj[1:nsites[s],s,y])#stratum predictions including strata-level yearly smooths and scaled to mean across stratum sites
-    n_s_scaled[s,y] <- exp(alpha[s] + beta[s]*(y-midyear) + year_effect[y,s] + mn_sm_season + retrans[s] + retrans_j) #stratum predictions including strata-level yearly smooths and on a common scale (visualisation only)
+    n_s_a1[s,y] <- mean(n_sj_a1[1:nsites[s],s,y])#stratum predictions including strata-level yearly smooths and scaled to mean across stratum sites
+    n_s_a2[s,y] <- mean(n_sj_a2[1:nsites[s],s,y])#stratum predictions including strata-level yearly smooths and scaled to mean across stratum sites
+   
+     n_s_scaled[s,y] <- exp(alpha[s] + beta[s]*(y-midyear) + year_effect[y,s] + mn_sm_season + retrans[s] + retrans_j) #stratum predictions including strata-level yearly smooths and on a common scale (visualisation only)
   }#s
   N[y] <- exp(B*(y-midyear) + YE[y] + mn_sm_season + retrans_m + retrans_j) #continental predictions including only the hyperparameter smooth
 }

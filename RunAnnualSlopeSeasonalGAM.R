@@ -147,13 +147,15 @@ mod.file = "models/AnnualSlopeSeasonalGAM.R"
 
 
 parms = c("sdnoise",
-          # "nu", #if optional heavy-tailed noise
+           "nu", #if optional heavy-tailed noise
           "sdgam_season",
           "B",
           "b",
           "sdsite",
           "N",
           "n_s",
+          "n_s_a1",
+          "n_s_a2",
           "alpha",
           "vis.sm_season")
 
@@ -283,7 +285,7 @@ for(sp in sps){
   plot_by_st <- plot_ind(inds = n_inds,
                          #smooth_inds = n_sm_inds,
                          raw = dts,
-                         add_observed = FALSE,
+                         add_observed = TRUE,
                          add_samplesize = TRUE,
                          species = sp,
                          regions = TRUE,
