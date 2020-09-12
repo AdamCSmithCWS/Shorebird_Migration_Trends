@@ -7,7 +7,7 @@ for(i in 1:ncounts){
 
 	loglambda[i] <- alpha[strat[i]] + ste[site[i],strat[i]] + sm_year[yr[i],strat[i]] + gam.sm_season[i] + year_effect[yr[i],strat[i]] + noise[i]  ### common intercept, varying slopes, so that the site effect accounts for all of the variation in abundance.
 	
-	noise[i] ~ dt(0,taunoise,nu)
+	noise[i] ~ dt(0,taunoise[strat[i]],nu[strat[i]])
 	#noise[i] ~ dnorm(0,taunoise)
 	log(lambda[i]) <- loglambda[i]
 	
@@ -17,15 +17,15 @@ for(i in 1:ncounts){
 }#i
 
 
-
+for(s in 1:nstrata){
 	# sdnoise <- 1/pow(taunoise,0.5)
 	# taunoise ~ dscaled.gamma(0.5,50)
-  taunoise <- 1/pow(sdnoise,2)
-  sdnoise ~ dt(0, 1, 4)T(0,) # half-t prior on sd (chung et al. 2013) DOI: 10.1007/S11336-013-9328-2 places ~95% of the prior < 3.0
+  taunoise[s] <- 1/pow(sdnoise[s],2)
+  sdnoise[s] ~ dt(0, 1, 4)T(0,) # half-t prior on sd (chung et al. 2013) DOI: 10.1007/S11336-013-9328-2 places ~95% of the prior < 3.0
 	
-  nu ~ dgamma(2,0.2)
+  nu[s] ~ dgamma(2,0.2)
 
-
+}
 
 
 
@@ -135,25 +135,27 @@ retrans_j <- mean(retrans_js[1:nstrata])
 ######################
 ##  derived parameters
 #retrans <- 0.5*(1/taunoise)
-retrans <- 0.5*(1/taunoise)/nu_ret
-nu_ret <- (1.422*nu^0.906)/(1+(1.422*nu^0.906)) #approximate retransformation to equate a t-distribution to a normal distribution - see appendix of Link et al. 2020 BBS model selection paper
 
-
+for(s in 1:nstrata){
+  retrans[s] <- 0.5*(1/taunoise[s])/nu_ret[s]
+nu_ret[s] <- (1.422*nu[s]^0.906)/(1+(1.422*nu[s]^0.906)) #approximate retransformation to equate a t-distribution to a normal distribution - see appendix of Link et al. 2020 BBS model selection paper
+}
+retrans_m <- mean(retrans[1:nstrata])
 
 for(y in 1:nyears){
   for(s in 1:nstrata){
     for(j in 1:nsites[s]){
-      n_sj[j,s,y] <- exp(alpha[s] + ste[j,s] + sm_year[y,s] + year_effect[y,s] + mn_sm_season + retrans) #site-level predictions including strata-level yearly smooths
-      n_sj_sm[j,s,y] <- exp(alpha[s] + ste[j,s] + sm_year[y,s] + mn_sm_season + retrans) #site-level predictions including strata-level yearly smooths
+      n_sj[j,s,y] <- exp(alpha[s] + ste[j,s] + sm_year[y,s] + year_effect[y,s] + mn_sm_season + retrans[s]) #site-level predictions including strata-level yearly smooths
+      n_sj_sm[j,s,y] <- exp(alpha[s] + ste[j,s] + sm_year[y,s] + mn_sm_season + retrans[s]) #site-level predictions including strata-level yearly smooths
       
       }#j
     n_s[s,y] <- mean(n_sj[1:nsites[s],s,y])#stratum predictions including strata-level yearly smooths and scaled to mean across stratum sites
     n_s_sm[s,y] <- mean(n_sj_sm[1:nsites[s],s,y])#stratum predictions including strata-level yearly smooths and scaled to mean across stratum sites
-    n_s_scaled[s,y] <- exp(alpha[s] + sm_year[y,s] + year_effect[y,s] + mn_sm_season+ retrans + retrans_j) #stratum predictions including strata-level yearly smooths and on a common scale (visualisation only)
-    n_s_scaled_sm[s,y] <- exp(alpha[s] + sm_year[y,s] + mn_sm_season + retrans + retrans_j) #stratum predictions including strata-level yearly smooths and on a common scale (visualisation only)
+    n_s_scaled[s,y] <- exp(alpha[s] + sm_year[y,s] + year_effect[y,s] + mn_sm_season+ retrans[s] + retrans_j) #stratum predictions including strata-level yearly smooths and on a common scale (visualisation only)
+    n_s_scaled_sm[s,y] <- exp(alpha[s] + sm_year[y,s] + mn_sm_season + retrans[s] + retrans_j) #stratum predictions including strata-level yearly smooths and on a common scale (visualisation only)
   }#s
-  N[y] <- exp(sm_year_B[y] + YE[y] + mn_sm_season + retrans + retrans_j) #continental predictions including only the hyperparameter smooth
-  N_sm[y] <- exp(sm_year_B[y] + mn_sm_season + retrans + retrans_j) #continental predictions including only the hyperparameter smooth
+  N[y] <- exp(sm_year_B[y] + YE[y] + mn_sm_season + retrans_m + retrans_j) #continental predictions including only the hyperparameter smooth
+  N_sm[y] <- exp(sm_year_B[y] + mn_sm_season + retrans_m + retrans_j) #continental predictions including only the hyperparameter smooth
 }
 
 }#end model
