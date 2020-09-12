@@ -87,12 +87,12 @@ ItoT <- function(inds = NSamples,
   indt[,"end"] <- indt[,as.character(end)] 
   
   
-  tt <- indt %>% group_by(.iteration) %>% 
+  tt <- indt %>% group_by(.draw) %>% 
     summarise(t = texp(end/start,ny = nyrs),.groups = "keep") %>%
     ungroup() %>% 
     summarise(trend = mean(t),
               lci = quantile(t,lq,names = FALSE),
-              uqi = quantile(t,uq,names = FALSE))
+              uci = quantile(t,uq,names = FALSE))
   
   if(regions){
     
@@ -107,23 +107,101 @@ ItoT <- function(inds = NSamples,
     indt[,"end"] <- indt[,as.character(end)] 
     
     
-    tt1 <- indt %>% group_by(.iteration,Region) %>% 
+    tt1 <- indt %>% group_by(.draw,Region) %>% 
       summarise(t = texp(end/start,ny = nyrs),.groups = "keep") %>%
       ungroup() %>% 
       group_by(Region) %>% 
       summarise(trend = mean(t),
                 lci = quantile(t,lq,names = FALSE),
-                uqi = quantile(t,uq,names = FALSE),
+                uci = quantile(t,uq,names = FALSE),
                 .groups = "keep")
     
-    tt2 <- indt %>% group_by(.iteration) %>% 
+    tt2 <- indt %>% group_by(.draw) %>% 
       summarise(end = sum(end),
                 start = sum(start),.groups = "keep") %>% 
       summarise(t = texp(end/start,ny = nyrs),.groups = "keep") %>%
       ungroup() %>% 
       summarise(trend = mean(t),
                 lci = quantile(t,lq,names = FALSE),
-                uqi = quantile(t,uq,names = FALSE))
+                uci = quantile(t,uq,names = FALSE))
+    
+    tt2$Region <- "Composite"     
+    tt <- bind_rows(tt2,tt1)
+    
+  }
+  
+  return(tt)
+}
+
+
+
+slope_trend <- function(x,y){
+  x = log(x)
+    n = length(y)
+    sx = sum(x)
+    sy = sum(y)
+    ssy = sum(y^2)
+    sxx = sum(x*y)
+    b = (n*sxx - sy*sx)/(n*ssy - sy^2)
+    return(b)
+  }
+
+  
+  sltexp <- function(x){((exp(x)-1)*100)} 
+
+
+
+ItoT_slope <- function(inds = NSamples,
+                 start = 1974,
+                 end = 2019,
+                 regions = FALSE,
+                 qs = 95){
+  
+  lq = (1-(qs/100))/2
+  uq = ((qs/100))+lq
+  nyrs = end-start
+  
+  tt <- inds %>% 
+    filter(year %in% c(start:end)) %>% 
+    group_by(.draw) %>% 
+    summarise(t = sltexp(slope_trend(x = .value,y = year)),.groups = "keep") %>%
+    ungroup() %>% 
+    summarise(trend = mean(t),
+              lci = quantile(t,lq,names = FALSE),
+              uci = quantile(t,uq,names = FALSE))
+  
+  if(regions){
+    
+    
+    tt1 <- inds %>% 
+      filter(year %in% c(start:end)) %>% 
+      # ungroup %>% 
+      # select(-y,-s) %>% 
+      group_by(.draw,Region) %>% 
+      summarise(t = sltexp(slope_trend(x = .value,y = year)),.groups = "keep") %>%
+      group_by(Region) %>% 
+      #ungroup() %>% 
+      summarise(trend = mean(t),
+                lci = quantile(t,lq,names = FALSE),
+                uci = quantile(t,uq,names = FALSE),
+                .groups = "keep")
+ 
+    
+    tt2 <- inds %>% 
+      filter(year %in% c(start:end)) %>% 
+      # ungroup %>% 
+      # select(-y,-s) %>% 
+      group_by(.draw,year) %>% 
+      summarise(sm = sum(.value),.groups = "keep") %>%
+      group_by(.draw) %>% 
+      summarise(t = sltexp(slope_trend(x = sm,y = year)),.groups = "keep") %>%
+      ungroup() %>% 
+      summarise(trend = mean(t),
+                lci = quantile(t,lq,names = FALSE),
+                uci = quantile(t,uq,names = FALSE),
+                .groups = "drop")
+    
+
     
     tt2$Region <- "Composite"     
     tt <- bind_rows(tt2,tt1)

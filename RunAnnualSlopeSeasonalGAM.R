@@ -271,6 +271,9 @@ for(sp in sps){
   t_n_s <- ItoT(inds = n_sSamples,regions = TRUE)
   
   t_N <- ItoT(inds = NSamples,regions = FALSE)
+  t_n_s_15 <- ItoT(inds = n_sSamples,regions = TRUE,start= 2004)
+  
+  t_N_15 <- ItoT(inds = NSamples,regions = FALSE,start= 2004)
   
  
   
@@ -280,7 +283,7 @@ for(sp in sps){
   plot_by_st <- plot_ind(inds = n_inds,
                          #smooth_inds = n_sm_inds,
                          raw = dts,
-                         add_observed = TRUE,
+                         add_observed = FALSE,
                          add_samplesize = TRUE,
                          species = sp,
                          regions = TRUE,
@@ -289,5 +292,7 @@ for(sp in sps){
                          axis_text_size = 16)  
   
   
+print(plot_by_st)
+
 }
 

@@ -274,7 +274,7 @@ N_sm_inds <- extr_inds(param = "N_sm",regions = FALSE)
 
 
 
-# calculating trends  -----------------------------------------------------
+# Trends  -----------------------------------------------------
 
   NSamples <- out2$samples %>% gather_draws(N[y])
   NSamples$year <- NSamples$y + 1973
@@ -295,12 +295,28 @@ N_sm_inds <- extr_inds(param = "N_sm",regions = FALSE)
   
   
 t_n_s_sm <- ItoT(inds = n_s_smSamples,regions = TRUE)
+t_n_s_sm_15 <- ItoT(inds = n_s_smSamples,regions = TRUE,start = 2004)
 
 t_n_s <- ItoT(inds = n_sSamples,regions = TRUE)
 
 t_N <- ItoT(inds = NSamples,regions = FALSE)
 
 t_N_sm <- ItoT(inds = N_smSamples,regions = FALSE)
+t_N_sm_15 <- ItoT(inds = N_smSamples,regions = FALSE,start = 2004)
+
+
+
+# Slope Trends ------------------------------------------------------------
+
+
+t_n_s_slope <- ItoT_slope(inds = n_sSamples,regions = TRUE)
+
+t_N_slope <- ItoT_slope(inds = NSamples,regions = FALSE)
+
+
+t_n_s_slope_15 <- ItoT_slope(inds = n_sSamples,regions = TRUE,start = 2004)
+
+t_N_slope_15 <- ItoT_slope(inds = NSamples,regions = FALSE,start = 2004)
 
  
 # plotting indices --------------------------------------------------------
