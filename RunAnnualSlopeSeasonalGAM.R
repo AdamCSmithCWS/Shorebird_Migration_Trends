@@ -251,6 +251,8 @@ for(sp in sps){
   n_inds <- extr_inds(param = "n_s")
   N_inds <- extr_inds(param = "N",regions = FALSE)
  
+  n_inds_a1 <- extr_inds(param = "n_s_a1")
+  n_inds_a2 <- extr_inds(param = "n_s_a2")
   
   
   
@@ -268,6 +270,14 @@ for(sp in sps){
   
  
   
+  n_s_a1Samples <- out2$samples %>% gather_draws(n_s_a1[s,y])
+  n_s_a1Samples$year <- n_s_a1Samples$y + 1973
+  n_s_a1Samples <- left_join(n_s_a1Samples,strats,by = "s")
+  
+  
+  n_s_a2Samples <- out2$samples %>% gather_draws(n_s_a2[s,y])
+  n_s_a2Samples$year <- n_s_a2Samples$y + 1973
+  n_s_a2Samples <- left_join(n_s_a2Samples,strats,by = "s")
   
  
   t_n_s <- ItoT(inds = n_sSamples,regions = TRUE)
@@ -282,8 +292,8 @@ for(sp in sps){
   # plotting indices --------------------------------------------------------
   
   
-  plot_by_st <- plot_ind(inds = n_inds,
-                         #smooth_inds = n_sm_inds,
+  plot_by_st <- plot_ind(inds = n_inds_a2,
+                         #smooth_inds = ,
                          raw = dts,
                          add_observed = TRUE,
                          add_samplesize = TRUE,
