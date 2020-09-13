@@ -173,6 +173,10 @@ parms = c("sdnoise",
           "n_s",
           "N_sm",
           "n_s_sm",
+          "n_s_a1",
+          "n_s_sm_a1",
+          "n_s_a2",
+          "n_s_sm_a2",
           "alpha",
           "vis.sm_season")
 
@@ -274,6 +278,25 @@ N_sm_inds <- extr_inds(param = "N_sm",regions = FALSE)
 
 
 
+n_inds <- extr_inds(param = "n_s")
+n_sm_inds <- extr_inds(param = "n_s_sm")
+N_inds <- extr_inds(param = "N",regions = FALSE)
+N_sm_inds <- extr_inds(param = "N_sm",regions = FALSE)
+
+
+
+
+
+
+n_inds <- extr_inds(param = "n_s")
+n_sm_inds <- extr_inds(param = "n_s_sm")
+N_inds <- extr_inds(param = "N",regions = FALSE)
+N_sm_inds <- extr_inds(param = "N_sm",regions = FALSE)
+
+
+
+
+
 # Trends  -----------------------------------------------------
 
   NSamples <- out2$samples %>% gather_draws(N[y])
@@ -322,6 +345,44 @@ t_N_slope_15 <- ItoT_slope(inds = NSamples,regions = FALSE,start = 2004)
 # plotting indices --------------------------------------------------------
 
 
+
+plot_by_st <- plot_ind(inds = n_inds_a2,
+                       #smooth_inds = ,
+                       raw = dts,
+                       add_observed = TRUE,
+                       add_samplesize = TRUE,
+                       species = sp,
+                       regions = TRUE,
+                       title_size = 20,
+                       axis_title_size = 18,
+                       axis_text_size = 16)  
+
+pdf(file = paste0("Figures/",sp,"_A2.pdf"),
+    width = 8.5,
+    height = 11)
+print(plot_by_st)
+dev.off()
+
+
+plot_by_st <- plot_ind(inds = n_inds_a1,
+                       smooth_inds = n_inds,
+                       raw = dts,
+                       add_observed = TRUE,
+                       add_samplesize = TRUE,
+                       species = sp,
+                       regions = TRUE,
+                       title_size = 20,
+                       axis_title_size = 18,
+                       axis_text_size = 16)  
+
+pdf(file = paste0("Figures/",sp,"_A1.pdf"),
+    width = 8.5,
+    height = 11)
+print(plot_by_st)
+dev.off()
+
+
+
 plot_by_st <- plot_ind(inds = n_inds,
                        smooth_inds = n_sm_inds,
                        raw = dts,
@@ -333,7 +394,12 @@ plot_by_st <- plot_ind(inds = n_inds,
                        axis_title_size = 18,
                        axis_text_size = 16)  
  
+pdf(file = paste0("Figures/",sp,"_A1.pdf"),
+    width = 8.5,
+    height = 11)
 print(plot_by_st)
+dev.off()
+
 
 }
 

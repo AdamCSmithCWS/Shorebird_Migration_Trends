@@ -231,7 +231,7 @@ library(tidybayes)
 load("data/allShorebirdPrismFallCounts.RData")
 source("functions/Utility_functions.R")
 
-for(sp in sps){
+for(sp in sps[c(11,25,13)]){
   
   
   
@@ -281,6 +281,8 @@ for(sp in sps){
   
  
   t_n_s <- ItoT(inds = n_sSamples,regions = TRUE)
+  t_n_s_a1 <- ItoT(inds = n_s_a1Samples,regions = TRUE)
+  t_n_s_a2 <- ItoT(inds = n_s_a2Samples,regions = TRUE)
   
   t_N <- ItoT(inds = NSamples,regions = FALSE)
   t_n_s_15 <- ItoT(inds = n_sSamples,regions = TRUE,start= 2004)
@@ -303,8 +305,34 @@ for(sp in sps){
                          axis_title_size = 18,
                          axis_text_size = 16)  
   
-  
+  pdf(file = paste0("Figures/",sp,"_A2.pdf"),
+      width = 8.5,
+      height = 11)
 print(plot_by_st)
+dev.off()
+
+
+plot_by_st <- plot_ind(inds = n_inds_a1,
+                       smooth_inds = n_inds,
+                       raw = dts,
+                       add_observed = TRUE,
+                       add_samplesize = TRUE,
+                       species = sp,
+                       regions = TRUE,
+                       title_size = 20,
+                       axis_title_size = 18,
+                       axis_text_size = 16)  
+
+pdf(file = paste0("Figures/",sp,"_A1.pdf"),
+    width = 8.5,
+    height = 11)
+print(plot_by_st)
+dev.off()
+
+
+
+
+
 
 }
 
