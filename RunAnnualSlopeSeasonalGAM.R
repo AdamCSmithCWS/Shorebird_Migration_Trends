@@ -11,13 +11,13 @@ library(foreach)
  load("data/allShorebirdPrismFallCounts.RData")
 # source("functions/GAM_basis_function.R")
 
-n_cores <- 3
+n_cores <- 6
 cluster <- makeCluster(n_cores, type = "PSOCK")
 registerDoParallel(cluster)
 
 
 
-fullrun <- foreach(sp = sps[c(25,11,13)],
+fullrun <- foreach(sp = sps[c(3,4,6,8,21,22)],
                    .packages = c("jagsUI","tidyverse","ggmcmc"),
                    .inorder = FALSE,
                    .errorhandling = "pass") %dopar%
@@ -231,9 +231,9 @@ library(tidybayes)
 load("data/allShorebirdPrismFallCounts.RData")
 source("functions/Utility_functions.R")
 
-for(sp in sps[c(11,25,13)]){
+for(sp in sps){
   
-  
+  if(file.exists(paste0("output/",sp,"slope_results.RData"))){
   
   load(paste0("output/",sp,"slope_results.RData"))
   
@@ -254,8 +254,25 @@ for(sp in sps[c(11,25,13)]){
   n_inds_a1 <- extr_inds(param = "n_s_a1")
   n_inds_a2 <- extr_inds(param = "n_s_a2")
   
+
+# extracting the seasonal smooth ------------------------------------------
+
+season_sm = extr_sum(param = "vis.sm_season",
+                     index = "day",
+                     log_retrans = TRUE) 
   
   
+  pp <- ggplot()+
+    geom_line(data = season_sm,aes(x = day,y = mean))+
+    geom_ribbon(data = season_sm,aes(x = day,ymax = uci,ymin = lci),alpha = 0.2)+
+    ylab("")+
+    xlab("Days since July 1")
+ 
+  pdf(file = paste0("Figures/",sp,"_Season_slope.pdf"),
+      width = 8.5,
+      height = 11)
+  print(pp)
+  dev.off()
   # calculating trends  -----------------------------------------------------
   
   NSamples <- out2$samples %>% gather_draws(N[y])
@@ -281,15 +298,43 @@ for(sp in sps[c(11,25,13)]){
   
  
   t_n_s <- ItoT(inds = n_sSamples,regions = TRUE)
-  t_n_s_a1 <- ItoT(inds = n_s_a1Samples,regions = TRUE)
-  t_n_s_a2 <- ItoT(inds = n_s_a2Samples,regions = TRUE)
+
+  
+  
+  
+  t_n_sS <- ItoT_slope(inds = n_sSamples,regions = TRUE)
+
+  
+  t_n_s_a1 <- ItoT(inds = n_s_a1Samples,regions = TRUE,retransformation_type = "lognormal_only")
+
+  
+  t_n_s_a2 <- ItoT(inds = n_s_a2Samples,regions = TRUE,retransformation_type = "none")
+
+  
   
   t_N <- ItoT(inds = NSamples,regions = FALSE)
+
+  
   t_n_s_15 <- ItoT(inds = n_sSamples,regions = TRUE,start= 2004)
+
+  
+  t_n_sS_15 <- ItoT_slope(inds = n_sSamples,regions = TRUE,start= 2004)
+
   
   t_N_15 <- ItoT(inds = NSamples,regions = FALSE,start= 2004)
+
   
- 
+
+  trend_out <- bind_rows(t_N,
+                         t_N_15,
+                         t_n_s,
+                         t_n_sS,
+                         t_n_s_a1,
+                         t_n_s_a2,
+                         t_n_s_15,
+                         t_n_sS_15)
+  
+  write.csv(trend_out,file = paste0("Trends/trends_slope_",sp,".csv"),row.names = F)
   
   # plotting indices --------------------------------------------------------
   
@@ -305,7 +350,7 @@ for(sp in sps[c(11,25,13)]){
                          axis_title_size = 18,
                          axis_text_size = 16)  
   
-  pdf(file = paste0("Figures/",sp,"_A2.pdf"),
+  pdf(file = paste0("Figures/",sp,"_A2_slope.pdf"),
       width = 8.5,
       height = 11)
 print(plot_by_st)
@@ -323,7 +368,7 @@ plot_by_st <- plot_ind(inds = n_inds_a1,
                        axis_title_size = 18,
                        axis_text_size = 16)  
 
-pdf(file = paste0("Figures/",sp,"_A1.pdf"),
+pdf(file = paste0("Figures/",sp,"_A1_slope.pdf"),
     width = 8.5,
     height = 11)
 print(plot_by_st)
@@ -332,7 +377,7 @@ dev.off()
 
 
 
-
+}# end if output exists
 
 }
 

@@ -10,13 +10,13 @@ library(foreach)
  load("data/allShorebirdPrismFallCounts.RData")
 # source("functions/GAM_basis_function.R")
 
-n_cores <- 3
+n_cores <- 6
 cluster <- makeCluster(n_cores, type = "PSOCK")
 registerDoParallel(cluster)
 
 
 
-fullrun <- foreach(sp = sps[c(25,11,13)],
+fullrun <- foreach(sp = sps[c(3,4,6,8,21,22)],
                    .packages = c("jagsUI","tidyverse","ggmcmc"),
                    .inorder = FALSE,
                    .errorhandling = "pass") %dopar%
@@ -256,7 +256,8 @@ source("functions/Utility_functions.R")
 for(sp in sps){
 
   
-  
+  if(file.exists(paste0("output/",sp,"GAMYE_results.RData"))){
+    
   load(paste0("output/",sp,"GAMYE_results.RData"))
 
   strats = unique(dts[,c("strat","Region")])
@@ -268,6 +269,28 @@ sums = data.frame(out2$summary)
 names(sums) <- c("mean","sd","lci","lqrt","median","uqrt","uci","Rhat","n.eff","overlap0","f")
 sums$Parameter = row.names(sums)
 
+
+
+# extracting the seasonal smooth ------------------------------------------
+
+season_sm = extr_sum(param = "vis.sm_season",
+                     index = "day",
+                     log_retrans = TRUE) 
+
+
+pp <- ggplot()+
+  geom_line(data = season_sm,aes(x = day,y = mean))+
+  geom_ribbon(data = season_sm,aes(x = day,ymax = uci,ymin = lci),alpha = 0.2)+
+  ylab("")+
+  xlab("Days since July 1")
+
+pdf(file = paste0("Figures/",sp,"_Season_GAMYE.pdf"),
+    width = 8.5,
+    height = 11)
+print(pp)
+dev.off()
+
+
 # compiling indices -------------------------------------
 
 n_inds <- extr_inds(param = "n_s")
@@ -278,20 +301,16 @@ N_sm_inds <- extr_inds(param = "N_sm",regions = FALSE)
 
 
 
-n_inds <- extr_inds(param = "n_s")
-n_sm_inds <- extr_inds(param = "n_s_sm")
-N_inds <- extr_inds(param = "N",regions = FALSE)
-N_sm_inds <- extr_inds(param = "N_sm",regions = FALSE)
+n_inds_a1 <- extr_inds(param = "n_s_a1")
+n_sm_inds_a1 <- extr_inds(param = "n_s_sm_a1")
 
 
 
 
 
 
-n_inds <- extr_inds(param = "n_s")
-n_sm_inds <- extr_inds(param = "n_s_sm")
-N_inds <- extr_inds(param = "N",regions = FALSE)
-N_sm_inds <- extr_inds(param = "N_sm",regions = FALSE)
+n_inds_a2 <- extr_inds(param = "n_s_a2")
+n_sm_inds_a2 <- extr_inds(param = "n_s_sm_a2")
 
 
 
@@ -315,17 +334,47 @@ N_sm_inds <- extr_inds(param = "N_sm",regions = FALSE)
  n_s_smSamples$year <- n_s_smSamples$y + 1973
  n_s_smSamples <- left_join(n_s_smSamples,strats,by = "s")
  
+ 
+ n_s_a1Samples <- out2$samples %>% gather_draws(n_s_a1[s,y])
+ n_s_a1Samples$year <- n_s_a1Samples$y + 1973
+ n_s_a1Samples <- left_join(n_s_a1Samples,strats,by = "s")
+ 
+ n_s_sm_a1Samples <- out2$samples %>% gather_draws(n_s_sm_a1[s,y])
+ n_s_sm_a1Samples$year <- n_s_sm_a1Samples$y + 1973
+ n_s_sm_a1Samples <- left_join(n_s_sm_a1Samples,strats,by = "s")
+ 
+ 
+ 
+ n_s_a2Samples <- out2$samples %>% gather_draws(n_s_a2[s,y])
+ n_s_a2Samples$year <- n_s_a2Samples$y + 1973
+ n_s_a2Samples <- left_join(n_s_a2Samples,strats,by = "s")
+ 
+ n_s_sm_a2Samples <- out2$samples %>% gather_draws(n_s_sm_a2[s,y])
+ n_s_sm_a2Samples$year <- n_s_sm_a2Samples$y + 1973
+ n_s_sm_a2Samples <- left_join(n_s_sm_a2Samples,strats,by = "s")
+ 
   
-  
-t_n_s_sm <- ItoT(inds = n_s_smSamples,regions = TRUE)
-t_n_s_sm_15 <- ItoT(inds = n_s_smSamples,regions = TRUE,start = 2004)
+t_n_s_sm_a1 <- ItoT(inds = n_s_sm_a1Samples,regions = TRUE,index_type = "smoothed",retransformation_type = "lognormal_only")
+t_n_s_sm_15_a1 <- ItoT(inds = n_s_sm_a1Samples,regions = TRUE,start = 2004,index_type = "smoothed",retransformation_type = "lognormal_only")
+
+
+t_n_s_sm_a2 <- ItoT(inds = n_s_sm_a2Samples,regions = TRUE,index_type = "smoothed",retransformation_type = "none")
+t_n_s_sm_15_a2 <- ItoT(inds = n_s_sm_a2Samples,regions = TRUE,start = 2004,index_type = "smoothed",retransformation_type = "none")
+
+
+t_n_s_sm <- ItoT(inds = n_s_smSamples,regions = TRUE,index_type = "smoothed")
+
+
+t_n_s_sm_15 <- ItoT(inds = n_s_smSamples,regions = TRUE,start = 2004,index_type = "smoothed")
 
 t_n_s <- ItoT(inds = n_sSamples,regions = TRUE)
+t_n_s_15 <- ItoT(inds = n_sSamples,regions = TRUE,start = 2004)
 
 t_N <- ItoT(inds = NSamples,regions = FALSE)
 
-t_N_sm <- ItoT(inds = N_smSamples,regions = FALSE)
-t_N_sm_15 <- ItoT(inds = N_smSamples,regions = FALSE,start = 2004)
+
+t_N_sm <- ItoT(inds = N_smSamples,regions = FALSE,index_type = "smoothed")
+t_N_sm_15 <- ItoT(inds = N_smSamples,regions = FALSE,start = 2004,index_type = "smoothed")
 
 
 
@@ -341,7 +390,24 @@ t_n_s_slope_15 <- ItoT_slope(inds = n_sSamples,regions = TRUE,start = 2004)
 
 t_N_slope_15 <- ItoT_slope(inds = NSamples,regions = FALSE,start = 2004)
 
- 
+trend_out <- bind_rows(t_N,
+                       t_N_slope,
+                       t_N_slope_15,
+                       t_N_sm,
+                       t_N_sm_15,
+                       t_n_s_sm,
+                       t_n_s_sm_a1,
+                       t_n_s_sm_a2,
+                       t_n_s_sm_15,
+                       t_n_s_sm_15_a1,
+                       t_n_s_sm_15_a2,
+                       t_n_s,
+                       t_n_s_slope,
+                       t_n_s_15,
+                       t_n_s_slope_15)
+
+write.csv(trend_out,file = paste0("Trends/trends_GAMYE_",sp,".csv"),row.names = F)
+
 # plotting indices --------------------------------------------------------
 
 
@@ -357,7 +423,7 @@ plot_by_st <- plot_ind(inds = n_inds_a2,
                        axis_title_size = 18,
                        axis_text_size = 16)  
 
-pdf(file = paste0("Figures/",sp,"_A2.pdf"),
+pdf(file = paste0("Figures/",sp,"GAMYE_A2.pdf"),
     width = 8.5,
     height = 11)
 print(plot_by_st)
@@ -375,7 +441,7 @@ plot_by_st <- plot_ind(inds = n_inds_a1,
                        axis_title_size = 18,
                        axis_text_size = 16)  
 
-pdf(file = paste0("Figures/",sp,"_A1.pdf"),
+pdf(file = paste0("Figures/",sp,"GAMYE_A1.pdf"),
     width = 8.5,
     height = 11)
 print(plot_by_st)
@@ -394,12 +460,14 @@ plot_by_st <- plot_ind(inds = n_inds,
                        axis_title_size = 18,
                        axis_text_size = 16)  
  
-pdf(file = paste0("Figures/",sp,"_A1.pdf"),
+pdf(file = paste0("Figures/",sp,"GAMYE.pdf"),
     width = 8.5,
     height = 11)
 print(plot_by_st)
 dev.off()
 
+
+}#end if output exists
 
 }
 
