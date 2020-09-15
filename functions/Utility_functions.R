@@ -67,11 +67,41 @@ extr_inds <- function(param = "n_s",
 
 
 
+extr_sum <- function(param = "vis.sm_season",
+                      sumtable = sums,
+                      index = "day",
+                     log_retrans = FALSE){
+  
+  pat <- paste0(param,"[")
+  wn_s <- grep(pattern = pat,
+               x = sumtable$Parameter,
+               fixed = TRUE)
+  inds <- sumtable[wn_s,]
+  
+
+    for(i in 1:length(index)){
+    inds[,index[i]] <- jags_dim(dim = 1,
+                           var = param,
+                           dat = inds)
+    }
+ if(log_retrans){
+   for(pp in c("mean","sd","lci","lqrt","median","uqrt","uci")){
+    inds[,pp] <- exp(inds[,pp])
+  }
+ }
+  
+  return(inds)
+}
+
+
 ItoT <- function(inds = NSamples,
                  start = 1974,
                  end = 2019,
                  regions = FALSE,
-                 qs = 95){
+                 qs = 95,
+                 trend_type = "endpoint",
+                 index_type = "standard",
+                 retransformation_type = "standard"){
   
   lq = (1-(qs/100))/2
   uq = ((qs/100))+lq
@@ -129,6 +159,11 @@ ItoT <- function(inds = NSamples,
     tt <- bind_rows(tt2,tt1)
     
   }
+  tt$start_year <- start
+  tt$end_year <- end
+  tt$trend_type <- trend_type
+  tt$index_type <- index_type
+  tt$retransformation_type <- retransformation_type
   
   return(tt)
 }
@@ -155,7 +190,10 @@ ItoT_slope <- function(inds = NSamples,
                  start = 1974,
                  end = 2019,
                  regions = FALSE,
-                 qs = 95){
+                 qs = 95,
+                 trend_type = "slope",
+                 index_type = "standard",
+                 retransformation_type = "standard"){
   
   lq = (1-(qs/100))/2
   uq = ((qs/100))+lq
@@ -205,8 +243,14 @@ ItoT_slope <- function(inds = NSamples,
     
     tt2$Region <- "Composite"     
     tt <- bind_rows(tt2,tt1)
-    
+
   }
+  
+  tt$start_year <- start
+  tt$end_year <- end
+  tt$trend_type <- trend_type
+  tt$index_type <- index_type
+  tt$retransformation_type <- retransformation_type
   
   return(tt)
 }
