@@ -289,7 +289,9 @@ plot_ind <- function(inds = N_inds,
     obs <- raw %>% 
       group_by(strat,yr) %>% 
       summarise(n_counts = n(),
-                mean_counts = mean(count))
+                mean_counts = mean(count),
+                lqrt_counts = quantile(count,probs = 0.25),
+                uqrt_counts = quantile(count,probs = 0.75))
     obs$s = obs$strat
     
     obs <- left_join(obs,strats,by = "s")
@@ -306,7 +308,9 @@ plot_ind <- function(inds = N_inds,
     obs <- raw %>% 
       group_by(yr) %>% 
       summarise(n_counts = n(),
-                mean_counts = mean(count))
+                mean_counts = mean(count),
+                lqrt_counts = quantile(count,probs = 0.25),
+                uqrt_counts = quantile(count,probs = 0.75))
     
     obs$year <- obs$yr+1973
     annotobs = filter(raw,year == 1980)
@@ -352,7 +356,8 @@ plot_ind <- function(inds = N_inds,
       
     }
     if(add_observed){
-      p <- p + ggplot2::geom_point(data = obs,ggplot2::aes(x = year,y = mean_counts,group = Region),colour = grDevices::grey(0.6))
+      p <- p + 
+        ggplot2::geom_pointrange(data = obs,ggplot2::aes(x = year,y = mean_counts,ymin = lqrt_counts,ymax = uqrt_counts,group = Region),colour = grDevices::grey(0.6))
         # ggplot2::annotate(geom = "text",x = annotobs$year,y = annotobs$mean_counts,label = "Observed means",colour = grDevices::grey(0.6))
         # 
     }
