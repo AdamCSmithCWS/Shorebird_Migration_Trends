@@ -296,7 +296,6 @@ plot_ind <- function(inds = N_inds,
     obs$year <- obs$yr+1973
     
   }else{
-    annotobs = filter(obs,year == 1980)
     
     
     ss <- raw %>% 
@@ -310,6 +309,7 @@ plot_ind <- function(inds = N_inds,
                 mean_counts = mean(count))
     
     obs$year <- obs$yr+1973
+    annotobs = filter(raw,year == 1980)
     
   
   }

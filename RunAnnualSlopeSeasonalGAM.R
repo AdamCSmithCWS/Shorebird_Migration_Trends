@@ -323,10 +323,14 @@ season_sm = extr_sum(param = "vis.sm_season",
   
   t_N_15 <- ItoT(inds = NSamples,regions = FALSE,start= 2004)
 
+  t_NS <- ItoT_slope(inds = NSamples,regions = FALSE)
+  t_NS_15 <- ItoT_slope(inds = NSamples,regions = FALSE,start= 2004)
   
 
   trend_out <- bind_rows(t_N,
                          t_N_15,
+                         t_NS,
+                         t_NS_15,
                          t_n_s,
                          t_n_sS,
                          t_n_s_a1,
@@ -337,6 +341,26 @@ season_sm = extr_sum(param = "vis.sm_season",
   write.csv(trend_out,file = paste0("Trends/trends_slope_",sp,".csv"),row.names = F)
   
   # plotting indices --------------------------------------------------------
+  
+  
+  # plot_Hyper <- plot_ind(inds = N_inds,
+  #                        #smooth_inds = ,
+  #                        raw = dts,
+  #                        add_observed = TRUE,
+  #                        add_samplesize = TRUE,
+  #                        species = sp,
+  #                        regions = FALSE,
+  #                        title_size = 20,
+  #                        axis_title_size = 18,
+  #                        axis_text_size = 16)  
+  # 
+  # pdf(file = paste0("Figures/",sp,"_Hyperparameter_slope.pdf"),
+  #     width = 8.5,
+  #     height = 11)
+  # print(plot_Hyper)
+  # dev.off()
+  
+  
   
   
   plot_by_st <- plot_ind(inds = n_inds_a2,

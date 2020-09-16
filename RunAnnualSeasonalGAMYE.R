@@ -114,7 +114,7 @@ basis_season <- gam.basis.func(orig.preds = as.integer(unlist(dts[,"date"])),
                                even_gaps = FALSE,
                                sm_name = "season")
 
-
+ndays <- basis_season$npredpoints_season
 
 
 # GAM annual basis function ---------------------------------------------
@@ -141,6 +141,7 @@ jags_data <- list(count = as.integer(unlist(dts$count)),
                   nstrata = nstrata,
                   nsites = nsites,
                   ncounts = ncounts,
+                  ndays = ndays,
                   
                   season_basis = basis_season$season_basis,
                   season_basispred = basis_season$season_basispred,
@@ -159,6 +160,7 @@ mod.file = "models/AnnualSeasonalGAMYE.R"
 parms = c("sdnoise",
           # "nu", #if optional heavy-tailed noise
           "sdgam_season",
+          "sdgam_season_s",
           "sdgam_year",
           "sdgam_year_b",
           "beta_season",
