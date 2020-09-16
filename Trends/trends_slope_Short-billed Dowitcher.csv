@@ -1,6 +1,8 @@
 "trend","lci","uci","start_year","end_year","trend_type","index_type","retransformation_type","Region"
 -3.30794254225404,-8.99354074521904,2.80228732679101,1974,2019,"endpoint","standard","standard",NA
 -3.72423575212833,-10.5164496590103,3.56114614407358,2004,2019,"endpoint","standard","standard",NA
+-3.49355084786283,-8.97204026562393,2.32412238942042,1974,2019,"slope","standard","standard",NA
+-4.33602129684684,-10.3719416536297,1.87898048406133,2004,2019,"slope","standard","standard",NA
 2.76332551218555,-7.25606899652662,10.4610309783155,1974,2019,"endpoint","standard","standard","Composite"
 -2.1890358955528,-3.8819856465362,-0.393279388627172,1974,2019,"endpoint","standard","standard","Atlantic Canada"
 -0.0748240551147134,-3.80833292105472,3.90329014766226,1974,2019,"endpoint","standard","standard","East Inland"
