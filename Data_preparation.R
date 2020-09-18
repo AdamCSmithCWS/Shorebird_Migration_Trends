@@ -106,7 +106,8 @@ iss_m1 <- iss_m %>%
     day_of_year = yday(observation_date),
   ) %>% 
   filter(.,year > 1973 & year < 2020,
-         country == "United States")
+         country == "United States",
+         !is.na(observation_count))
 
 
 

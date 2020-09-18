@@ -159,7 +159,7 @@ jags_data <- list(count = as.integer(unlist(dts$count)),
 
 
 
-mod.file = "models/AnnualSlopeSeasonalGAM.R"
+mod.file = "models/AnnualSlopeSeasonalGAM_ZIP.R"
 
 
 
@@ -175,10 +175,13 @@ parms = c("sdnoise",
           "n_s",
           "n_s_a1",
           "n_s_a2",
+          "N_sc2",
           "N_sc",
           "n_s_scaled",
+          "n_s_scaled2",
           "alpha",
-          "vis.sm_season")
+          "vis.sm_season",
+          "psi")
 
 
 #adaptSteps = 200              # Number of steps to "tune" the samplers.
@@ -275,19 +278,7 @@ for(sp in sps){
   n_inds_a1 <- extr_inds(param = "n_s_a1")
   n_inds_a2 <- extr_inds(param = "n_s_a2")
   
-  sd_noise = extr_sum(param = "sdnoise",
-                      index = c("s"),
-                      log_retrans = FALSE) 
-  
-  sdnoiseSamples <- out2$samples %>% gather_draws(sdnoise[s])
-  
-  
-  sdsite = extr_sum(param = "sdsite",
-                    index = c("s"),
-                    log_retrans = FALSE) 
-  
-  sdsiteSamples <- out2$samples %>% gather_draws(sdsite[s])
-  
+
 # extracting the seasonal smooth ------------------------------------------
 
   season_sm = extr_sum(param = "vis.sm_season",

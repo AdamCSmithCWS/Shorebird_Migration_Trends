@@ -80,7 +80,7 @@ extr_sum <- function(param = "vis.sm_season",
   
 
     for(i in 1:length(index)){
-    inds[,index[i]] <- jags_dim(dim = 1,
+    inds[,index[i]] <- jags_dim(dim = i,
                            var = param,
                            dat = inds)
     }
@@ -290,8 +290,8 @@ plot_ind <- function(inds = N_inds,
       group_by(strat,yr) %>% 
       summarise(n_counts = n(),
                 mean_counts = mean(count),
-                lqrt_counts = quantile(count,probs = 0.25),
-                uqrt_counts = quantile(count,probs = 0.75))
+                lqrt_counts = quantile(count,probs = 0.25,na.rm = T),
+                uqrt_counts = quantile(count,probs = 0.75,na.rm = T))
     obs$s = obs$strat
     
     obs <- left_join(obs,strats,by = "s")
@@ -309,11 +309,11 @@ plot_ind <- function(inds = N_inds,
       group_by(yr) %>% 
       summarise(n_counts = n(),
                 mean_counts = mean(count),
-                lqrt_counts = quantile(count,probs = 0.25),
-                uqrt_counts = quantile(count,probs = 0.75))
+                lqrt_counts = quantile(count,probs = 0.25,na.rm = T),
+                uqrt_counts = quantile(count,probs = 0.75,na.rm = T))
     
     obs$year <- obs$yr+1973
-    annotobs = filter(raw,year == 1980)
+    annotobs = filter(obs,year == 1980)
     
   
   }
