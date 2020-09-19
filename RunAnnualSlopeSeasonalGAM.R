@@ -286,7 +286,7 @@ for(sp in sps){
                     index = c("s"),
                     log_retrans = FALSE) 
   
-  sdsiteSamples <- out2$samples %>% gather_draws(sdsite[s])
+  sdsiteSamples <- out2$samples %>% gather_draws(sdsite)
   
 # extracting the seasonal smooth ------------------------------------------
 
@@ -334,8 +334,19 @@ for(sp in sps){
   n_s_a2Samples <- left_join(n_s_a2Samples,strats,by = "s")
   
  
+  
+  N_scSamples <- out2$samples %>% gather_draws(N_sc[y])
+  N_scSamples$year <- N_scSamples$y + 1973
+  
+  
+  n_s_scaledSamples <- out2$samples %>% gather_draws(n_s_scaled[s,y])
+  n_s_scaledSamples$year <- n_s_scaledSamples$y + 1973
+  n_s_scaledSamples <- left_join(n_s_scaledSamples,strats,by = "s")
+  
+  
   t_n_s <- ItoT(inds = n_sSamples,regions = TRUE)
-
+  t_n_s_scaled <- ItoT(inds = n_s_scaledSamples,regions = TRUE)
+  
   
   
   
@@ -350,7 +361,8 @@ for(sp in sps){
   
   
   t_N <- ItoT(inds = NSamples,regions = FALSE)
-
+  t_N_scaled <- ItoT(inds = N_scSamples,regions = FALSE)
+  
   
   t_n_s_15 <- ItoT(inds = n_sSamples,regions = TRUE,start= 2004)
 
@@ -362,20 +374,38 @@ for(sp in sps){
 
   t_NS <- ItoT_slope(inds = NSamples,regions = FALSE)
   t_NS_15 <- ItoT_slope(inds = NSamples,regions = FALSE,start= 2004)
-  
+ 
 
   trend_out <- bind_rows(t_N,
                          t_N_15,
                          t_NS,
                          t_NS_15,
+                         t_N_scaled,
                          t_n_s,
                          t_n_sS,
                          t_n_s_a1,
                          t_n_s_a2,
                          t_n_s_15,
-                         t_n_sS_15)
+                         t_n_sS_15,
+                         t_n_s_scaled)
   
   write.csv(trend_out,file = paste0("Trends/trends_slope_",sp,".csv"),row.names = F)
+  
+  trend_p = filter(trend_out,retransformation_type == "standard") %>% 
+    mutate(trend_time = factor(start_year))
+
+  tp = ggplot(data = trend_p,aes(group = Region,colour = trend_type))+
+    geom_pointrange(aes(y = trend,ymin = lci,ymax = uci,x = trend_time))+
+    facet_wrap(facets = ~Region,scales = "free",nrow = 3)+
+    geom_abline(slope = 0,intercept = 0,colour = grey(0.4))
+    
+  trend_p = filter(trend_out,start_year == 1974,trend_type == "endpoint") 
+  
+  tp = ggplot(data = trend_p,aes(group = Region,colour = retransformation_type))+
+    geom_pointrange(aes(y = trend,ymin = lci,ymax = uci,x = retransformation_type))+
+    facet_wrap(facets = ~Region,scales = "fixed",nrow = 3)+
+    geom_abline(slope = 0,intercept = 0,colour = grey(0.4))
+  
   
   # plotting indices --------------------------------------------------------
   

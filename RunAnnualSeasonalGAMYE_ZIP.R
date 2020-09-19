@@ -3,7 +3,6 @@
 library(jagsUI)
 library(ggmcmc)
 
-
 library(doParallel)
 library(foreach)
 
@@ -22,12 +21,11 @@ fullrun <- foreach(sp = sps[c(11,25)],
                    .inorder = FALSE,
                    .errorhandling = "pass") %dopar%
   {
- # sp = sps[25]  
+    
     load("data/allShorebirdPrismFallCounts.RData")
     
     source("functions/GAM_basis_function.R")
     
-
 #for(sp in sps){
 #sp = sps[25]
 
@@ -59,6 +57,7 @@ nyrs_site <- dts %>%
   summarise(nyears = n(),
             span_years = yspn(YearCollected))
 
+
 #number of sites with > 5 year span by region
 nsites_w5 <- nyrs_site %>% 
   filter(span_years > 5) %>%  
@@ -87,6 +86,7 @@ dts <- filter(dts,Region %in% regions_keep$Region)
 
 
 # prepare jags data -------------------------------------------------------
+
 
 fday = min(dts$doy)-1
 
@@ -120,7 +120,6 @@ dmax_pred <- tapply(dts$date,dts$strat,max)
 
 dmax = max(dts$date)
 nyears = max(dts$yr)
-midyear = floor(nyears/2)
 
 # GAM seasonal basis function ---------------------------------------------
 
@@ -135,6 +134,17 @@ basis_season <- gam.basis.func(orig.preds = as.integer(unlist(dts[,"date"])),
 
 ndays <- basis_season$npredpoints_season
 
+
+# GAM annual basis function ---------------------------------------------
+
+nKnots_year = 13
+basis_year <- gam.basis.func(orig.preds = as.integer(unlist(dts[,"yr"])),
+                             nknots = nKnots_year,
+                             standardize = "z",
+                             random = F,
+                             npredpoints = max(dts$yr),
+                             even_gaps = FALSE,
+                             sm_name = "year")
 
 
 
@@ -155,11 +165,12 @@ jags_data <- list(count = as.integer(unlist(dts$count)),
                   season_basispred = basis_season$season_basispred,
                   nknots_season = basis_season$nknots_season,
                   
-                  midyear = midyear)
+                  year_basispred = basis_year$year_basispred,
+                  nknots_year = basis_year$nknots_year)
 
 
 
-mod.file = "models/AnnualSlopeSeasonalGAM_ZIP.R"
+mod.file = "models/AnnualSeasonalGAMYE_ZIP.R"
 
 
 
@@ -168,18 +179,23 @@ parms = c("sdnoise",
            "nu", #if optional heavy-tailed noise
           "nu_site",
           "sdgam_season",
-          "B",
-          "b",
+          "sdgam_season_s",
+          "sdgam_year",
+          "sdgam_year_b",
+          "beta_season",
+          "b_year",
+          "B_year",
+          "sd_year",
+          "sd_ye",
+          "YE",
+          "beta_year",
           "sdsite",
           "N",
-          "n_s",
+          "N_sm",
           "N_comp",
-          # "n_s_a1",
-          # "n_s_a2",
-          # "N_sc2",
-          # "N_sc",
-          # "n_s_scaled",
-          # "n_s_scaled2",
+          "N_comp_sm",
+          "n_s",
+          "n_s_sm",
           "alpha",
           "vis.sm_season",
           "psi")
@@ -203,7 +219,7 @@ t1 = Sys.time()
 
 out2 = jagsUI(data = jags_data,
               parameters.to.save = parms,
-              n.chains = 3,
+              n.chains = nChains,
               n.burnin = burnInSteps,
               n.thin = thinSteps,
               n.iter = nIter,
@@ -216,19 +232,20 @@ t2 = Sys.time()
 
 out2$n.eff
 out2$Rhat
+
 save(list = c("jags_data",
               "basis_season",
+              "basis_year",
               "dts",
               "t2",
               "t1",
               "out2"),
-     file = paste0("output/",sp,"slope_ZIP_results.RData"))
-
+     file = paste0("output/",sp,"GAMYE_ZIP_results.RData"))
 
 # gg = ggs(out2$samples)
 # 
-# ggy = ggs(out2$samples,family = "B")
-# bby2 = ggs(out2$samples,family = "beta")
+# ggy = ggs(out2$samples,family = "B_year")
+# bby2 = ggs(out2$samples,family = "beta_year")
 # gga = ggs(out2$samples,family = "alpha")
 # ggall = rbind(ggy,gga)
 # ggmcmc(ggall,file = paste0("output/mcmc_",sp,".pdf"))
@@ -240,7 +257,7 @@ save(list = c("jags_data",
 
 
 
-}#end species loops
+  }#end species loops
 
 
 stopCluster(cl = cluster)
@@ -257,175 +274,190 @@ load("data/allShorebirdPrismFallCounts.RData")
 source("functions/Utility_functions.R")
 
 for(sp in sps){
+
   
-  if(file.exists(paste0("output/",sp,"slope_results.RData"))){
-  
-  load(paste0("output/",sp,"slope_results.RData"))
-  
+  if(file.exists(paste0("output/",sp,"GAMYE_results.RData"))){
+    
+  load(paste0("output/",sp,"GAMYE_results.RData"))
+
   strats = unique(dts[,c("strat","Region")])
   strats = rename(strats,s = strat)
   
   
-  
-  sums = data.frame(out2$summary)
-  names(sums) <- c("mean","sd","lci","lqrt","median","uqrt","uci","Rhat","n.eff","overlap0","f")
-  sums$Parameter = row.names(sums)
-  
-  # compiling indices -------------------------------------
-  
-  n_inds <- extr_inds(param = "n_s")
-  N_inds <- extr_inds(param = "N",regions = FALSE)
- 
-  n_inds_a1 <- extr_inds(param = "n_s_a1")
-  n_inds_a2 <- extr_inds(param = "n_s_a2")
- 
-  
-  sdnoise_st = extr_sum(param = "sdnoise",
+
+sums = data.frame(out2$summary)
+names(sums) <- c("mean","sd","lci","lqrt","median","uqrt","uci","Rhat","n.eff","overlap0","f")
+sums$Parameter = row.names(sums)
+
+sd_noise = extr_sum(param = "sdnoise",
+                     index = c("s"),
+                     log_retrans = FALSE) 
+
+sdnoiseSamples <- out2$samples %>% gather_draws(sdnoise[s])
+
+
+sdsite = extr_sum(param = "sdsite",
                     index = c("s"),
-                    log_retrans = F) 
-  sdnoise_st <- left_join(sdnoise_st,strats,by = "s")
-  
-  nu_st = extr_sum(param = "nu",
-                        index = c("s"),
-                        log_retrans = F) 
-  nu_st <- left_join(nu_st,strats,by = "s")
-  
-  
-  
-  psi_st = extr_sum(param = "psi",
-                       index = c("s"),
-                       log_retrans = F) 
-  psi_st <- left_join(psi_st,strats,by = "s")
-  
-  psiSamples <- out2$samples %>% gather_draws(psi[s])
-  sdnoiseSamples <- out2$samples %>% gather_draws(sdnoise[s])
-  
+                    log_retrans = FALSE) 
+
+sdsiteSamples <- out2$samples %>% gather_draws(sdsite[s])
+
+
 # extracting the seasonal smooth ------------------------------------------
 
-  season_sm = extr_sum(param = "vis.sm_season",
-                       index = c("day","s"),
-                       log_retrans = TRUE) 
-  
-  season_sm <- left_join(season_sm,strats)
-  pp <- ggplot()+
-    geom_line(data = season_sm,aes(x = day,y = mean,colour = Region,group = Region))+
-    geom_ribbon(data = season_sm,aes(x = day,ymax = uci,ymin = lci),alpha = 0.2)+
-    ylab("")+
-    xlab("Days since July 1")+
-    facet_wrap(facets = ~Region,ncol = 3,scales = "free")
-  
-  
-  
-  pdf(file = paste0("Figures/",sp,"_Season_slope.pdf"),
-      width = 8.5,
-      height = 11)
-  print(pp)
-  dev.off()
-  
-  # calculating trends  -----------------------------------------------------
-  
+season_sm = extr_sum(param = "vis.sm_season",
+                     index = c("day","s"),
+                     log_retrans = TRUE) 
+
+season_sm <- left_join(season_sm,strats)
+pp <- ggplot()+
+  geom_line(data = season_sm,aes(x = day,y = mean,colour = Region,group = Region))+
+  geom_ribbon(data = season_sm,aes(x = day,ymax = uci,ymin = lci),alpha = 0.2)+
+  ylab("")+
+  xlab("Days since July 1")+
+  facet_wrap(facets = ~Region,ncol = 3,scales = "free")
+
+
+
+pdf(file = paste0("Figures/",sp,"_Season_GAMYE.pdf"),
+    width = 8.5,
+    height = 11)
+print(pp)
+dev.off()
+
+
+# compiling indices -------------------------------------
+
+n_inds <- extr_inds(param = "n_s")
+n_sm_inds <- extr_inds(param = "n_s_sm")
+N_inds <- extr_inds(param = "N",regions = FALSE)
+N_sm_inds <- extr_inds(param = "N_sm",regions = FALSE)
+
+
+
+
+
+n_inds_a2 <- extr_inds(param = "n_s_a2")
+n_sm_inds_a2 <- extr_inds(param = "n_s_sm_a2")
+
+
+
+
+
+# Trends  -----------------------------------------------------
+
+
+
   NSamples <- out2$samples %>% gather_draws(N[y])
   NSamples$year <- NSamples$y + 1973
-  
-
-  
+ 
+  N_smSamples <- out2$samples %>% gather_draws(N_sm[y])
+  N_smSamples$year <- N_smSamples$y + 1973
+ 
+   
   
   n_sSamples <- out2$samples %>% gather_draws(n_s[s,y])
   n_sSamples$year <- n_sSamples$y + 1973
-  n_sSamples <- left_join(n_sSamples,strats,by = "s")
-  
+ n_sSamples <- left_join(n_sSamples,strats,by = "s")
+ 
+ n_s_smSamples <- out2$samples %>% gather_draws(n_s_sm[s,y])
+ n_s_smSamples$year <- n_s_smSamples$y + 1973
+ n_s_smSamples <- left_join(n_s_smSamples,strats,by = "s")
+ 
+ 
+ n_s_a2Samples <- out2$samples %>% gather_draws(n_s_a2[s,y])
+ n_s_a2Samples$year <- n_s_a2Samples$y + 1973
+ n_s_a2Samples <- left_join(n_s_a2Samples,strats,by = "s")
+ 
+ n_s_sm_a2Samples <- out2$samples %>% gather_draws(n_s_sm_a2[s,y])
+ n_s_sm_a2Samples$year <- n_s_sm_a2Samples$y + 1973
+ n_s_sm_a2Samples <- left_join(n_s_sm_a2Samples,strats,by = "s")
  
   
-  n_s_a1Samples <- out2$samples %>% gather_draws(n_s_a1[s,y])
-  n_s_a1Samples$year <- n_s_a1Samples$y + 1973
-  n_s_a1Samples <- left_join(n_s_a1Samples,strats,by = "s")
-  
-  
-  n_s_a2Samples <- out2$samples %>% gather_draws(n_s_a2[s,y])
-  n_s_a2Samples$year <- n_s_a2Samples$y + 1973
-  n_s_a2Samples <- left_join(n_s_a2Samples,strats,by = "s")
-  
- 
-  t_n_s <- ItoT(inds = n_sSamples,regions = TRUE)
+t_n_s_sm_a2 <- ItoT(inds = n_s_sm_a2Samples,regions = TRUE,index_type = "smoothed",retransformation_type = "none")
+t_n_s_sm_15_a2 <- ItoT(inds = n_s_sm_a2Samples,regions = TRUE,start = 2004,index_type = "smoothed",retransformation_type = "none")
 
-  
-  
-  
-  t_n_sS <- ItoT_slope(inds = n_sSamples,regions = TRUE)
 
-  
-  t_n_s_a1 <- ItoT(inds = n_s_a1Samples,regions = TRUE,retransformation_type = "lognormal_only")
+t_n_s_sm <- ItoT(inds = n_s_smSamples,regions = TRUE,index_type = "smoothed")
 
-  
-  t_n_s_a2 <- ItoT(inds = n_s_a2Samples,regions = TRUE,retransformation_type = "none")
 
-  
-  
-  t_N <- ItoT(inds = NSamples,regions = FALSE)
+t_n_s_sm_15 <- ItoT(inds = n_s_smSamples,regions = TRUE,start = 2004,index_type = "smoothed")
 
-  
-  t_n_s_15 <- ItoT(inds = n_sSamples,regions = TRUE,start= 2004)
+t_n_s <- ItoT(inds = n_sSamples,regions = TRUE)
+t_n_s_15 <- ItoT(inds = n_sSamples,regions = TRUE,start = 2004)
 
-  
-  t_n_sS_15 <- ItoT_slope(inds = n_sSamples,regions = TRUE,start= 2004)
+t_N <- ItoT(inds = NSamples,regions = FALSE)
 
-  
-  t_N_15 <- ItoT(inds = NSamples,regions = FALSE,start= 2004)
 
-  t_NS <- ItoT_slope(inds = NSamples,regions = FALSE)
-  t_NS_15 <- ItoT_slope(inds = NSamples,regions = FALSE,start= 2004)
-  
+t_N_sm <- ItoT(inds = N_smSamples,regions = FALSE,index_type = "smoothed")
+t_N_sm_15 <- ItoT(inds = N_smSamples,regions = FALSE,start = 2004,index_type = "smoothed")
 
-  trend_out <- bind_rows(t_N,
-                         t_N_15,
-                         t_NS,
-                         t_NS_15,
-                         t_n_s,
-                         t_n_sS,
-                         t_n_s_a1,
-                         t_n_s_a2,
-                         t_n_s_15,
-                         t_n_sS_15)
-  
-  write.csv(trend_out,file = paste0("Trends/trends_slope_",sp,".csv"),row.names = F)
-  
-  # plotting indices --------------------------------------------------------
-  
-  
-  # plot_Hyper <- plot_ind(inds = N_inds,
-  #                        #smooth_inds = ,
-  #                        raw = dts,
-  #                        add_observed = TRUE,
-  #                        add_samplesize = TRUE,
-  #                        species = sp,
-  #                        regions = FALSE,
-  #                        title_size = 20,
-  #                        axis_title_size = 18,
-  #                        axis_text_size = 16)  
-  # 
-  # pdf(file = paste0("Figures/",sp,"_Hyperparameter_slope.pdf"),
-  #     width = 8.5,
-  #     height = 11)
-  # print(plot_Hyper)
-  # dev.off()
-  
-  
-  
-  
-  plot_by_st <- plot_ind(inds = n_inds_a2,
-                         #smooth_inds = ,
-                         raw = dts,
-                         add_observed = TRUE,
-                         add_samplesize = TRUE,
-                         species = sp,
-                         regions = TRUE,
-                         title_size = 20,
-                         axis_title_size = 18,
-                         axis_text_size = 16)  
-  
-  pdf(file = paste0("Figures/",sp,"_A2_slope.pdf"),
-      width = 8.5,
-      height = 11)
+
+
+# Slope Trends ------------------------------------------------------------
+
+
+t_n_s_slope <- ItoT_slope(inds = n_sSamples,regions = TRUE)
+
+t_N_slope <- ItoT_slope(inds = NSamples,regions = FALSE)
+
+
+t_n_s_slope_15 <- ItoT_slope(inds = n_sSamples,regions = TRUE,start = 2004)
+
+t_N_slope_15 <- ItoT_slope(inds = NSamples,regions = FALSE,start = 2004)
+
+trend_out <- bind_rows(t_N,
+                       t_N_slope,
+                       t_N_slope_15,
+                       t_N_sm,
+                       t_N_sm_15,
+                       t_n_s_sm,
+                       t_n_s_sm_a2,
+                       t_n_s_sm_15,
+                       t_n_s_sm_15_a2,
+                       t_n_s,
+                       t_n_s_slope,
+                       t_n_s_15,
+                       t_n_s_slope_15)
+
+write.csv(trend_out,file = paste0("Trends/trends_GAMYE_",sp,".csv"),row.names = F)
+
+# plotting indices --------------------------------------------------------
+
+
+plot_by_st <- plot_ind(inds = N_inds,
+                       smooth_inds = N_sm_inds,
+                       raw = dts,
+                       add_observed = TRUE,
+                       add_samplesize = TRUE,
+                       species = sp,
+                       regions = FALSE,
+                       title_size = 20,
+                       axis_title_size = 18,
+                       axis_text_size = 16)  
+
+pdf(file = paste0("Figures/",sp,"GAMYE_A2.pdf"),
+    width = 8.5,
+    height = 11)
+print(plot_by_st)
+dev.off()
+
+
+
+plot_by_st <- plot_ind(inds = n_inds_a2,
+                       #smooth_inds = ,
+                       raw = dts,
+                       add_observed = TRUE,
+                       add_samplesize = TRUE,
+                       species = sp,
+                       regions = TRUE,
+                       title_size = 20,
+                       axis_title_size = 18,
+                       axis_text_size = 16)  
+
+pdf(file = paste0("Figures/",sp,"GAMYE_A2.pdf"),
+    width = 8.5,
+    height = 11)
 print(plot_by_st)
 dev.off()
 
@@ -441,7 +473,7 @@ plot_by_st <- plot_ind(inds = n_inds_a1,
                        axis_title_size = 18,
                        axis_text_size = 16)  
 
-pdf(file = paste0("Figures/",sp,"_A1_slope.pdf"),
+pdf(file = paste0("Figures/",sp,"GAMYE_A1.pdf"),
     width = 8.5,
     height = 11)
 print(plot_by_st)
@@ -449,8 +481,26 @@ dev.off()
 
 
 
+plot_by_st <- plot_ind(inds = n_inds,
+                       smooth_inds = n_sm_inds,
+                       raw = dts,
+                       add_observed = TRUE,
+                       add_samplesize = TRUE,
+                       species = sp,
+                       regions = TRUE,
+                       title_size = 20,
+                       axis_title_size = 18,
+                       axis_text_size = 16)  
+ 
+pdf(file = paste0("Figures/",sp,"GAMYE.pdf"),
+    width = 8.5,
+    height = 11)
+print(plot_by_st)
+dev.off()
 
-}# end if output exists
+
+}#end if output exists
 
 }
+
 

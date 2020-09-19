@@ -103,6 +103,9 @@ ItoT <- function(inds = NSamples,
                  index_type = "standard",
                  retransformation_type = "standard"){
   
+  
+  varbl <- unique(inds$.variable)
+  
   lq = (1-(qs/100))/2
   uq = ((qs/100))+lq
   nyrs = end-start
@@ -164,6 +167,7 @@ ItoT <- function(inds = NSamples,
   tt$trend_type <- trend_type
   tt$index_type <- index_type
   tt$retransformation_type <- retransformation_type
+  tt$parameter = varbl
   
   return(tt)
 }
@@ -195,6 +199,7 @@ ItoT_slope <- function(inds = NSamples,
                  index_type = "standard",
                  retransformation_type = "standard"){
   
+  varbl <- unique(inds$.variable)
   lq = (1-(qs/100))/2
   uq = ((qs/100))+lq
   nyrs = end-start
@@ -251,6 +256,7 @@ ItoT_slope <- function(inds = NSamples,
   tt$trend_type <- trend_type
   tt$index_type <- index_type
   tt$retransformation_type <- retransformation_type
+  tt$parameter = varbl
   
   return(tt)
 }
