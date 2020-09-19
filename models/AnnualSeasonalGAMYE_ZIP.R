@@ -5,7 +5,7 @@ model
 {
 for(i in 1:ncounts){
 
-	elambda[i] <- alpha[strat[i]] + ste[site[i],strat[i]] + sm_year[yr[i],strat[i]] + gam.sm_season[i,strat[i]] + year_effect[yr[i],strat[i]] + noise[i]  ### common intercept, varying slopes, so that the site effect accounts for all of the variation in abundance.
+	elambda1[i] <- alpha[strat[i]] + ste[site[i],strat[i]] + sm_year[yr[i],strat[i]] + gam.sm_season[i,strat[i]] + year_effect[yr[i],strat[i]] + noise[i]  ### common intercept, varying slopes, so that the site effect accounts for all of the variation in abundance.
 	
 	noise[i] ~ dt(0,taunoise[strat[i]],nu[strat[i]])
 	#noise[i] ~ dnorm(0,taunoise)

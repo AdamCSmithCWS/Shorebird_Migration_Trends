@@ -11,13 +11,13 @@ library(foreach)
  load("data/allShorebirdPrismFallCounts.RData")
 # source("functions/GAM_basis_function.R")
 
-n_cores <- 2
+n_cores <- 4
 cluster <- makeCluster(n_cores, type = "PSOCK")
 registerDoParallel(cluster)
 
 
 
-fullrun <- foreach(sp = sps[c(11,25)],
+fullrun <- foreach(sp = sps[c(11,25,3,8)],
                    .packages = c("jagsUI","tidyverse","ggmcmc"),
                    .inorder = FALSE,
                    .errorhandling = "pass") %dopar%
@@ -31,7 +31,8 @@ fullrun <- foreach(sp = sps[c(11,25)],
 #for(sp in sps){
 #sp = sps[25]
 
-dts <- filter(ssData,CommonName == sp)
+dts <- filter(ssData,CommonName == sp,
+              YearCollected > 1977)
 dts$present <- FALSE
 dts[which(dts$ObservationCount > 0),"present"] <- TRUE
 
