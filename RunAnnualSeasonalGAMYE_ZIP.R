@@ -91,9 +91,10 @@ dts <- filter(dts,Region %in% regions_keep$Region)
 
 fday = min(dts$doy)-1
 
+syear = min(dts$YearCollected)
 dts <- dts %>% mutate(count = as.integer(ObservationCount),
                       year = as.integer(YearCollected),
-                      yr = as.integer(year-1973),
+                      yr = as.integer(year-syear),
                       strat = as.integer(factor(Region)),
                       date = doy-fday) 
 

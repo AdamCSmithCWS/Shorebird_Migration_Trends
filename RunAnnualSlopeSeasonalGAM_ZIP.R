@@ -91,9 +91,10 @@ dts <- filter(dts,Region %in% regions_keep$Region)
 
 fday = min(dts$doy)-1
 
+syear = min(dts$YearCollected)
 dts <- dts %>% mutate(count = as.integer(ObservationCount),
                       year = as.integer(YearCollected),
-                      yr = as.integer(year-1973),
+                      yr = as.integer(year-syear),
                       strat = as.integer(factor(Region)),
                       date = doy-fday) 
 
@@ -187,10 +188,10 @@ parms = c("sdnoise",
 
 
 #adaptSteps = 200              # Number of steps to "tune" the samplers.
-burnInSteps = 10000            # Number of steps to "burn-in" the samplers.
+burnInSteps = 100            # Number of steps to "burn-in" the samplers.
 nChains = 3                   # Number of chains to run.
-numSavedSteps=4000          # Total number of steps in each chain to save.
-thinSteps=50                   # Number of steps to "thin" (1=keep every step).
+numSavedSteps=400          # Total number of steps in each chain to save.
+thinSteps=5                   # Number of steps to "thin" (1=keep every step).
 nIter = ceiling( ( (numSavedSteps * thinSteps )+burnInSteps)) # Steps per chain.
 
 t1 = Sys.time()
@@ -259,10 +260,11 @@ source("functions/Utility_functions.R")
 
 for(sp in sps){
   
-  if(file.exists(paste0("output/",sp,"slope_results.RData"))){
+  if(file.exists(paste0("output/",sp,"slope_ZIP_results.RData"))){
   
-  load(paste0("output/",sp,"slope_results.RData"))
-  
+  load(paste0("output/",sp,"slope_ZIP_results.RData"))
+    fyear = (min(dts$YearCollected))
+    
   strats = unique(dts[,c("strat","Region")])
   strats = rename(strats,s = strat)
   
@@ -277,8 +279,6 @@ for(sp in sps){
   n_inds <- extr_inds(param = "n_s")
   N_inds <- extr_inds(param = "N",regions = FALSE)
  
-  n_inds_a1 <- extr_inds(param = "n_s_a1")
-  n_inds_a2 <- extr_inds(param = "n_s_a2")
  
   
   sdnoise_st = extr_sum(param = "sdnoise",
@@ -296,9 +296,8 @@ for(sp in sps){
   psi_st = extr_sum(param = "psi",
                        index = c("s"),
                        log_retrans = F) 
-  psi_st <- left_join(psi_st,strats,by = "s")
-  
-  psiSamples <- out2$samples %>% gather_draws(psi[s])
+ 
+  psiSamples <- out2$samples %>% gather_draws(psi)
   sdnoiseSamples <- out2$samples %>% gather_draws(sdnoise[s])
   
 # extracting the seasonal smooth ------------------------------------------
@@ -317,7 +316,7 @@ for(sp in sps){
   
   
   
-  pdf(file = paste0("Figures/",sp,"_Season_slope.pdf"),
+  pdf(file = paste0("Figures/",sp,"_Season_ZIP_slope.pdf"),
       width = 8.5,
       height = 11)
   print(pp)
@@ -325,70 +324,76 @@ for(sp in sps){
   
   # calculating trends  -----------------------------------------------------
   
-  NSamples <- out2$samples %>% gather_draws(N[y])
-  NSamples$year <- NSamples$y + 1973
-  
 
+ 
+  NSamples <- out2$samples %>% gather_draws(N[y])
+  NSamples$year <- NSamples$y + fyear-1
   
+  
+  
+  N_compSamples <- out2$samples %>% gather_draws(N_comp[y])
+  N_compSamples$year <- N_compSamples$y + fyear-1
   
   n_sSamples <- out2$samples %>% gather_draws(n_s[s,y])
-  n_sSamples$year <- n_sSamples$y + 1973
+  n_sSamples$year <- n_sSamples$y + fyear-1
   n_sSamples <- left_join(n_sSamples,strats,by = "s")
   
- 
-  
-  n_s_a1Samples <- out2$samples %>% gather_draws(n_s_a1[s,y])
-  n_s_a1Samples$year <- n_s_a1Samples$y + 1973
-  n_s_a1Samples <- left_join(n_s_a1Samples,strats,by = "s")
   
   
-  n_s_a2Samples <- out2$samples %>% gather_draws(n_s_a2[s,y])
-  n_s_a2Samples$year <- n_s_a2Samples$y + 1973
-  n_s_a2Samples <- left_join(n_s_a2Samples,strats,by = "s")
-  
- 
   t_n_s <- ItoT(inds = n_sSamples,regions = TRUE)
-
+  
   
   
   
   t_n_sS <- ItoT_slope(inds = n_sSamples,regions = TRUE)
-
-  
-  t_n_s_a1 <- ItoT(inds = n_s_a1Samples,regions = TRUE,retransformation_type = "lognormal_only")
-
-  
-  t_n_s_a2 <- ItoT(inds = n_s_a2Samples,regions = TRUE,retransformation_type = "none")
-
   
   
+  # t_n_s_a1 <- ItoT(inds = n_s_a1Samples,regions = TRUE,retransformation_type = "lognormal_only")
+  # 
+  # 
+  # t_n_s_a2 <- ItoT(inds = n_s_a2Samples,regions = TRUE,retransformation_type = "none")
+  # 
+  # 
+  # 
   t_N <- ItoT(inds = NSamples,regions = FALSE)
-
+  
   
   t_n_s_15 <- ItoT(inds = n_sSamples,regions = TRUE,start= 2004)
-
+  
   
   t_n_sS_15 <- ItoT_slope(inds = n_sSamples,regions = TRUE,start= 2004)
-
+  
   
   t_N_15 <- ItoT(inds = NSamples,regions = FALSE,start= 2004)
-
+  
   t_NS <- ItoT_slope(inds = NSamples,regions = FALSE)
   t_NS_15 <- ItoT_slope(inds = NSamples,regions = FALSE,start= 2004)
   
-
+  
+  
+  t_N_comp <- ItoT(inds = N_compSamples,regions = FALSE,start = 1978)
+  
+  t_N_comp_15 <- ItoT(inds = N_compSamples,regions = FALSE,start= 2004)
+  
+  t_N_compS <- ItoT_slope(inds = N_compSamples,regions = FALSE)
+  t_N_compS_15 <- ItoT_slope(inds = N_compSamples,regions = FALSE,start= 2004)
+  
+  
+  
   trend_out <- bind_rows(t_N,
                          t_N_15,
                          t_NS,
                          t_NS_15,
+                         t_N_comp,
+                         t_N_comp_15,
+                         t_N_compS,
+                         t_N_compS_15,
                          t_n_s,
                          t_n_sS,
-                         t_n_s_a1,
-                         t_n_s_a2,
                          t_n_s_15,
                          t_n_sS_15)
   
-  write.csv(trend_out,file = paste0("Trends/trends_slope_",sp,".csv"),row.names = F)
+  write.csv(trend_out,file = paste0("Trends/trends_slope_ZIP_",sp,".csv"),row.names = F)
   
   # plotting indices --------------------------------------------------------
   
@@ -413,26 +418,11 @@ for(sp in sps){
   
   
   
-  plot_by_st <- plot_ind(inds = n_inds_a2,
-                         #smooth_inds = ,
-                         raw = dts,
-                         add_observed = TRUE,
-                         add_samplesize = TRUE,
-                         species = sp,
-                         regions = TRUE,
-                         title_size = 20,
-                         axis_title_size = 18,
-                         axis_text_size = 16)  
-  
-  pdf(file = paste0("Figures/",sp,"_A2_slope.pdf"),
-      width = 8.5,
-      height = 11)
-print(plot_by_st)
-dev.off()
 
 
-plot_by_st <- plot_ind(inds = n_inds_a1,
-                       smooth_inds = n_inds,
+
+plot_by_st <- plot_ind(inds = n_inds,
+                       smooth_inds = NULL,
                        raw = dts,
                        add_observed = TRUE,
                        add_samplesize = TRUE,
@@ -442,7 +432,7 @@ plot_by_st <- plot_ind(inds = n_inds_a1,
                        axis_title_size = 18,
                        axis_text_size = 16)  
 
-pdf(file = paste0("Figures/",sp,"_A1_slope.pdf"),
+pdf(file = paste0("Figures/",sp,"_slope_ZIP.pdf"),
     width = 8.5,
     height = 11)
 print(plot_by_st)

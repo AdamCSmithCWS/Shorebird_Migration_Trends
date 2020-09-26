@@ -95,7 +95,7 @@ extr_sum <- function(param = "vis.sm_season",
 
 
 ItoT <- function(inds = NSamples,
-                 start = 1974,
+                 start = fyear,
                  end = 2019,
                  regions = FALSE,
                  qs = 95,
@@ -191,7 +191,7 @@ slope_trend <- function(x,y){
 
 
 ItoT_slope <- function(inds = NSamples,
-                 start = 1974,
+                 start = fyear,
                  end = 2019,
                  regions = FALSE,
                  qs = 95,
