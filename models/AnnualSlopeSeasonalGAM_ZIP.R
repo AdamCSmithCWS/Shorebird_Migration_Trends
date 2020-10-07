@@ -5,30 +5,39 @@ model
 {
 for(i in 1:ncounts){
 
-	loglambda[i] <- alpha[strat[i]] + ste[site[i],strat[i]] + beta[strat[i]]*(yr[i]-midyear) + year_effect[yr[i],strat[i]] + gam.sm_season[i,strat[i]] + noise[i]  ### common intercept, varying slopes, so that the site effect accounts for all of the variation in abundance.
+	elambda1[i] <- alpha[strat[i]] + ste[site[i],strat[i]] + beta[strat[i]]*(yr[i]-midyear) + year_effect[yr[i],strat[i]] + gam.sm_season[i,strat[i]] + noise[i]  ### common intercept, varying slopes, so that the site effect accounts for all of the variation in abundance.
 	
 	noise[i] ~ dt(0,taunoise[strat[i]],nu[strat[i]])
 	#noise[i] ~ dnorm(0,taunoise)
-	log(lambda[i]) <- loglambda[i]
+	log(lambda1[i]) <- elambda1[i]
+	
+	
+	lambda[i] <- lambda1[i]*z[i] + 0.00001 ## hack required for JAGS -- otherwise 'incompatible'-error
+	z[i] ~ dbern(psi)#psi[year[i]]) #psi = proportion of non-zeros for each year
+	### how tomodel the zip component...at what scale do the zeros vary? sites, strata, years? probably sites given the crazy count distributions at some sites, but maybe just overall, given the fact that many sites have extreme variations
+	
 	
 	count[i] ~ dpois(lambda[i])
 
 
 }#i
 
-
-
+  psi ~ dbeta(1,1)
+  
   
   for(s in 1:nstrata){
-    # sdnoise <- 1/pow(taunoise,0.5)
-    # taunoise ~ dscaled.gamma(0.5,50)
-    taunoise[s] <- 1/pow(sdnoise[s],2)
-    sdnoise[s] ~ dt(0, 0.5, 4)T(0,) # half-t prior on sd (chung et al. 2013) DOI: 10.1007/S11336-013-9328-2 places ~99% of the prior < 2.25
-    # this is a relatively informative prior to avoid large estimates of sdnoise that have a strong influence on teh scaling of the stratum level estimates
-    nu[s] ~ dgamma(2,0.5) #puts the mean of the prior at ~ 4 and ~99% of the prior < 13
+
+      # sdnoise <- 1/pow(taunoise,0.5)
+      # taunoise ~ dscaled.gamma(0.5,50)
+      taunoise[s] <- 1/pow(sdnoise[s],2)
+      sdnoise[s] ~ dt(0, 0.5, 4)T(0,) # half-t prior on sd (chung et al. 2013) DOI: 10.1007/S11336-013-9328-2 places ~99% of the prior < 2.25
+      # this is a relatively informative prior to avoid large estimates of sdnoise that have a strong influence on teh scaling of the stratum level estimates
+      nu[s] ~ dgamma(2,0.5) #puts the mean of the prior at ~ 4 and ~99% of the prior < 13
+      
+    }
     
-  }
-  
+    
+    
 
 
 
@@ -123,8 +132,6 @@ for(y in 1:nyears){
 }
 
 
-
-
 ######################
 ## site effects
 for(s in 1:nstrata){
@@ -133,18 +140,18 @@ for(s in 1:nstrata){
     ste[j,s]~dt(0,tausite,nu_site)
   }#j
 }#s
- 
-  tausite <- 1/pow(sdsite,2)
-  sdsite ~ dt(0, 1, 4)T(0,) # half-t prior on sd (chung et al. 2013) DOI: 10.1007/S11336-013-9328-2 places ~95% of the prior < 3
-  nu_site ~ dgamma(2,0.2) #
-  
-  retrans_j <- (0.5*(1/tausite))/nu_ret_j
-  
-  nu_ret_j <- (1.422*nu_site^0.906)/(1+(1.422*nu_site^0.906)) #approximate retransformation to equate a t-distribution to a normal distribution - see appendix of Link et al. 2020 BBS model selection paper
-  
 
+tausite <- 1/pow(sdsite,2)
+sdsite ~ dt(0, 1, 4)T(0,) # half-t prior on sd (chung et al. 2013) DOI: 10.1007/S11336-013-9328-2 places ~95% of the prior < 3
+nu_site ~ dgamma(2,0.2) #
 
-# ######################
+retrans_j <- (0.5*(1/tausite))/nu_ret_j
+
+nu_ret_j <- (1.422*nu_site^0.906)/(1+(1.422*nu_site^0.906)) #approximate retransformation to equate a t-distribution to a normal distribution - see appendix of Link et al. 2020 BBS model selection paper
+
+# 
+# 
+# ######################   Consider changing this to a single parameter across all strata, and using the informative priors on sdnoise
 # ## site effects
 # for(s in 1:nstrata){
 #   alpha[s] ~ dnorm(0,1)
@@ -175,25 +182,29 @@ for(s in 1:nstrata){
   nu_ret[s] <- (1.422*nu[s]^0.906)/(1+(1.422*nu[s]^0.906)) #approximate retransformation to equate a t-distribution to a normal distribution - see appendix of Link et al. 2020 BBS model selection paper
 }
 retrans_m <- mean(retrans[1:nstrata])
+alpha_m <- mean(alpha[1:nstrata])
 
 
 for(y in 1:nyears){
   for(s in 1:nstrata){
     for(j in 1:nsites[s]){
-      n_sj[j,s,y] <- exp(alpha[s] + ste[j,s] + beta[s]*(y-midyear) + year_effect[y,s] + mn_sm_season[s] + retrans[s]) #site-level predictions including strata-level yearly smooths
-      n_sj_a1[j,s,y] <- exp(alpha[s] + ste[j,s] + beta[s]*(y-midyear) + year_effect[y,s] + mn_sm_season[s] + retrans_a1[s]) #site-level predictions including only the normal noise component (ignoring the t-distributed error)
-      n_sj_a2[j,s,y] <- exp(alpha[s] + ste[j,s] + beta[s]*(y-midyear) + year_effect[y,s] + mn_sm_season[s]) #site-level predictions excluding the log-normal retransformation completely
+      n_sj[j,s,y] <- exp(alpha[s] + ste[j,s] + beta[s]*(y-midyear) + year_effect[y,s] + mn_sm_season[s] + retrans[s])* psi #site-level predictions including strata-level yearly smooths
+      # n_sj_a1[j,s,y] <- exp(alpha[s] + ste[j,s] + beta[s]*(y-midyear) + year_effect[y,s] + mn_sm_season[s] + retrans_a1[s])* psi #site-level predictions including only the normal noise component (ignoring the t-distributed error)
+      # n_sj_a2[j,s,y] <- exp(alpha[s] + ste[j,s] + beta[s]*(y-midyear) + year_effect[y,s] + mn_sm_season[s])* psi #site-level predictions excluding the log-normal retransformation completely
     }#j
     n_s[s,y] <- mean(n_sj[1:nsites[s],s,y])#stratum predictions including strata-level yearly smooths and scaled to mean across stratum sites
-    n_s_a1[s,y] <- mean(n_sj_a1[1:nsites[s],s,y])#stratum predictions including strata-level yearly smooths and scaled to mean across stratum sites
-    n_s_a2[s,y] <- mean(n_sj_a2[1:nsites[s],s,y])#stratum predictions including strata-level yearly smooths and scaled to mean across stratum sites
-   
-     n_s_scaled[s,y] <- exp(alpha[s] + beta[s]*(y-midyear) + year_effect[y,s] + mn_sm_season[s] + retrans[s] + retrans_j) #stratum predictions including strata-level yearly smooths and on a common scale (visualisation only)
-     
+    # n_s_a1[s,y] <- mean(n_sj_a1[1:nsites[s],s,y])#stratum predictions including strata-level yearly smooths and scaled to mean across stratum sites
+    # n_s_a2[s,y] <- mean(n_sj_a2[1:nsites[s],s,y])#stratum predictions including strata-level yearly smooths and scaled to mean across stratum sites
+    # 
+     # n_s_scaled[s,y] <- exp(alpha[s] + beta[s]*(y-midyear) + year_effect[y,s] + mn_sm_season[s] + retrans[s] + retrans_j)* psi #stratum predictions including strata-level yearly smooths and on a common scale (visualisation only)
+     # n_s_scaled2[s,y] <- exp(alpha[s] + beta[s]*(y-midyear) + year_effect[y,s] + mn_sm_season[s] + retrans[s] + retrans_j)* psi #stratum predictions including strata-level yearly smooths and on a common scale (visualisation only)
+     # 
       }#s
-  N[y] <- exp(B*(y-midyear) + YE[y] + retrans_m + retrans_j) #continental predictions including only the hyperparameter smooth
-  N_sc[y] <- mean(n_s_scaled[1:nstrata,y]) #continental predictions including only the hyperparameter smooth
-
+  N[y] <- exp(alpha_m + B*(y-midyear) + YE[y] + retrans_m + retrans_j) #continental predictions including only the hyperparameter smooth
+  N_comp[y] <- mean(n_s[1:nstrata,y]) #continental predictions 
+  # N_sc[y] <- mean(n_s_scaled[1:nstrata,y]) #coh
+  # N_sc2[y] <- mean(n_s_scaled2[1:nstrata,y]) #c
+  # 
   }
 
 }#end model

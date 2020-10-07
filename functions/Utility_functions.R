@@ -80,7 +80,7 @@ extr_sum <- function(param = "vis.sm_season",
   
 
     for(i in 1:length(index)){
-    inds[,index[i]] <- jags_dim(dim = 1,
+    inds[,index[i]] <- jags_dim(dim = i,
                            var = param,
                            dat = inds)
     }
@@ -95,13 +95,16 @@ extr_sum <- function(param = "vis.sm_season",
 
 
 ItoT <- function(inds = NSamples,
-                 start = 1974,
+                 start = fyear,
                  end = 2019,
                  regions = FALSE,
                  qs = 95,
                  trend_type = "endpoint",
                  index_type = "standard",
                  retransformation_type = "standard"){
+  
+  
+  varbl <- unique(inds$.variable)
   
   lq = (1-(qs/100))/2
   uq = ((qs/100))+lq
@@ -164,6 +167,7 @@ ItoT <- function(inds = NSamples,
   tt$trend_type <- trend_type
   tt$index_type <- index_type
   tt$retransformation_type <- retransformation_type
+  tt$parameter = varbl
   
   return(tt)
 }
@@ -187,7 +191,7 @@ slope_trend <- function(x,y){
 
 
 ItoT_slope <- function(inds = NSamples,
-                 start = 1974,
+                 start = fyear,
                  end = 2019,
                  regions = FALSE,
                  qs = 95,
@@ -195,6 +199,7 @@ ItoT_slope <- function(inds = NSamples,
                  index_type = "standard",
                  retransformation_type = "standard"){
   
+  varbl <- unique(inds$.variable)
   lq = (1-(qs/100))/2
   uq = ((qs/100))+lq
   nyrs = end-start
@@ -251,6 +256,7 @@ ItoT_slope <- function(inds = NSamples,
   tt$trend_type <- trend_type
   tt$index_type <- index_type
   tt$retransformation_type <- retransformation_type
+  tt$parameter = varbl
   
   return(tt)
 }
@@ -290,8 +296,8 @@ plot_ind <- function(inds = N_inds,
       group_by(strat,yr) %>% 
       summarise(n_counts = n(),
                 mean_counts = mean(count),
-                lqrt_counts = quantile(count,probs = 0.25),
-                uqrt_counts = quantile(count,probs = 0.75))
+                lqrt_counts = quantile(count,probs = 0.25,na.rm = T),
+                uqrt_counts = quantile(count,probs = 0.75,na.rm = T))
     obs$s = obs$strat
     
     obs <- left_join(obs,strats,by = "s")
@@ -309,11 +315,11 @@ plot_ind <- function(inds = N_inds,
       group_by(yr) %>% 
       summarise(n_counts = n(),
                 mean_counts = mean(count),
-                lqrt_counts = quantile(count,probs = 0.25),
-                uqrt_counts = quantile(count,probs = 0.75))
+                lqrt_counts = quantile(count,probs = 0.25,na.rm = T),
+                uqrt_counts = quantile(count,probs = 0.75,na.rm = T))
     
     obs$year <- obs$yr+1973
-    annotobs = filter(raw,year == 1980)
+    annotobs = filter(obs,year == 1980)
     
   
   }

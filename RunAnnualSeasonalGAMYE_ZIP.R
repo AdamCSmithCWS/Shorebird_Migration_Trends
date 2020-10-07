@@ -10,13 +10,13 @@ library(foreach)
  load("data/allShorebirdPrismFallCounts.RData")
 # source("functions/GAM_basis_function.R")
 
-n_cores <- 2
+n_cores <- 4
 cluster <- makeCluster(n_cores, type = "PSOCK")
 registerDoParallel(cluster)
 
 
 
-fullrun <- foreach(sp = sps[c(11,25)],
+fullrun <- foreach(sp = sps[c(11,25,3,8)],
                    .packages = c("jagsUI","tidyverse","ggmcmc"),
                    .inorder = FALSE,
                    .errorhandling = "pass") %dopar%
@@ -29,7 +29,8 @@ fullrun <- foreach(sp = sps[c(11,25)],
 #for(sp in sps){
 #sp = sps[25]
 
-dts <- filter(ssData,CommonName == sp)
+dts <- filter(ssData,CommonName == sp,
+              YearCollected > 1977)
 dts$present <- FALSE
 dts[which(dts$ObservationCount > 0),"present"] <- TRUE
 
@@ -171,7 +172,7 @@ jags_data <- list(count = as.integer(unlist(dts$count)),
 
 
 
-mod.file = "models/AnnualSeasonal2GAMYE.R"
+mod.file = "models/AnnualSeasonalGAMYE_ZIP.R"
 
 
 
@@ -192,28 +193,21 @@ parms = c("sdnoise",
           "beta_year",
           "sdsite",
           "N",
-          "n_s",
           "N_sm",
-          "N2",
-          "N2_sm",
+          "N_comp",
+          "N_comp_sm",
+          "n_s",
           "n_s_sm",
-          "n_s_a1",
-          "n_s_sm_a1",
-          "n_s_a2",
-          "n_s_sm_a2",
-          "n_s_scaled",
-          "n_s_scaled_sm",
-          "n_s_scaled2",
-          "n_s_scaled2_sm",
           "alpha",
-          "vis.sm_season")
+          "vis.sm_season",
+          "psi")
 
 
 #adaptSteps = 200              # Number of steps to "tune" the samplers.
 burnInSteps = 10000            # Number of steps to "burn-in" the samplers.
 nChains = 3                   # Number of chains to run.
-numSavedSteps=2000          # Total number of steps in each chain to save.
-thinSteps=20                   # Number of steps to "thin" (1=keep every step).
+numSavedSteps=4000          # Total number of steps in each chain to save.
+thinSteps=50                   # Number of steps to "thin" (1=keep every step).
 nIter = ceiling( ( (numSavedSteps * thinSteps )+burnInSteps)) # Steps per chain.
 
 t1 = Sys.time()
@@ -248,7 +242,7 @@ save(list = c("jags_data",
               "t2",
               "t1",
               "out2"),
-     file = paste0("output/",sp,"GAMYE_results.RData"))
+     file = paste0("output/",sp,"GAMYE_ZIP_results.RData"))
 
 # gg = ggs(out2$samples)
 # 

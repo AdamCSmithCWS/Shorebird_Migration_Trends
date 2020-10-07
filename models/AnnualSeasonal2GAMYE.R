@@ -140,11 +140,14 @@ for (j in 1:nsites[s]){
 # tausite[s] ~ dscaled.gamma(2,10) #complexity penalty
 
   tausite[s] <- 1/pow(sdsite[s],2)
-sdsite[s] ~ dt(0, 1, 4)T(0,) # half-t prior on sd (chung et al. 2013) DOI: 10.1007/S11336-013-9328-2 places ~95% of the prior < 3.0
+sdsite[s] ~ dt(0, 0.3, 4)T(0,) # half-t prior on sd (chung et al. 2013) DOI: 10.1007/S11336-013-9328-2 places ~99% of the prior < 1.5
+# this is a relatively informative prior to avoid large estimates of sdsite that have a strong influence on teh scaling of the stratum level estimates
+nu_site[s] ~ dgamma(2,0.5) #puts the mean of the prior at ~ 4 and ~99% of the prior < 13
 
-nu_site[s] ~ dgamma(2,0.2)
+retrans_js[s] <- (0.5*(1/tausite[s]))/nu_ret_j[s]
 
-retrans_js[s] <- 0.5*(1/tausite[s])
+nu_ret_j[s] <- (1.422*nu_site[s]^0.906)/(1+(1.422*nu_site[s]^0.906)) #approximate retransformation to equate a t-distribution to a normal distribution - see appendix of Link et al. 2020 BBS model selection paper
+
 }
 retrans_j <- mean(retrans_js[1:nstrata]) 
 
@@ -172,6 +175,7 @@ for(y in 1:nyears){
       n_sj_sm_a2[j,s,y] <- exp(alpha[s] + ste[j,s] + sm_year[y,s] + mn_sm_season[s]) #site-level predictions including strata-level yearly smooths
       
       }#j
+    
     n_s[s,y] <- mean(n_sj[1:nsites[s],s,y])#stratum predictions including strata-level yearly smooths and scaled to mean across stratum sites
     n_s_sm[s,y] <- mean(n_sj_sm[1:nsites[s],s,y])#stratum predictions including strata-level yearly smooths and scaled to mean across stratum sites
     
@@ -181,11 +185,20 @@ for(y in 1:nyears){
     n_s_a2[s,y] <- mean(n_sj_a2[1:nsites[s],s,y])#stratum predictions including strata-level yearly smooths and scaled to mean across stratum sites
     n_s_sm_a2[s,y] <- mean(n_sj_sm_a2[1:nsites[s],s,y])#stratum predictions including strata-level yearly smooths and scaled to mean across stratum sites
     
-    n_s_scaled[s,y] <- exp(alpha[s] + sm_year[y,s] + year_effect[y,s] + mn_sm_season[s]+ retrans[s] + retrans_j) #stratum predictions including strata-level yearly smooths and on a common scale (visualisation only)
-    n_s_scaled_sm[s,y] <- exp(alpha[s] + sm_year[y,s] + mn_sm_season[s] + retrans[s] + retrans_j) #stratum predictions including strata-level yearly smooths and on a common scale (visualisation only)
+    n_s_scaled[s,y] <- exp(alpha[s] + sm_year[y,s] + year_effect[y,s] + mn_sm_season[s]+ retrans[s] + retrans_js[s]) #stratum predictions including strata-level yearly smooths and on a common scale (visualisation only)
+    n_s_scaled_sm[s,y] <- exp(alpha[s] + sm_year[y,s] + mn_sm_season[s] + retrans[s] + retrans_js[s]) #stratum predictions including strata-level yearly smooths and on a common scale (visualisation only)
+ 
+    n_s_scaled2[s,y] <- exp(sm_year[y,s] + year_effect[y,s] + mn_sm_season[s]+ retrans_m + retrans_j) #stratum predictions including strata-level yearly smooths and on a common scale (visualisation only)
+    n_s_scaled2_sm[s,y] <- exp(sm_year[y,s] + mn_sm_season[s] + retrans_m + retrans_j) #stratum predictions including strata-level yearly smooths and on a common scale (visualisation only)
   }#s
+  
+  
   N[y] <- exp(sm_year_B[y] + YE[y] +  retrans_m + retrans_j) #continental predictions including only the hyperparameter smooth
   N_sm[y] <- exp(sm_year_B[y] + retrans_m + retrans_j) #continental predictions including only the hyperparameter smooth
-}
+  
+  N2[y] <- mean(n_s_scaled2[1:nstrata,y]) #continental predictions including only the hyperparameter smooth
+  N2_sm[y] <- mean(n_s_scaled2_sm[1:nstrata,y]) #continental predictions including only the hyperparameter smooth
+  
+  }
 
 }#end model

@@ -1,0 +1,33 @@
+"trend","lci","uci","start_year","end_year","trend_type","index_type","retransformation_type","parameter","Region"
+-3.01632987538743,-8.70507761416575,5.6751981112166,1978,2019,"endpoint","standard","standard","N",NA
+-4.06864986913031,-10.9514545568619,5.64107237704398,2004,2019,"endpoint","standard","standard","N",NA
+-2.77504614480328,-8.0179891744618,5.29735722095115,1978,2019,"slope","standard","standard","N",NA
+-3.24012328730095,-9.1937839447561,5.59304604027196,2004,2019,"slope","standard","standard","N",NA
+-10.8582516060189,-15.6168765041479,-5.5402087552709,1978,2019,"endpoint","standard","standard","N_comp",NA
+-11.7673019932896,-18.3155342744433,-4.49984628534516,2004,2019,"endpoint","standard","standard","N_comp",NA
+-11.0210765271517,-14.0085754952341,-7.34141273090753,1978,2019,"slope","standard","standard","N_comp",NA
+-9.62365976519793,-14.2694745507592,-4.75832966390752,2004,2019,"slope","standard","standard","N_comp",NA
+-10.8582516060189,-15.6168765041479,-5.5402087552709,1978,2019,"endpoint","standard","standard","n_s","Composite"
+-7.24964162383439,-10.7361700057024,-3.40881843362213,1978,2019,"endpoint","standard","standard","n_s","Atlantic Canada"
+-3.14016547786035,-8.88409995382229,2.76066851849113,1978,2019,"endpoint","standard","standard","n_s","East Inland"
+-6.23343746427036,-8.76532427591975,-3.5979434860852,1978,2019,"endpoint","standard","standard","n_s","Northeast US Coastal"
+-6.78245594902761,-12.5653283322183,-0.623134190204364,1978,2019,"endpoint","standard","standard","n_s","Ontario"
+-11.3835142153148,-16.4621660094953,-5.27405586797307,1978,2019,"endpoint","standard","standard","n_s","Southeast Coastal"
+-11.0210765271517,-14.0085754952353,-7.3414127309075,1978,2019,"slope","standard","standard","n_s","Composite"
+-7.92755255863849,-9.20494481666234,-6.48971727627861,1978,2019,"slope","standard","standard","n_s","Atlantic Canada"
+-2.86307531774095,-6.55275840123989,0.656172858925897,1978,2019,"slope","standard","standard","n_s","East Inland"
+-5.5337759194177,-6.78646436372558,-4.12691752814595,1978,2019,"slope","standard","standard","n_s","Northeast US Coastal"
+-7.46977755857316,-9.80548266723379,-5.13378171410858,1978,2019,"slope","standard","standard","n_s","Ontario"
+-11.8652501716756,-15.0827683674524,-7.59533662744725,1978,2019,"slope","standard","standard","n_s","Southeast Coastal"
+-11.7673019932896,-18.3155342744433,-4.49984628534516,2004,2019,"endpoint","standard","standard","n_s","Composite"
+-7.10941823640403,-10.431896844043,-3.79800223845341,2004,2019,"endpoint","standard","standard","n_s","Atlantic Canada"
+-2.32663120058009,-12.1343127964475,8.10177746139907,2004,2019,"endpoint","standard","standard","n_s","East Inland"
+-8.43875366443866,-13.1519230413392,-4.29819458543384,2004,2019,"endpoint","standard","standard","n_s","Northeast US Coastal"
+-0.844613635018054,-12.8218799777704,14.6068120992828,2004,2019,"endpoint","standard","standard","n_s","Ontario"
+-12.6371601015073,-20.2633341012129,-3.60622344512968,2004,2019,"endpoint","standard","standard","n_s","Southeast Coastal"
+-9.62365976519795,-14.2694745507594,-4.75832966390365,2004,2019,"slope","standard","standard","n_s","Composite"
+-2.67890286433722,-4.98415724197711,-0.350552344143878,2004,2019,"slope","standard","standard","n_s","Atlantic Canada"
+-5.7700654896675,-13.5663682527947,1.76910193063695,2004,2019,"slope","standard","standard","n_s","East Inland"
+-7.07466551126441,-9.90663230794432,-4.30432513492373,2004,2019,"slope","standard","standard","n_s","Northeast US Coastal"
+-3.0543532864012,-9.89826242630311,4.94083590347604,2004,2019,"slope","standard","standard","n_s","Ontario"
+-10.9009729123453,-16.3773162093836,-4.74038436520153,2004,2019,"slope","standard","standard","n_s","Southeast Coastal"

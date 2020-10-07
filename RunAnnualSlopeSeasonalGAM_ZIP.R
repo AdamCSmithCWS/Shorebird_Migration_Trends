@@ -11,13 +11,13 @@ library(foreach)
  load("data/allShorebirdPrismFallCounts.RData")
 # source("functions/GAM_basis_function.R")
 
-n_cores <- 2
+n_cores <- 4
 cluster <- makeCluster(n_cores, type = "PSOCK")
 registerDoParallel(cluster)
 
 
 
-fullrun <- foreach(sp = sps[c(11,25)],
+fullrun <- foreach(sp = sps[c(11,25,3,8)],
                    .packages = c("jagsUI","tidyverse","ggmcmc"),
                    .inorder = FALSE,
                    .errorhandling = "pass") %dopar%
@@ -31,7 +31,8 @@ fullrun <- foreach(sp = sps[c(11,25)],
 #for(sp in sps){
 #sp = sps[25]
 
-dts <- filter(ssData,CommonName == sp)
+dts <- filter(ssData,CommonName == sp,
+              YearCollected > 1977)
 dts$present <- FALSE
 dts[which(dts$ObservationCount > 0),"present"] <- TRUE
 
@@ -160,7 +161,7 @@ jags_data <- list(count = as.integer(unlist(dts$count)),
 
 
 
-mod.file = "models/AnnualSlopeSeasonalGAM.R"
+mod.file = "models/AnnualSlopeSeasonalGAM_ZIP.R"
 
 
 
@@ -174,19 +175,23 @@ parms = c("sdnoise",
           "sdsite",
           "N",
           "n_s",
-          "n_s_a1",
-          "n_s_a2",
-          "N_sc",
-          "n_s_scaled",
+          "N_comp",
+          # "n_s_a1",
+          # "n_s_a2",
+          # "N_sc2",
+          # "N_sc",
+          # "n_s_scaled",
+          # "n_s_scaled2",
           "alpha",
-          "vis.sm_season")
+          "vis.sm_season",
+          "psi")
 
 
 #adaptSteps = 200              # Number of steps to "tune" the samplers.
-burnInSteps = 10000            # Number of steps to "burn-in" the samplers.
-nChains = 1                   # Number of chains to run.
-numSavedSteps=2000          # Total number of steps in each chain to save.
-thinSteps=20                   # Number of steps to "thin" (1=keep every step).
+burnInSteps = 100            # Number of steps to "burn-in" the samplers.
+nChains = 3                   # Number of chains to run.
+numSavedSteps=400          # Total number of steps in each chain to save.
+thinSteps=5                   # Number of steps to "thin" (1=keep every step).
 nIter = ceiling( ( (numSavedSteps * thinSteps )+burnInSteps)) # Steps per chain.
 
 t1 = Sys.time()
@@ -219,7 +224,7 @@ save(list = c("jags_data",
               "t2",
               "t1",
               "out2"),
-     file = paste0("output/",sp,"slope_results.RData"))
+     file = paste0("output/",sp,"slope_ZIP_results.RData"))
 
 
 # gg = ggs(out2$samples)
@@ -255,10 +260,11 @@ source("functions/Utility_functions.R")
 
 for(sp in sps){
   
-  if(file.exists(paste0("output/",sp,"slope_results.RData"))){
+  if(file.exists(paste0("output/",sp,"slope_ZIP_results.RData"))){
   
-  load(paste0("output/",sp,"slope_results.RData"))
-  
+  load(paste0("output/",sp,"slope_ZIP_results.RData"))
+    fyear = (min(dts$YearCollected))
+    
   strats = unique(dts[,c("strat","Region")])
   strats = rename(strats,s = strat)
   
@@ -273,21 +279,26 @@ for(sp in sps){
   n_inds <- extr_inds(param = "n_s")
   N_inds <- extr_inds(param = "N",regions = FALSE)
  
-  n_inds_a1 <- extr_inds(param = "n_s_a1")
-  n_inds_a2 <- extr_inds(param = "n_s_a2")
+ 
   
-  sd_noise = extr_sum(param = "sdnoise",
-                      index = c("s"),
-                      log_retrans = FALSE) 
-  
-  sdnoiseSamples <- out2$samples %>% gather_draws(sdnoise[s])
-  
-  
-  sdsite = extr_sum(param = "sdsite",
+  sdnoise_st = extr_sum(param = "sdnoise",
                     index = c("s"),
-                    log_retrans = FALSE) 
+                    log_retrans = F) 
+  sdnoise_st <- left_join(sdnoise_st,strats,by = "s")
   
-  sdsiteSamples <- out2$samples %>% gather_draws(sdsite)
+  nu_st = extr_sum(param = "nu",
+                        index = c("s"),
+                        log_retrans = F) 
+  nu_st <- left_join(nu_st,strats,by = "s")
+  
+  
+  
+  psi_st = extr_sum(param = "psi",
+                       index = c("s"),
+                       log_retrans = F) 
+ 
+  psiSamples <- out2$samples %>% gather_draws(psi)
+  sdnoiseSamples <- out2$samples %>% gather_draws(sdnoise[s])
   
 # extracting the seasonal smooth ------------------------------------------
 
@@ -305,7 +316,7 @@ for(sp in sps){
   
   
   
-  pdf(file = paste0("Figures/",sp,"_Season_slope.pdf"),
+  pdf(file = paste0("Figures/",sp,"_Season_ZIP_slope.pdf"),
       width = 8.5,
       height = 11)
   print(pp)
@@ -313,100 +324,76 @@ for(sp in sps){
   
   # calculating trends  -----------------------------------------------------
   
-  NSamples <- out2$samples %>% gather_draws(N[y])
-  NSamples$year <- NSamples$y + 1973
-  
 
+ 
+  NSamples <- out2$samples %>% gather_draws(N[y])
+  NSamples$year <- NSamples$y + fyear-1
   
+  
+  
+  N_compSamples <- out2$samples %>% gather_draws(N_comp[y])
+  N_compSamples$year <- N_compSamples$y + fyear-1
   
   n_sSamples <- out2$samples %>% gather_draws(n_s[s,y])
-  n_sSamples$year <- n_sSamples$y + 1973
+  n_sSamples$year <- n_sSamples$y + fyear-1
   n_sSamples <- left_join(n_sSamples,strats,by = "s")
   
- 
-  
-  n_s_a1Samples <- out2$samples %>% gather_draws(n_s_a1[s,y])
-  n_s_a1Samples$year <- n_s_a1Samples$y + 1973
-  n_s_a1Samples <- left_join(n_s_a1Samples,strats,by = "s")
-  
-  
-  n_s_a2Samples <- out2$samples %>% gather_draws(n_s_a2[s,y])
-  n_s_a2Samples$year <- n_s_a2Samples$y + 1973
-  n_s_a2Samples <- left_join(n_s_a2Samples,strats,by = "s")
-  
- 
-  
-  N_scSamples <- out2$samples %>% gather_draws(N_sc[y])
-  N_scSamples$year <- N_scSamples$y + 1973
-  
-  
-  n_s_scaledSamples <- out2$samples %>% gather_draws(n_s_scaled[s,y])
-  n_s_scaledSamples$year <- n_s_scaledSamples$y + 1973
-  n_s_scaledSamples <- left_join(n_s_scaledSamples,strats,by = "s")
   
   
   t_n_s <- ItoT(inds = n_sSamples,regions = TRUE)
-  t_n_s_scaled <- ItoT(inds = n_s_scaledSamples,regions = TRUE)
   
   
   
   
   t_n_sS <- ItoT_slope(inds = n_sSamples,regions = TRUE)
-
-  
-  t_n_s_a1 <- ItoT(inds = n_s_a1Samples,regions = TRUE,retransformation_type = "lognormal_only")
-
-  
-  t_n_s_a2 <- ItoT(inds = n_s_a2Samples,regions = TRUE,retransformation_type = "none")
-
   
   
+  # t_n_s_a1 <- ItoT(inds = n_s_a1Samples,regions = TRUE,retransformation_type = "lognormal_only")
+  # 
+  # 
+  # t_n_s_a2 <- ItoT(inds = n_s_a2Samples,regions = TRUE,retransformation_type = "none")
+  # 
+  # 
+  # 
   t_N <- ItoT(inds = NSamples,regions = FALSE)
-  t_N_scaled <- ItoT(inds = N_scSamples,regions = FALSE)
   
   
   t_n_s_15 <- ItoT(inds = n_sSamples,regions = TRUE,start= 2004)
-
+  
   
   t_n_sS_15 <- ItoT_slope(inds = n_sSamples,regions = TRUE,start= 2004)
-
+  
   
   t_N_15 <- ItoT(inds = NSamples,regions = FALSE,start= 2004)
-
+  
   t_NS <- ItoT_slope(inds = NSamples,regions = FALSE)
   t_NS_15 <- ItoT_slope(inds = NSamples,regions = FALSE,start= 2004)
- 
-
+  
+  
+  
+  t_N_comp <- ItoT(inds = N_compSamples,regions = FALSE,start = 1978)
+  
+  t_N_comp_15 <- ItoT(inds = N_compSamples,regions = FALSE,start= 2004)
+  
+  t_N_compS <- ItoT_slope(inds = N_compSamples,regions = FALSE)
+  t_N_compS_15 <- ItoT_slope(inds = N_compSamples,regions = FALSE,start= 2004)
+  
+  
+  
   trend_out <- bind_rows(t_N,
                          t_N_15,
                          t_NS,
                          t_NS_15,
-                         t_N_scaled,
+                         t_N_comp,
+                         t_N_comp_15,
+                         t_N_compS,
+                         t_N_compS_15,
                          t_n_s,
                          t_n_sS,
-                         t_n_s_a1,
-                         t_n_s_a2,
                          t_n_s_15,
-                         t_n_sS_15,
-                         t_n_s_scaled)
+                         t_n_sS_15)
   
-  write.csv(trend_out,file = paste0("Trends/trends_slope_",sp,".csv"),row.names = F)
-  
-  trend_p = filter(trend_out,retransformation_type == "standard") %>% 
-    mutate(trend_time = factor(start_year))
-
-  tp = ggplot(data = trend_p,aes(group = Region,colour = trend_type))+
-    geom_pointrange(aes(y = trend,ymin = lci,ymax = uci,x = trend_time))+
-    facet_wrap(facets = ~Region,scales = "free",nrow = 3)+
-    geom_abline(slope = 0,intercept = 0,colour = grey(0.4))
-    
-  trend_p = filter(trend_out,start_year == 1974,trend_type == "endpoint") 
-  
-  tp = ggplot(data = trend_p,aes(group = Region,colour = retransformation_type))+
-    geom_pointrange(aes(y = trend,ymin = lci,ymax = uci,x = retransformation_type))+
-    facet_wrap(facets = ~Region,scales = "fixed",nrow = 3)+
-    geom_abline(slope = 0,intercept = 0,colour = grey(0.4))
-  
+  write.csv(trend_out,file = paste0("Trends/trends_slope_ZIP_",sp,".csv"),row.names = F)
   
   # plotting indices --------------------------------------------------------
   
@@ -431,26 +418,11 @@ for(sp in sps){
   
   
   
-  plot_by_st <- plot_ind(inds = n_inds_a2,
-                         #smooth_inds = ,
-                         raw = dts,
-                         add_observed = TRUE,
-                         add_samplesize = TRUE,
-                         species = sp,
-                         regions = TRUE,
-                         title_size = 20,
-                         axis_title_size = 18,
-                         axis_text_size = 16)  
-  
-  pdf(file = paste0("Figures/",sp,"_A2_slope.pdf"),
-      width = 8.5,
-      height = 11)
-print(plot_by_st)
-dev.off()
 
 
-plot_by_st <- plot_ind(inds = n_inds_a1,
-                       smooth_inds = n_inds,
+
+plot_by_st <- plot_ind(inds = n_inds,
+                       smooth_inds = NULL,
                        raw = dts,
                        add_observed = TRUE,
                        add_samplesize = TRUE,
@@ -460,7 +432,7 @@ plot_by_st <- plot_ind(inds = n_inds_a1,
                        axis_title_size = 18,
                        axis_text_size = 16)  
 
-pdf(file = paste0("Figures/",sp,"_A1_slope.pdf"),
+pdf(file = paste0("Figures/",sp,"_slope_ZIP.pdf"),
     width = 8.5,
     height = 11)
 print(plot_by_st)
