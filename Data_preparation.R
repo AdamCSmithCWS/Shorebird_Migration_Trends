@@ -11,6 +11,7 @@ library(sf)
 ### setting path to eBird full dataset
 #auk::auk_set_ebd_path("E:/eBird_all",overwrite = T)
 
+# species list from the last analysis - useful to filter down to the species likely to provide sufficient info to estimate trends
 sps1 = read.csv("data/all shorebird migration Shorebird continental annual indices 1970-2016 gam.csv",
                 stringsAsFactors = FALSE)
 sps = unique(sps1$species)
