@@ -247,7 +247,7 @@ stan_data <- list(count = as.integer(unlist(dts$count)),
 
 
 parms = c("sdnoise",
-          "nu", #
+          #"nu", #
           "b",
           "sdalpha")
 mod.file = "models/slope_iCAR.stan"
@@ -260,9 +260,13 @@ stime = system.time(slope_icar_stanfit <-
                       sampling(slope_icar_model,seed=12345,
                                data=stan_data,
                                verbose=TRUE, refresh=100,
-                               chains=1, iter=2000,
+                               chains=1, iter=4000,
                                cores = 1,
-                               pars = parms));
+                               pars = parms,
+                               control = list(adapt_delta = 0.99,
+                                              max_treedepth = 18)))
+
+launch_shinystan(stime) 
 
 
 
@@ -270,47 +274,6 @@ stime = system.time(slope_icar_stanfit <-
 
 
 
-
-
-
-
-
-
-
-
-
-
-#adaptSteps = 200              # Number of steps to "tune" the samplers.
-burnInSteps = 100            # Number of steps to "burn-in" the samplers.
-nChains = 3                   # Number of chains to run.
-numSavedSteps=400          # Total number of steps in each chain to save.
-thinSteps=5                   # Number of steps to "thin" (1=keep every step).
-nIter = ceiling( ( (numSavedSteps * thinSteps )+burnInSteps)) # Steps per chain.
-
-t1 = Sys.time()
-
-
-
-
-# MCMC sampling -----------------------------------------------------------
-
-
-
-out2 = jagsUI(data = jags_data,
-              parameters.to.save = parms,
-              n.chains = 3,
-              n.burnin = burnInSteps,
-              n.thin = thinSteps,
-              n.iter = nIter,
-              parallel = T,
-              #modules = NULL,
-              model.file = mod.file)
-
-
-t2 = Sys.time()
-
-out2$n.eff
-out2$Rhat
 save(list = c("jags_data",
               "basis_season",
               "dts",
@@ -319,18 +282,6 @@ save(list = c("jags_data",
               "out2"),
      file = paste0("output/",sp,"slope_ZIP_results.RData"))
 
-
-# gg = ggs(out2$samples)
-# 
-# ggy = ggs(out2$samples,family = "B")
-# bby2 = ggs(out2$samples,family = "beta")
-# gga = ggs(out2$samples,family = "alpha")
-# ggall = rbind(ggy,gga)
-# ggmcmc(ggall,file = paste0("output/mcmc_",sp,".pdf"))
-# ggmcmc(bby2,file = paste0("output/mcmc_bby2_",sp,".pdf"))
-# 
-# ggsd = ggs(out2$samples,family = "sd")
-# ggmcmc(ggsd,file = paste0("output/mcmc_ggsd_",sp,".pdf"))
 
 
 

@@ -41,7 +41,7 @@ parameters {
   real<lower=0> sigma;    // spatial standard deviation
   real<lower=0> sdnoise;    // sd of over-dispersion
   vector[nstrata] b_raw;         // spatial effect slopes (0-centered deviation from continental mean slope B)
-  real<lower=0> nu; 
+  //real<lower=1> nu; 
   real<lower=0> sdalpha;    // sd of site effects
 }
 transformed parameters { 
@@ -54,12 +54,12 @@ transformed parameters {
   
   }
 model {
-  sdnoise ~ cauchy(0,5); //prior on scale of extra Poisson log-normal variance
-  sdalpha ~ cauchy(0,5); //prior on scale of site level variation
-  nu ~ normal(10,10); // prior on df for t-distribution of heavy tailed site-effects
+  sdnoise ~ normal(0,1); //prior on scale of extra Poisson log-normal variance
+  sdalpha ~ normal(0,1); //prior on scale of site level variation
+  //nu ~ gamma(2,0.1); // prior on df for t-distribution of heavy tailed site-effects from https://github.com/stan-dev/stan/wiki/Prior-Choice-Recommendations#prior-for-degrees-of-freedom-in-students-t-distribution
   count ~ poisson_log(E); //vectorized count likelihood
   noise ~ normal(0,sdnoise); //extra Poisson log-normal variance
-  alpha ~ student_t(nu,0,sdalpha); //heavy tailed site-effects
+  alpha ~ student_t(5,0,sdalpha); //heavy tailed site-effects
   
   target += -3*log(sigma) - 1/(sigma)^2;  // Stan equiv of BUGS model prior on tau
   b_raw ~ icar_normal_lpdf(nstrata, node1, node2);
