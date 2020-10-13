@@ -6,7 +6,7 @@ library(ggmcmc)
 
 library(doParallel)
 library(foreach)
-
+library(shinystan)
 
  load("data/allShorebirdPrismFallCounts.RData")
 # source("functions/GAM_basis_function.R")
@@ -26,13 +26,14 @@ fullrun <- foreach(sp = sps[c(11,25,3,8)],
     load("data/allShorebirdPrismFallCounts.RData")
     
     source("functions/GAM_basis_function.R")
-    
+  
+    fyear = 1978  
 
 #for(sp in sps){
 #sp = sps[25]
 
 dts <- filter(ssData,CommonName == sp,
-              YearCollected > 1977)
+              YearCollected > fyear-1)
 dts$present <- FALSE
 dts[which(dts$ObservationCount > 0),"present"] <- TRUE
 
@@ -91,10 +92,10 @@ dts <- filter(dts,Region %in% regions_keep$Region)
 
 fday = min(dts$doy)-1
 
-syear = min(dts$YearCollected)
+#syear = min(dts$YearCollected)
 dts <- dts %>% mutate(count = as.integer(ObservationCount),
                       year = as.integer(YearCollected),
-                      yr = as.integer(year-syear),
+                      yr = as.integer(year-(fyear-1)),
                       strat = as.integer(factor(Region)),
                       date = doy-fday) 
 
@@ -161,7 +162,7 @@ jags_data <- list(count = as.integer(unlist(dts$count)),
 
 
 
-mod.file = "models/AnnualSlopeSeasonalGAM_ZIP2.R"
+mod.file = "models/AnnualSlopeSeasonalGAM_ZIP.R"
 
 
 
@@ -176,22 +177,25 @@ parms = c("sdnoise",
           "N",
           "n_s",
           "N_comp",
+          "sd_ye",
           # "n_s_a1",
           # "n_s_a2",
           # "N_sc2",
           # "N_sc",
           # "n_s_scaled",
           # "n_s_scaled2",
-          "alpha",
+          #"alpha",
           "vis.sm_season",
           "psi",
-          "PSI")
+          "PSI",
+          "sd_beta",
+          "beta")
 
 
 #adaptSteps = 200              # Number of steps to "tune" the samplers.
-burnInSteps = 100            # Number of steps to "burn-in" the samplers.
+burnInSteps = 1000            # Number of steps to "burn-in" the samplers.
 nChains = 3                   # Number of chains to run.
-numSavedSteps=400          # Total number of steps in each chain to save.
+numSavedSteps=4000          # Total number of steps in each chain to save.
 thinSteps=5                   # Number of steps to "thin" (1=keep every step).
 nIter = ceiling( ( (numSavedSteps * thinSteps )+burnInSteps)) # Steps per chain.
 
@@ -216,6 +220,7 @@ out2 = jagsUI(data = jags_data,
 
 
 t2 = Sys.time()
+my_sso <- launch_shinystan(as.shinystan(out2$samples, model_name = "annualslopeseasonalgam3"))
 
 out2$n.eff
 out2$Rhat
@@ -228,17 +233,21 @@ save(list = c("jags_data",
      file = paste0("output/",sp,"slope_ZIP_results.RData"))
 
 
-# gg = ggs(out2$samples)
-# 
-# ggy = ggs(out2$samples,family = "B")
-# bby2 = ggs(out2$samples,family = "beta")
-# gga = ggs(out2$samples,family = "alpha")
-# ggall = rbind(ggy,gga)
-# ggmcmc(ggall,file = paste0("output/mcmc_",sp,".pdf"))
-# ggmcmc(bby2,file = paste0("output/mcmc_bby2_",sp,".pdf"))
-# 
-# ggsd = ggs(out2$samples,family = "sd")
-# ggmcmc(ggsd,file = paste0("output/mcmc_ggsd_",sp,".pdf"))
+
+
+
+gg = ggs(out2$samples)
+
+ggy = ggs(out2$samples,family = "B")
+bby2 = ggs(out2$samples,family = "b")
+gga = ggs(out2$samples,family = "alpha")
+ggall = rbind(ggy,gga,bby2)
+#ggmcmc(ggall,file = paste0("output/mcmc_",sp,".pdf"))
+ggs_pairs(ggall)
+#ggmcmc(bby2,file = paste0("output/mcmc_bby2_",sp,".pdf"))
+
+ggsd = ggs(out2$samples,family = "sd")
+ggmcmc(ggsd,file = paste0("output/mcmc_ggsd_",sp,".pdf"))
 
 
 
