@@ -14,9 +14,9 @@
 
 
 functions {
-  real icar_normal_lpdf(vector phi, int nstrata, int[] node1, int[] node2) {
-    return -0.5 * dot_self(phi[node1] - phi[node2])
-      + normal_lpdf(sum(phi) | 0, 0.001 * nstrata); //soft sum to zero constraint on phi
+  real icar_normal_lpdf(vector b_raw, int nstrata, int[] node1, int[] node2) {
+    return -0.5 * dot_self(b_raw[node1] - b_raw[node2])
+      + normal_lpdf(sum(b_raw) | 0, 0.001 * nstrata); //soft sum to zero constraint on phi
  }
 }
 data {
@@ -41,7 +41,7 @@ parameters {
   real<lower=0> sigma;    // spatial standard deviation
   real<lower=0> sdnoise;    // sd of over-dispersion
   vector[nstrata] b_raw;         // spatial effect slopes (0-centered deviation from continental mean slope B)
-  //real<lower=1> nu; 
+  real<lower=1> nu; 
   real<lower=0> sdalpha;    // sd of site effects
 }
 transformed parameters { 
@@ -54,16 +54,15 @@ transformed parameters {
   
   }
 model {
-  sdnoise ~ normal(0,1); //prior on scale of extra Poisson log-normal variance
+  sdnoise ~ gamma(2,0.1); //prior on scale of extra Poisson log-normal variance
+  //boundary avoiding prior following Chung, Yeojin, Sophia Rabe-Hesketh, Vincent Dorie, Andrew Gelman, and Jingchen Liu. 2013. “A Nondegenerate Penalized Likelihood Estimator for Variance Parameters in Multilevel Models.” Psychometrika 78 (4): 685–709.
   sdalpha ~ normal(0,1); //prior on scale of site level variation
-  //nu ~ gamma(2,0.1); // prior on df for t-distribution of heavy tailed site-effects from https://github.com/stan-dev/stan/wiki/Prior-Choice-Recommendations#prior-for-degrees-of-freedom-in-students-t-distribution
+  nu ~ gamma(2,0.1); // prior on df for t-distribution of heavy tailed site-effects from https://github.com/stan-dev/stan/wiki/Prior-Choice-Recommendations#prior-for-degrees-of-freedom-in-students-t-distribution
   count ~ poisson_log(E); //vectorized count likelihood
   noise ~ normal(0,sdnoise); //extra Poisson log-normal variance
-  alpha ~ student_t(5,0,sdalpha); //heavy tailed site-effects
-  
-  target += -3*log(sigma) - 1/(sigma)^2;  // Stan equiv of BUGS model prior on tau
+  alpha ~ student_t(nu,0,sdalpha); //heavy tailed site-effects
+  B ~ normal(0,0.1);// prior on continental mean slope
+  sigma ~ normal(0,1); //prior on scale of spatial variation
   b_raw ~ icar_normal_lpdf(nstrata, node1, node2);
 }
-generated quantities {
-  real tau = sigma^-2; //variance on the spatial process
-}
+

@@ -77,7 +77,7 @@ source("functions/mungeCARdata4stan.R")
 sp = sps[25]
 
 dts <- filter(ssData,CommonName == sp,
-              YearCollected > 1977)
+              YearCollected > 1990)
 dts$present <- FALSE
 dts[which(dts$ObservationCount > 0),"present"] <- TRUE
 
@@ -247,9 +247,11 @@ stan_data <- list(count = as.integer(unlist(dts$count)),
 
 
 parms = c("sdnoise",
-          #"nu", #
+          "nu", #
           "b",
-          "sdalpha")
+          "B",
+          "sdalpha",
+          "sigma")
 mod.file = "models/slope_iCAR.stan"
 
 ## compile model
@@ -257,16 +259,17 @@ slope_icar_model = stan_model(file=mod.file)
 
 ## run sampler on model, data
 stime = system.time(slope_icar_stanfit <-
-                      sampling(slope_icar_model,seed=12345,
+                      sampling(slope_icar_model,
                                data=stan_data,
                                verbose=TRUE, refresh=100,
-                               chains=1, iter=4000,
+                               chains=1, iter=5000,
+                               warmup=3000,
                                cores = 1,
                                pars = parms,
-                               control = list(adapt_delta = 0.99,
-                                              max_treedepth = 18)))
+                               control = list(adapt_delta = 0.9,
+                                              max_treedepth = 10)))
 
-launch_shinystan(stime) 
+launch_shinystan(slope_icar_stanfit) 
 
 
 
