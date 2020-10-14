@@ -29,12 +29,23 @@ source("functions/mungeCARdata4stan.R")
  ### computational limits
  ### instead, etsablish an equal-area grid as a geographic stratification
  all_sites = ssData %>% distinct(SurveyAreaIdentifier,DecimalLatitude,DecimalLongitude)
+ laea = st_crs("+proj=laea +lat_0=40 +lon_0=-95") # Lambert equal area
  
  
+ 
+ locat = system.file("maps",
+                     package="bbsBayes")
+ map.file = "BBS_ProvState_strata"
+ 
+ prov_state = sf::read_sf(dsn = locat,
+                              layer = map.file)
+ 
+ # bbs_strata_proj = st_transform(bbs_strata_map,crs = 102003) #USA Contiguous albers equal area projection stanadard from ESRI - https://mgimond.github.io/Spatial/coordinate-systems-in-r.html
+ 
+ prov_state = st_transform(prov_state,crs = laea)
  
  
  iss_sites = st_as_sf(all_sites,coords = c("DecimalLongitude","DecimalLatitude"), crs = 4326)
- laea = st_crs("+proj=laea +lat_0=40 +lon_0=-95") # Lambert equal area
  iss_sites_lcc <- st_transform(iss_sites, laea)
  bb = st_bbox(iss_sites_lcc) %>% 
    st_as_sfc()
@@ -77,7 +88,7 @@ source("functions/mungeCARdata4stan.R")
 sp = sps[25]
 
 dts <- filter(ssData,CommonName == sp,
-              YearCollected > 1990)
+              YearCollected > 1978)
 dts$present <- FALSE
 dts[which(dts$ObservationCount > 0),"present"] <- TRUE
 
@@ -269,21 +280,59 @@ stime = system.time(slope_icar_stanfit <-
                                control = list(adapt_delta = 0.9,
                                               max_treedepth = 10)))
 
-launch_shinystan(slope_icar_stanfit) 
+# launch_shinystan(slope_icar_stanfit) 
+
+
+
+
+# map the trend estimates -------------------------------------------------
+
+slopes = as.data.frame(summary(slope_icar_stanfit,
+                 pars = c("b"),
+                 probs = c(0.025,0.5,0.975))$summary)
+
+myrename = function(fit){
+  rename_with(fit,~ paste0("PI",gsub(".","_",gsub("%", "", .x, fixed = TRUE), fixed = TRUE)),ends_with("%"))
+  
+}
+slopes = myrename(slopes)
+slopes$stratn = 1:nrow(slopes)
+slopes$trend = (exp(slopes$mean)-1)*100
+
+breaks <- c(-7, -4, -2, -1, -0.5, 0.5, 1, 2, 4, 7)
+labls = c(paste0("< ",breaks[1]),paste0(breaks[-c(length(breaks))],":", breaks[-c(1)]),paste0("> ",breaks[length(breaks)]))
+labls = paste0(labls, " %")
+
+slopes$Tplot <- cut(slopes$trend,breaks = c(-Inf, breaks, Inf),labels = labls)
+
+map_palette <- c("#a50026", "#d73027", "#f46d43", "#fdae61", "#fee090", "#ffffbf",
+                 "#e0f3f8", "#abd9e9", "#74add1", "#4575b4", "#313695")
+names(map_palette) <- labls
+
+hex_map <- left_join(real_grid,strats_dts)
+
+hex_map <- left_join(hex_map,slopes,by = "stratn")
+
+trend_map <- ggplot()+
+  geom_sf(data = prov_state,colour = grey(0.8))+
+  geom_sf(data = hex_map,aes(fill = Tplot,colour = Tplot))+
+  coord_sf(ylim = c(-1509123,1890567),expand = TRUE)+
+  scale_colour_manual(values = map_palette, aesthetics = c("fill","colour"),
+                      guide = ggplot2::guide_legend(reverse=TRUE),
+                      name = "Trends")#paste0("Trend\n",fyr,"-",lyr))
+print(trend_map)
 
 
 
 
 
-
-
-save(list = c("jags_data",
-              "basis_season",
+save(list = c("stan_data",
+              #"basis_season",
               "dts",
-              "t2",
-              "t1",
-              "out2"),
-     file = paste0("output/",sp,"slope_ZIP_results.RData"))
+              "slope_icar_model",
+              "hex_map",
+              "strats_dts"),
+     file = paste0("output/",sp,"slope_iCAR_results.RData"))
 
 
 
