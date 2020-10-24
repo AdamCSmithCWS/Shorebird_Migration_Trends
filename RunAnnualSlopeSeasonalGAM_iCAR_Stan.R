@@ -85,11 +85,15 @@ source("functions/mungeCARdata4stan.R")
     
 
 #for(sp in sps){
-sp = sps[25]
-
+sp = sps[11]
+FYYYY = 1995
 dts <- filter(ssData,CommonName == sp,
-              YearCollected > 1978)
+              YearCollected > FYYYY)
+nyrs_study <- 2019-FYYYY #length of the time-series being modeled
+
+
 dts$present <- FALSE
+
 dts[which(dts$ObservationCount > 0),"present"] <- TRUE
 
 # #number of non-zero observations by region
@@ -114,7 +118,9 @@ nyrs_site <- dts %>%
   summarise(nobs = n()) %>% 
   group_by(Region,SurveyAreaIdentifier) %>% 
   summarise(nyears = n(),
-            span_years = yspn(YearCollected))
+            span_years = yspn(YearCollected),
+            fyear = min(YearCollected),
+            lyear = max(YearCollected))
 
 #number of sites with > 5 year span by region
 nsites_w5 <- nyrs_site %>% 
@@ -139,10 +145,12 @@ nyrs_region <- dts %>%
   summarise(nobs = n()) %>% 
   group_by(hex_name) %>% 
   summarise(nyears = n(),
-            span_years = yspn(YearCollected))
+            span_years = yspn(YearCollected),
+            fyear = min(YearCollected),
+            lyear = max(YearCollected))
 
 #strats with 7 or more years of non-zero, observations - species has to be observed in a region in at least 2/3 of the years in the time-series
-regions_keep <- nyrs_region[which(nyrs_region$nyears >= 7),"hex_name"]
+regions_keep <- nyrs_region[which(nyrs_region$span_years >= nyrs_study*0.5),"hex_name"]
 
 
 # drop strata with < 7 years of non-zero observations ---------------------
@@ -180,7 +188,7 @@ syear = min(dts$YearCollected)
 
 dts <- dts %>% mutate(count = as.integer(ObservationCount),
                       year = as.integer(YearCollected),
-                      yr = as.integer(year-syear),
+                      yr = as.integer(year-(syear-1)),
                       strat = stratn,
                       date = doy-fday,
                       site = as.integer(factor(SurveyAreaIdentifier))) 
@@ -236,10 +244,11 @@ midyear = floor(nyears/2)
 
 stan_data <- list(count = as.integer(unlist(dts$count)),
                   year = as.integer(unlist(dts$yr-midyear)),
+                  year_raw = as.integer(unlist(dts$yr)),
                   site = as.integer(unlist(dts$site)),
                   strat = as.integer(unlist(dts$strat)),
                   
-                  #nyears = nyears,
+                  nyears = nyears,
                   nstrata = nstrata,
                   nsites = nsites,
                   ncounts = ncounts,
@@ -258,12 +267,15 @@ stan_data <- list(count = as.integer(unlist(dts$count)),
 
 
 parms = c("sdnoise",
-          "nu", #
+          #"nu", #
+          "sdalpha",
           "b",
           "B",
-          "sdalpha",
-          "sigma")
-mod.file = "models/slope_iCAR.stan"
+          "alpha",
+          "sigma",
+          "sdyear",
+          "year_effect")
+mod.file = "models/slope_iCAR4.stan"
 
 ## compile model
 slope_icar_model = stan_model(file=mod.file)
@@ -273,16 +285,16 @@ stime = system.time(slope_icar_stanfit <-
                       sampling(slope_icar_model,
                                data=stan_data,
                                verbose=TRUE, refresh=100,
-                               chains=1, iter=5000,
-                               warmup=3000,
+                               chains=1, iter=500,
+                               warmup=400,
                                cores = 1,
                                pars = parms,
-                               control = list(adapt_delta = 0.9,
-                                              max_treedepth = 10)))
+                               control = list(adapt_delta = 0.8,
+                                              max_treedepth = 15)))
 
 # launch_shinystan(slope_icar_stanfit) 
 
-
+slope_icar_stanfitsoft = slope_icar_stanfit
 
 
 # map the trend estimates -------------------------------------------------
