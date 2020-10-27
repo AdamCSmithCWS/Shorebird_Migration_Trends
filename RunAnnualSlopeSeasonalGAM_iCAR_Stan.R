@@ -1,6 +1,5 @@
 # SPECIES MCMC data-prep -------------------------------------------------------
 library(tidyverse)
-library(ggmcmc)
 library(rstan)
 library(shinystan)
 library(sf)
@@ -86,7 +85,7 @@ source("functions/mungeCARdata4stan.R")
 
 #for(sp in sps){
 sp = sps[11]
-FYYYY = 1995
+FYYYY = 1973
 dts <- filter(ssData,CommonName == sp,
               YearCollected > FYYYY)
 nyrs_study <- 2019-FYYYY #length of the time-series being modeled
@@ -285,8 +284,8 @@ stime = system.time(slope_icar_stanfit <-
                       sampling(slope_icar_model,
                                data=stan_data,
                                verbose=TRUE, refresh=100,
-                               chains=1, iter=500,
-                               warmup=400,
+                               chains=1, iter=1000,
+                               warmup=900,
                                cores = 1,
                                pars = parms,
                                control = list(adapt_delta = 0.8,
@@ -297,54 +296,71 @@ stime = system.time(slope_icar_stanfit <-
 slope_icar_stanfitsoft = slope_icar_stanfit
 
 
-# map the trend estimates -------------------------------------------------
-
-slopes = as.data.frame(summary(slope_icar_stanfit,
-                 pars = c("b"),
-                 probs = c(0.025,0.5,0.975))$summary)
-
-myrename = function(fit){
-  rename_with(fit,~ paste0("PI",gsub(".","_",gsub("%", "", .x, fixed = TRUE), fixed = TRUE)),ends_with("%"))
-  
-}
-slopes = myrename(slopes)
-slopes$stratn = 1:nrow(slopes)
-slopes$trend = (exp(slopes$mean)-1)*100
-
-breaks <- c(-7, -4, -2, -1, -0.5, 0.5, 1, 2, 4, 7)
-labls = c(paste0("< ",breaks[1]),paste0(breaks[-c(length(breaks))],":", breaks[-c(1)]),paste0("> ",breaks[length(breaks)]))
-labls = paste0(labls, " %")
-
-slopes$Tplot <- cut(slopes$trend,breaks = c(-Inf, breaks, Inf),labels = labls)
-
-map_palette <- c("#a50026", "#d73027", "#f46d43", "#fdae61", "#fee090", "#ffffbf",
-                 "#e0f3f8", "#abd9e9", "#74add1", "#4575b4", "#313695")
-names(map_palette) <- labls
-
-hex_map <- left_join(real_grid,strats_dts)
-
-hex_map <- left_join(hex_map,slopes,by = "stratn")
-
-trend_map <- ggplot()+
-  geom_sf(data = prov_state,colour = grey(0.8))+
-  geom_sf(data = hex_map,aes(fill = Tplot,colour = Tplot))+
-  coord_sf(ylim = c(-1509123,1890567),expand = TRUE)+
-  scale_colour_manual(values = map_palette, aesthetics = c("fill","colour"),
-                      guide = ggplot2::guide_legend(reverse=TRUE),
-                      name = "Trends")#paste0("Trend\n",fyr,"-",lyr))
-print(trend_map)
 
 
 
 
 
-save(list = c("stan_data",
-              #"basis_season",
-              "dts",
-              "slope_icar_model",
-              "hex_map",
-              "strats_dts"),
-     file = paste0("output/",sp,"slope_iCAR_results.RData"))
+
+
+
+
+
+
+
+
+
+
+
+
+# # map the trend estimates -------------------------------------------------
+# 
+# slopes = as.data.frame(summary(slope_icar_stanfit,
+#                  pars = c("b"),
+#                  probs = c(0.025,0.5,0.975))$summary)
+# 
+# myrename = function(fit){
+#   rename_with(fit,~ paste0("PI",gsub(".","_",gsub("%", "", .x, fixed = TRUE), fixed = TRUE)),ends_with("%"))
+#   
+# }
+# slopes = myrename(slopes)
+# slopes$stratn = 1:nrow(slopes)
+# slopes$trend = (exp(slopes$mean)-1)*100
+# 
+# breaks <- c(-7, -4, -2, -1, -0.5, 0.5, 1, 2, 4, 7)
+# labls = c(paste0("< ",breaks[1]),paste0(breaks[-c(length(breaks))],":", breaks[-c(1)]),paste0("> ",breaks[length(breaks)]))
+# labls = paste0(labls, " %")
+# 
+# slopes$Tplot <- cut(slopes$trend,breaks = c(-Inf, breaks, Inf),labels = labls)
+# 
+# map_palette <- c("#a50026", "#d73027", "#f46d43", "#fdae61", "#fee090", "#ffffbf",
+#                  "#e0f3f8", "#abd9e9", "#74add1", "#4575b4", "#313695")
+# names(map_palette) <- labls
+# 
+# hex_map <- left_join(real_grid,strats_dts)
+# 
+# hex_map <- left_join(hex_map,slopes,by = "stratn")
+# 
+# trend_map <- ggplot()+
+#   geom_sf(data = prov_state,colour = grey(0.8))+
+#   geom_sf(data = hex_map,aes(fill = Tplot,colour = Tplot))+
+#   coord_sf(ylim = c(-1509123,1890567),expand = TRUE)+
+#   scale_colour_manual(values = map_palette, aesthetics = c("fill","colour"),
+#                       guide = ggplot2::guide_legend(reverse=TRUE),
+#                       name = "Trends")#paste0("Trend\n",fyr,"-",lyr))
+# print(trend_map)
+# 
+# 
+# 
+# 
+# 
+# save(list = c("stan_data",
+#               #"basis_season",
+#               "dts",
+#               "slope_icar_model",
+#               "hex_map",
+#               "strats_dts"),
+#      file = paste0("output/",sp,"slope_iCAR_results.RData"))
 
 
 

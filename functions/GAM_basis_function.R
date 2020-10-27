@@ -1,4 +1,4 @@
-### a function to calculate the basis function(s) for a GAM component of a JAGS model
+### a function to calculate the basis function(s) for a GAM component of a JAGS or Stan model
 ### orig.preds = predictor variable to be modeled as a smooth, column from the dataset being modeled, must match with the indexing used in teh main likelihood definition (i.e., one value for each statistical unit)
 ### nknots = number of knots in the GAM smooth, (careful! you need to know what you're doing :-) 
 ### random = logical; TRUE if the GAM parameters are to be estimated as random effects (e.g., separate smooths within strata, centered on a mean smooth across all strata)
