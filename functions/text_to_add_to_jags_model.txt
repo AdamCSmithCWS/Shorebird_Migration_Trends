@@ -8,35 +8,35 @@
                       # predictor (e.g., each year in a temporal smooth)
                       # so the likelihood line will need to include a component such as the following for each data point-i
                       # for (i in 1:n){
-                      # y[i] <- ..... + gam.sm_season[i] +....
+                      # y[i] <- ..... + gam.sm_year[i] +....
                       #}
                       
                       ######
                       #the effect of this prior is worth exploring
                       #alternatives such as uniform priors on the SD or half-Cauchy may perform better
-                      taugam_season~dgamma(1.0E-2,1.0E-4) #original from Cainiceanu et al. second gamma parameter == 0.0001 << (abs(mean(B.gamx[]))^2)/2, mean(B.gamx[]) ~ 0.2
-                      sdgam_season <- 1/(pow(taugam_season,0.5)) # 
+                      taugam_year~dgamma(1.0E-2,1.0E-4) #original from Cainiceanu et al. second gamma parameter == 0.0001 << (abs(mean(B.gamx[]))^2)/2, mean(B.gamx[]) ~ 0.2
+                      sdgam_year <- 1/(pow(taugam_year,0.5)) # 
                       #or
-                      sdgam_season <- 1/pow(taunoise,0.5)
-                      taugam_season ~ dscaled.gamma(0.5,50)
+                      sdgam_year <- 1/pow(taunoise,0.5)
+                      taugam_year ~ dscaled.gamma(0.5,50)
                       # Computation of GAM components
-                      for(k in 1:nknots_season){
-                      beta_season[k] ~ dnorm(0,taugam_season)
+                      for(k in 1:nknots_year){
+                      beta_year[k] ~ dnorm(0,taugam_year)
                       }
                       
-                      gam.sm_season <-	season_basis %*% beta_season
+                      gam.sm_year <-	year_basis %*% beta_year
                       
                       
                       ##### derived parameters to visualize the smooth
                       
-                      vis.sm_season <-	season_basispred %*% beta_season
+                      vis.sm_year <-	year_basispred %*% beta_year
                       
                       ##### suggested components to add to annual index calculation
-                      #### value of vis.sm_season below is just the middle of the values used to visualize the smooth, i.e., predpoints[round(0.5*npredpoints)]
+                      #### value of vis.sm_year below is just the middle of the values used to visualize the smooth, i.e., predpoints[round(0.5*npredpoints)]
                       #### if there is a better value then insert the index for the relevant value of predpoints
                       # for(y in 1:nyears){
                       # for(s in 1:nstrata){
-                      # n[i,t] <- exp(strata[i] + beta[i]*(t-fixedyear) + yeareffect[i,t] + vis.sm_season[77] ) 
+                      # n[i,t] <- exp(strata[i] + beta[i]*(t-fixedyear) + yeareffect[i,t] + vis.sm_year[10] ) 
                       # }
                       # }
                       # 	

@@ -234,6 +234,18 @@ basis_season <- gam.basis.func(orig.preds = as.integer(unlist(dts[,"date"])),
 ndays <- basis_season$npredpoints_season
 # 
 
+# GAM year basis function ---------------------------------------------
+
+nKnots_year = 13
+basis_year <- gam.basis.func(orig.preds = as.integer(unlist(dts[,"yr"])),
+                               nknots = nKnots_year,
+                               standardize = "z",
+                               random = F,
+                               npredpoints = max(dts$yr),
+                               even_gaps = TRUE,
+                               sm_name = "year")
+
+# 
 
 
 # prepare stan data -------------------------------------------------------
@@ -258,6 +270,9 @@ stan_data <- list(count = as.integer(unlist(dts$count)),
                    season_basispred = basis_season$season_basispred,
                    nknots_season = basis_season$nknots_season,
                   
+                  year_basispred = basis_year$year_basispred,
+                  nknots_year = basis_year$nknots_year,
+                  
                   #midyear = midyear,
                   
                   N_edges = car_stan_dat$N_edges,
@@ -278,7 +293,7 @@ parms = c("sdnoise",
           "sdseason",
           "B_season")
 
-mod.file = "models/slope_iCAR5.stan"
+mod.file = "models/slope_icar_GAM.stan"
 
 ## compile model
 slope_icar_model = stan_model(file=mod.file)
@@ -292,7 +307,7 @@ stime = system.time(slope_icar_stanfit <-
                                warmup=400,
                                cores = 1,
                                pars = parms,
-                               control = list(adapt_delta = 0.8,
+                               control = list(adapt_delta = 0.9,
                                               max_treedepth = 15)))
 
 # launch_shinystan(slope_icar_stanfit) 

@@ -14,16 +14,22 @@ data {
   // data for splines
   int Ks;  // number of linear effects
   matrix[N, Ks] Xs;  // design matrix for the linear effects
+  
+  
   // data for spline s(yr)
   int nb_1;  // number of bases
   int knots_1[nb_1];  // number of knots
   // basis function matrices
   matrix[N, knots_1[1]] Zs_1_1;
+  
+  
   // data for spline s(date)
   int nb_2;  // number of bases
   int knots_2[nb_2];  // number of knots
   // basis function matrices
   matrix[N, knots_2[1]] Zs_2_1;
+  
+  
   int prior_only;  // should the likelihood be ignored?
 }
 
