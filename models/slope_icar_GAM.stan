@@ -36,6 +36,11 @@ data {
   real year[ncounts];              // centered years
   int<lower=1> year_raw[ncounts]; // year index
   int<lower=1> date[ncounts];  // day indicator in the season
+  
+  //indexes for re-scaling predicted counts within strata based on site-level intercepts
+  int<lower=1> max_sites; //dimension 1 of sites matrix
+  int<lower=0> sites[max_sites,nstrata]; //matrix of which sites are in each stratum
+  int<lower=1> nsites_strat[nstrata]; //number of unique sites in each stratum
 }
 
 parameters {
@@ -54,7 +59,7 @@ parameters {
   real<lower=0> sdyear;    // sd of year effects
   real<lower=0> sdseason;    // sd of year effects
   real<lower=0> sdyear_gam;    // sd of GAM coefficients
-  
+  real ALPHA1; // overall intercept
 }
 
 transformed parameters { 
@@ -62,18 +67,19 @@ transformed parameters {
   vector[ncounts] E;           // log_scale additive likelihood
   vector[ndays] season_pred = season_basispred*B_season;
     matrix[nyears,nstrata] year_pred;
-    
+  vector[nyears] Y_pred;  
 
   for(k in 1:nknots_year){
     b[,k] = (sigma[k] * b_raw[,k]) + B[k];
   }
+  Y_pred = year_basispred * B; 
   
       for(s in 1:nstrata){
      year_pred[,s] = year_basispred * transpose(b[s,]);
 }
 
   for(i in 1:ncounts){
-    E[i] = year_pred[year_raw[i],strat[i]] + alpha[site[i]] + year_effect[year_raw[i]] + season_pred[date[i]] + noise[i];
+    E[i] = ALPHA1 + year_pred[year_raw[i],strat[i]] + alpha[site[i]] + year_effect[year_raw[i]] + season_pred[date[i]] + noise[i];
   }
   
   }
@@ -85,6 +91,7 @@ model {
   //nu ~ gamma(2,0.1); // prior on df for t-distribution of heavy tailed site-effects from https://github.com/stan-dev/stan/wiki/Prior-Choice-Recommendations#prior-for-degrees-of-freedom-in-students-t-distribution
   sdseason ~ normal(0,1);//variance of GAM parameters
   B_season ~ normal(0,sdseason);//GAM parameters
+  ALPHA1 ~ normal(0,1);// overall species intercept
   
   count ~ poisson_log(E); //vectorized count likelihood
   alpha ~ normal(0,sdalpha); // fixed site-effects
@@ -99,5 +106,37 @@ model {
   for(k in 1:nknots_year){
   b_raw[,k] ~ icar_normal_lpdf(nstrata, node1, node2);
   }
+}
+
+generated quantities {
+  vector[nstrata] a;
+  real<lower=0> N[nyears];
+  real<lower=0> NSmooth[nyears];
+  real<lower=0> n[nstrata,nyears];
+  real<lower=0> nsmooth[nstrata,nyears];
+  
+  
+      for(s in 1:nstrata){
+        real atmp[nsites_strat[s]];
+        //a stratum-scaling component that tracks the alphas for sites in stratum
+        for(j in 1:nsites_strat[s]){
+          atmp[j] = exp(alpha[sites[j,s]]);
+        }
+        a[s] = mean(atmp);
+        
+  for(y in 1:nyears){
+
+      n[s,y] = exp(ALPHA1 + year_pred[y,s] + year_effect[y] + season_pred[50] ) + a[s];
+      nsmooth[s,y] = exp(ALPHA1 + year_pred[y,s] + season_pred[50] ) + a[s];
+    }
+  }
+  
+    for(y in 1:nyears){
+
+      N[y] = exp(ALPHA1 + Y_pred[y] + year_effect[y] + season_pred[50] );
+      NSmooth[y] = exp(ALPHA1 + Y_pred[y] + season_pred[50] );
+      
+    }
+    
 }
 

@@ -63,7 +63,7 @@ map <- read_sf(dsn = "data",
 
 st_crs(map)
 
-iss_sites = unique(iss_samp[,c("locality_id",
+iss_sites = unique(iss_samp[,c("locality","locality_id",
                         "latitude",
                         "longitude")])
 
@@ -75,7 +75,7 @@ iss_sites = st_as_sf(iss_sites,coords = c("longitude","latitude"), crs = 4326)
 
 iss_sites_regs <- st_join(iss_sites, map, join = st_nearest_feature)
 
-iss_samp <- left_join(iss_samp,iss_sites_regs[,c("locality_id","Region","Region_FR")])
+iss_samp <- left_join(iss_samp,iss_sites_regs[,c("locality_id","locality","Region","Region_FR")])
 
 
 # Zero-fill manual --------------------------------------------------------
@@ -93,7 +93,7 @@ time_to_decimal <- function(x) {
   hour(x) + minute(x) / 60 + second(x) / 3600
 }
 
-# clean up variables and further filtering to just US data and just years 1976 - 2019
+# clean up variables and further filtering to just US data and just years 1974 - 2019
 iss_m1 <- iss_m %>% 
   mutate(
     # convert X to NA
@@ -140,11 +140,16 @@ iss_m1 <- iss_m1[which(iss_m1$day_of_year < 334),] ### dropping the observations
 
 # ISS data to bind --------------------------------------------------------
 
+
+
+
+
 iss_full <- iss_m1[,c("checklist_id",
                    "common_name",
                    "observation_count",
                    "country",
                    "state_code",
+                   "locality",
                    "locality_id",
                    "latitude",
                    "longitude",
@@ -159,12 +164,50 @@ iss_full <- rename(iss_full,
                    ObservationCount = observation_count,
                    Country = country,
                    StateProvince = state_code,
+                   SiteName = locality,
                    SurveyAreaIdentifier = locality_id,
                    DecimalLatitude = latitude,
                    DecimalLongitude = longitude,
                    YearCollected = year,
                    doy = day_of_year)
 
+
+# ISS data have some sites with no bird observations in some years --------
+## , despite multiple surveys and many observations in previous year
+## e.g., L125009, L125100
+site_yr_sum <- iss_full %>% group_by(YearCollected,SurveyAreaIdentifier) %>% 
+  summarise(sum_all_sp = sum(ObservationCount),
+            n_visits = n()/28)
+write.csv(site_yr_sum,"site_yr_sum_count_ISS.csv")
+
+site_yr_sum <-  filter(site_yr_sum,n_visits > 2 & sum_all_sp == 0)
+
+### this identifies sites where they've had > 2 surveys conducted and no birds have been seen.
+### this code drops these site*year combinations - there's something wrong with these data
+for(j in 1:nrow(site_yr_sum)){
+  ss = as.character(site_yr_sum[j,"SurveyAreaIdentifier"])
+  yy = as.integer(site_yr_sum[j,"YearCollected"])
+  tmp <- which(iss_full$SurveyAreaIdentifier == ss & iss_full$YearCollected == yy)
+  if(j == 1){
+    iss_drop = tmp
+  }else{
+    iss_drop = c(iss_drop,tmp)
+  }
+}
+  # = tapply(iss_full$ObservationCount,iss_full[,c("YearCollected","SurveyAreaIdentifier")],sum,na.rm = T)
+  
+  
+iss_full <- iss_full[-iss_drop,]
+  
+  
+site_yr_sum <- iss_full %>% group_by(YearCollected,SurveyAreaIdentifier) %>% 
+  summarise(sum_all_sp = sum(ObservationCount),
+            n_visits = n()/28)
+write.csv(site_yr_sum,"site_yr_sum_count_ISS_post.csv")
+
+site_yr_sum <-  filter(site_yr_sum,n_visits > 2 & sum_all_sp == 0)
+
+  
 # Nature Counts data ------------------------------------------------------
 
 

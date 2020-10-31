@@ -34,15 +34,17 @@ source("functions/mungeCARdata4stan.R")
  
  locat = system.file("maps",
                      package="bbsBayes")
- map.file = "BBS_ProvState_strata"
+ map.file = "BBS_USGS_strata"
  
- prov_state = sf::read_sf(dsn = locat,
+ bbs_strat = sf::read_sf(dsn = locat,
                               layer = map.file)
  
  # bbs_strata_proj = st_transform(bbs_strata_map,crs = 102003) #USA Contiguous albers equal area projection stanadard from ESRI - https://mgimond.github.io/Spatial/coordinate-systems-in-r.html
  
- prov_state = st_transform(prov_state,crs = laea)
+ bbs_strat = st_transform(bbs_strat,crs = laea)
  
+ 
+
  
  iss_sites = st_as_sf(all_sites,coords = c("DecimalLongitude","DecimalLatitude"), crs = 4326)
  iss_sites_lcc <- st_transform(iss_sites, laea)
@@ -56,7 +58,7 @@ source("functions/mungeCARdata4stan.R")
  crd <- st_coordinates(st_centroid(poly_grid))
  poly_grid$hex_name <- paste(round(crd[,"X"]),round(crd[,"Y"]),sep = "_")
  
- iss_sites_lcc <- st_join(iss_sites_lcc, poly_grid, join = st_nearest_feature)
+ iss_sites_lcc <- st_join(iss_sites_lcc, bbs_strat, join = st_nearest_feature)
  
  strats <- iss_sites_lcc
  st_geometry(strats) <- NULL
@@ -87,7 +89,7 @@ source("functions/mungeCARdata4stan.R")
 sp = sps[25]
 FYYYY = 1974
 dts <- filter(ssData,CommonName == sp,
-              YearCollected >= FYYYY)
+              YearCollected > FYYYY)
 nyrs_study <- 2019-FYYYY #length of the time-series being modeled
 
 
@@ -140,35 +142,35 @@ dts <- filter(dts,SurveyAreaIdentifier %in% sites_keep$SurveyAreaIdentifier)
 #number of years with non-zero observations, by region
 nyrs_region <- dts %>% 
   filter(present == TRUE) %>%  
-  group_by(hex_name,YearCollected) %>% 
+  group_by(ST_12,YearCollected) %>% 
   summarise(nobs = n()) %>% 
-  group_by(hex_name) %>% 
+  group_by(ST_12) %>% 
   summarise(nyears = n(),
             span_years = yspn(YearCollected),
             fyear = min(YearCollected),
             lyear = max(YearCollected))
 
 #strats with 7 or more years of non-zero, observations - species has to be observed in a region in at least 2/3 of the years in the time-series
-regions_keep <- nyrs_region[which(nyrs_region$span_years >= nyrs_study*0.5),"hex_name"]
+regions_keep <- nyrs_region[which(nyrs_region$span_years >= nyrs_study*0.5),"ST_12"]
 
 
 # drop strata with < 7 years of non-zero observations ---------------------
 
 
-dts <- filter(dts,hex_name %in% regions_keep$hex_name) 
+dts <- filter(dts,ST_12 %in% regions_keep$ST_12) 
 
-real_grid <- poly_grid %>% filter(hex_name %in% regions_keep$hex_name) 
+real_grid <- bbs_strat %>% filter(ST_12 %in% regions_keep$ST_12) 
 
-strats_dts <- data.frame(hex_name = real_grid$hex_name,
-                         stratn = 1:length(real_grid$hex_name))
+strats_dts <- data.frame(ST_12 = real_grid$ST_12,
+                         stratn = 1:length(real_grid$ST_12))
 
-dts <- left_join(dts,strats_dts,by = "hex_name")
+dts <- left_join(dts,strats_dts,by = "ST_12")
 
 # generate neighbourhoods -------------------------------------------------
 
 coords = st_coordinates(st_centroid(real_grid))
 
-nb_db <- spdep::tri2nb(coords,row.names = real_grid$hex_name)
+nb_db <- spdep::tri2nb(coords,row.names = real_grid$ST_12)
 
 nb_info = spdep::nb2WB(nb_db)
 
@@ -195,17 +197,18 @@ dts <- dts %>% mutate(count = as.integer(ObservationCount),
 nstrata = max(dts$strat)
 nsites = max(dts$site)
 
+
 ## indexing of sites by strata for annual index calculations
 sByReg = unique(dts[,c("site","strat")])
- sByReg <- arrange(sByReg,strat,site)
+sByReg <- arrange(sByReg,strat,site)
 # 
- nsites_strat <- table(sByReg$strat)
- max_sites <- max(nsites_strat)
- sites <- matrix(data = 0,nrow = max_sites,ncol = nstrata)
+nsites_strat <- table(sByReg$strat)
+max_sites <- max(nsites_strat)
+sites <- matrix(data = 0,nrow = max_sites,ncol = nstrata)
 for(j in 1:nstrata){
   sites[1:nsites_strat[j],j] <- as.integer(unlist(sByReg[which(sByReg$strat == j),"site"]))
 }
- 
+
 
 
 
@@ -246,21 +249,9 @@ basis_year <- gam.basis.func(orig.preds = as.integer(unlist(dts[,"yr"])),
 # 
 
 
-
-
-# Explore site-level trajectories of observed means ------------------------
-
-# site_means <- dts %>% group_by(year,SurveyAreaIdentifier) %>%
-#   summarise(means = log(mean(count,na.rm = T)+1))
-# nrow(site_means)/nyears
-# smp = ggplot(data = site_means,aes(x = year,y = means,colour = SurveyAreaIdentifier))+
-#   geom_point(alpha = 0.05)+
-#   geom_smooth(method = "lm",se = FALSE)+
-#   #scale_y_continuous(trans = "log10")+
-#   theme(legend.position = "none")
-# print(smp)#   
-
 # prepare stan data -------------------------------------------------------
+
+
 
 stan_data <- list(count = as.integer(unlist(dts$count)),
                   year = as.integer(unlist(dts$yr-midyear)),
@@ -280,8 +271,8 @@ stan_data <- list(count = as.integer(unlist(dts$count)),
                   sites = sites,
                   
                   # season_basis = basis_season$season_basis,
-                   season_basispred = basis_season$season_basispred,
-                   nknots_season = basis_season$nknots_season,
+                  season_basispred = basis_season$season_basispred,
+                  nknots_season = basis_season$nknots_season,
                   
                   year_basispred = basis_year$year_basispred,
                   nknots_year = basis_year$nknots_year,
@@ -328,11 +319,10 @@ stime = system.time(slope_icar_stanfit <-
                                pars = parms,
                                control = list(adapt_delta = 0.9,
                                               max_treedepth = 15)))
-stime
 
+launch_shinystan(slope_icar_stanfit) 
 
- launch_shinystan(slope_icar_stanfit) 
-
+slope_icar_stanfitsoft = slope_icar_stanfit
 
 
 
