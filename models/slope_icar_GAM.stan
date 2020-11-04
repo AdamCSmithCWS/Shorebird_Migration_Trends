@@ -126,15 +126,15 @@ generated quantities {
         
   for(y in 1:nyears){
 
-      n[s,y] = exp(ALPHA1 + year_pred[y,s] + year_effect[y] + season_pred[50] ) + a[s];
-      nsmooth[s,y] = exp(ALPHA1 + year_pred[y,s] + season_pred[50] ) + a[s];
+      n[s,y] = exp(ALPHA1 + year_pred[y,s] + year_effect[y] + season_pred[50] + 0.5*(sdnoise^2)) + a[s];
+      nsmooth[s,y] = exp(ALPHA1 + year_pred[y,s] + season_pred[50] + 0.5*(sdnoise^2) ) + a[s];
     }
   }
   
     for(y in 1:nyears){
 
-      N[y] = exp(ALPHA1 + Y_pred[y] + year_effect[y] + season_pred[50] );
-      NSmooth[y] = exp(ALPHA1 + Y_pred[y] + season_pred[50] );
+      N[y] = exp(ALPHA1 + Y_pred[y] + year_effect[y] + season_pred[50] + 0.5*(sdalpha^2) + 0.5*(sdnoise^2) );
+      NSmooth[y] = exp(ALPHA1 + Y_pred[y] + season_pred[50] + 0.5*(sdalpha^2) + 0.5*(sdnoise^2) );
       
     }
     

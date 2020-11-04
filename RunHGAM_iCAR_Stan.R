@@ -4,6 +4,8 @@ library(rstan)
 library(shinystan)
 library(sf)
 library(spdep)
+library(ggforce)
+library(tidybayes)
 
 
 # library(doParallel)
@@ -84,7 +86,7 @@ source("functions/mungeCARdata4stan.R")
     
 
 #for(sp in sps){
-sp = sps[25]
+sp = sps[11]
 FYYYY = 1974
 dts <- filter(ssData,CommonName == sp,
               YearCollected >= FYYYY)
@@ -322,32 +324,102 @@ stime = system.time(slope_icar_stanfit <-
                       sampling(slope_icar_model,
                                data=stan_data,
                                verbose=TRUE, refresh=100,
-                               chains=10, iter=2000,
-                               warmup=1500,
+                               chains=10, iter=3500,
+                               warmup=3000,
                                cores = 10,
                                pars = parms,
-                               control = list(adapt_delta = 0.9,
+                               control = list(adapt_delta = 0.8,
                                               max_treedepth = 15)))
-stime
 
 
  launch_shinystan(slope_icar_stanfit) 
 
 
 
+save(list = c("slope_icar_stanfit",
+              "stan_data"),
+     file = paste0(sp,"_Stan_icar_GAM.RData"))
+
+source("functions/utility_functions.R")
+
+
+# Extract Annual Indices ------------------------------------------------
+
+
+
+indicesN <- index_summary(parm = "N",
+                          dims = "year")
+
+
+indicesNSmooth <- index_summary(parm = "NSmooth",
+                                dims = "year")
+
+
+  
+  indices = bind_rows(indicesN,indicesNSmooth)
+indices$year = indices$year + (syear-1)
+
+
+N_gg = ggplot(data = indices,aes(x = year, y = PI50,fill = parm))+
+  geom_ribbon(aes(ymin = PI2_5,ymax = PI97_5),alpha = 0.2)+
+  geom_line(aes(colour = parm))#+
+#  geom_point(aes(y = obsmean),colour = grey(0.5),alpha = 0.3)
+
+print(N_gg)
+
+
+
+indicesnsmooth <- index_summary(parm = "nsmooth")
+
+indicesn <- index_summary(parm = "n")
+
+indices_strat = bind_rows(indicesn,indicesnsmooth)
+indices_strat$year = indices_strat$year + (syear-1)
+indices_strat <- left_join(indices_strat,strats_dts, by = "stratn")
+
+pdf(file = paste0("figures/", sp," Strata trajectories.pdf"),
+    width = 8.5,
+    height = 11)
+for(jj in 1:ceiling(nstrata/12)){
+n_gg = ggplot(data = indices_strat,aes(x = year, y = PI50,fill = parm))+
+  geom_ribbon(aes(ymin = PI2_5,ymax = PI97_5),alpha = 0.2)+
+  geom_line(aes(colour = parm))+
+  geom_point(aes(y = obsmean),colour = grey(0.5),alpha = 0.1)+
+  facet_wrap_paginate(facets = ~hex_name,page = jj,nrow = 4, ncol = 3,scales = "free")
+print(n_gg)
+}
+  dev.off()
 
 
 
 
+# Calculate Annual indices using samples ----------------------------------
+
+Nsamples <- slope_icar_stanfit %>% gather_draws(N[y])
+Nsamples$year <- Nsamples$y + (syear-1)
+
+NSmoothsamples <- slope_icar_stanfit %>% gather_draws(NSmooth[y])
+NSmoothsamples$year <- NSmoothsamples$y + (syear-1)
 
 
 
+# calculate trends continent --------------------------------------------------------
 
+t_NSmooth <- ItoT(inds = NSmoothsamples,
+            start = syear,
+            end = 2019,
+            regions = FALSE,
+            qs = 95,
+            trend_type = "endpoint",
+            index_type = "smooth",
+            retransformation_type = "standard")
 
-
-
-
-
+t_NSmooth_short <- ItoT(inds = NSmoothsamples,
+                  start = 2009,
+                  end = 2019,
+                  regions = FALSE,
+                  qs = 95,
+                  index_type = "smooth")
 
 
 

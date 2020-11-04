@@ -29,42 +29,95 @@ jags_dim <- function(dim = 1,
 }
 
 
+myrename = function(fit){
+  rename_with(fit,~ paste0("PI",gsub(".","_",gsub("%", "", .x, fixed = TRUE), fixed = TRUE)),ends_with("%"))
+  
+}
+
+
+
+
+
+index_summary <- function(fit = slope_icar_stanfit,
+                          rawdat = dts,
+                          parm = "n",
+                          dims = c("stratn","year"),
+                          probs = c(0.025,0.5,0.975))
+{
+  
+  indsout = as.data.frame(summary(fit,
+                                  pars = parm,
+                                  probs = probs)$summary)
+  
+  
+  indsout = myrename(indsout)#removes the special characters in the column names
+  indsout$Parameter = row.names(indsout)
+  indsout$parm = parm
+  for(dn in 1:length(dims)){
+    dd = dims[dn]
+    indsout[,dd] = jags_dim(dim = dn,
+                            var = parm,
+                            cl = "Parameter",
+                            dat = indsout)
+    
+  }
+  
+  if(length(dims) == 1){
+    obs = rawdat %>% group_by(yr) %>% 
+      summarise(obsmean = mean(count),
+                obsmed = median(count),
+                nsurveys = n())
+    indsout <- left_join(indsout,obs,by = c("year" = "yr"))
+  }else{
+    obs = rawdat %>% group_by(stratn,yr) %>% 
+      summarise(obsmean = mean(count),
+                obsmed = median(count),
+                nsurveys = n())
+    indsout <- left_join(indsout,obs,by = c("stratn" = "stratn",
+                                            "year" = "yr"))
+  }
+  
+  return(indsout)
+}
+
+
+
 
 texp <- function(x,ny = 2019-1974){
   (x^(1/ny)-1)*100
 }
 
-
-extr_inds <- function(param = "n_s",
-                      sumtable = sums,
-                      regions = TRUE){
-  
-  pat <- paste0(param,"[")
-  wn_s <- grep(pattern = pat,
-               x = sumtable$Parameter,
-               fixed = TRUE)
-  inds <- sumtable[wn_s,]
-  
-  if(regions){
-    inds[,"s"] <- jags_dim(dim = 1,
-                         var = param,
-                         dat = inds)
-    inds[,"y"] <- jags_dim(dim = 2,
-                           var = param,
-                           dat = inds)
-    inds <- left_join(inds,strats,by = "s")
-  
-    }else{
-  
-  inds[,"y"] <- jags_dim(dim = 1,
-                         var = param,
-                         dat = inds)
-    }
-  inds$year <- inds$y +1973
-
-  return(inds)
-}
-
+# 
+# extr_inds <- function(param = "n_s",
+#                       sumtable = sums,
+#                       regions = TRUE){
+#   
+#   pat <- paste0(param,"[")
+#   wn_s <- grep(pattern = pat,
+#                x = sumtable$Parameter,
+#                fixed = TRUE)
+#   inds <- sumtable[wn_s,]
+#   
+#   if(regions){
+#     inds[,"s"] <- jags_dim(dim = 1,
+#                          var = param,
+#                          dat = inds)
+#     inds[,"y"] <- jags_dim(dim = 2,
+#                            var = param,
+#                            dat = inds)
+#     inds <- left_join(inds,strats,by = "s")
+#   
+#     }else{
+#   
+#   inds[,"y"] <- jags_dim(dim = 1,
+#                          var = param,
+#                          dat = inds)
+#     }
+#   inds$year <- inds$y +1973
+# 
+#   return(inds)
+# }
+# 
 
 
 extr_sum <- function(param = "vis.sm_season",
@@ -95,7 +148,7 @@ extr_sum <- function(param = "vis.sm_season",
 
 
 ItoT <- function(inds = NSamples,
-                 start = fyear,
+                 start = syear,
                  end = 2019,
                  regions = FALSE,
                  qs = 95,
