@@ -86,7 +86,7 @@ source("functions/mungeCARdata4stan.R")
     
 
 #for(sp in sps){
-sp = sps[11]
+sp = sps[25]
 FYYYY = 1974
 dts <- filter(ssData,CommonName == sp,
               YearCollected >= FYYYY)
@@ -303,8 +303,9 @@ parms = c("sdnoise",
           "B",
           "alpha",
           "ALPHA1",
-          "sigma",
           "sdyear",
+          "sdyear_gam_strat",
+          "sdyear_gam",
           "year_effect",
           "sdseason",
           "B_season",
@@ -314,7 +315,7 @@ parms = c("sdnoise",
           "N",
           "NSmooth")
 
-mod.file = "models/slope_icar_GAM.stan"
+mod.file = "models/slope_HGAM.stan"
 
 ## compile model
 slope_icar_model = stan_model(file=mod.file)
@@ -338,7 +339,7 @@ stime = system.time(slope_icar_stanfit <-
 
 save(list = c("slope_icar_stanfit",
               "stan_data"),
-     file = paste0(sp,"_Stan_icar_GAM.RData"))
+     file = paste0(sp,"_08delta10ch_Stan_icar_GAM.RData"))
 
 source("functions/utility_functions.R")
 
@@ -362,16 +363,18 @@ indices$year = indices$year + (syear-1)
 
 N_gg = ggplot(data = indices,aes(x = year, y = PI50,fill = parm))+
   geom_ribbon(aes(ymin = PI2_5,ymax = PI97_5),alpha = 0.2)+
-  geom_line(aes(colour = parm))#+
-#  geom_point(aes(y = obsmean),colour = grey(0.5),alpha = 0.3)
+  geom_line(aes(colour = parm))+
+  geom_point(aes(y = obsmean),colour = grey(0.5),alpha = 0.3)
 
 print(N_gg)
 
 
 
-indicesnsmooth <- index_summary(parm = "nsmooth")
+indicesnsmooth <- index_summary(parm = "nsmooth",
+                                dims = c("stratn","year"))
 
-indicesn <- index_summary(parm = "n")
+indicesn <- index_summary(parm = "n",
+                          dims = c("stratn","year"))
 
 indices_strat = bind_rows(indicesn,indicesnsmooth)
 indices_strat$year = indices_strat$year + (syear-1)
@@ -406,7 +409,7 @@ NSmoothsamples$year <- NSmoothsamples$y + (syear-1)
 # calculate trends continent --------------------------------------------------------
 
 t_NSmooth <- ItoT(inds = NSmoothsamples,
-            start = syear,
+            start = 1980,
             end = 2019,
             regions = FALSE,
             qs = 95,

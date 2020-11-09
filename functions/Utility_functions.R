@@ -69,12 +69,22 @@ index_summary <- function(fit = slope_icar_stanfit,
                 nsurveys = n())
     indsout <- left_join(indsout,obs,by = c("year" = "yr"))
   }else{
-    obs = rawdat %>% group_by(stratn,yr) %>% 
+    if(dims[1] == "stratn"){
+      obs = rawdat %>% group_by(stratn,yr) %>% 
+        summarise(obsmean = mean(count),
+                  obsmed = median(count),
+                  nsurveys = n())
+      indsout <- left_join(indsout,obs,by = c("stratn" = "stratn",
+                                              "year" = "yr"))
+      
+    }else{
+    obs = rawdat %>% group_by(site,yr) %>% 
       summarise(obsmean = mean(count),
                 obsmed = median(count),
                 nsurveys = n())
-    indsout <- left_join(indsout,obs,by = c("stratn" = "stratn",
+    indsout <- left_join(indsout,obs,by = c("site" = "site",
                                             "year" = "yr"))
+    }
   }
   
   return(indsout)

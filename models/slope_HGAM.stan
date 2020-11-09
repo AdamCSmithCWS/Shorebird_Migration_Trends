@@ -2,12 +2,6 @@
 // and a gam-based Seasonal adjustment
 
 
-functions {
-  real icar_normal_lpdf(vector bb, int nstrata, int[] node1, int[] node2) {
-    return -0.5 * dot_self(bb[node1] - bb[node2])
-      + normal_lpdf(sum(bb) | 0, 0.001 * nstrata); //soft sum to zero constraint on phi
- }
-}
 
 
 data {
@@ -47,35 +41,31 @@ parameters {
   vector[nsites] alpha;             // intercepts
   vector[nyears] year_effect;             // continental year-effects
   vector[ncounts] noise;             // over-dispersion
-  matrix[nstrata,nknots_year] b_raw;         // spatial effect slopes (0-centered deviation from continental mean slope B)
+  matrix[nstrata,nknots_year] b;         // spatial effect slopes (0-centered deviation from continental mean slope B)
   vector[nknots_year] B;             // GAM coefficients year
   
   vector[nknots_season] B_season;         // GAM coefficients
   
-  real<lower=0> sigma[nknots_year];    // spatial standard deviation
-  real<lower=0> sdnoise;    // sd of over-dispersion
+ real<lower=0> sdnoise;    // sd of over-dispersion
  //real<lower=1> nu; 
   real<lower=0> sdalpha;    // sd of site effects
   real<lower=0> sdyear;    // sd of year effects
   real<lower=0> sdseason;    // sd of year effects
   real<lower=0> sdyear_gam;    // sd of GAM coefficients
+  real<lower=0> sdyear_gam_strat[nstrata]; //sd of strata level gams
   real ALPHA1; // overall intercept
 }
 
 transformed parameters { 
-  matrix[nstrata,nknots_year] b; //  
   vector[ncounts] E;           // log_scale additive likelihood
   vector[ndays] season_pred = season_basispred*B_season;
     matrix[nyears,nstrata] year_pred;
   vector[nyears] Y_pred;  
 
-  for(k in 1:nknots_year){
-    b[,k] = (sigma[k] * b_raw[,k]) + B[k];
-  }
   Y_pred = year_basispred * B; 
   
       for(s in 1:nstrata){
-     year_pred[,s] = year_basispred * transpose(b[s,]);
+     year_pred[,s] = Y_pred + (year_basispred * transpose(b[s,]));
 }
 
   for(i in 1:ncounts){
@@ -83,12 +73,13 @@ transformed parameters {
   }
   
   }
-model {
+model { 
   sdnoise ~ normal(0,1); //prior on scale of extra Poisson log-normal variance
   sdyear ~ normal(0,1); //prior on scale of site level variation
   sdalpha ~ normal(0,1); //prior on scale of site level variation
   sdyear_gam ~ normal(0,0.2); //prior on sd of gam hyperparameters
-  //nu ~ gamma(2,0.1); // prior on df for t-distribution of heavy tailed site-effects from https://github.com/stan-dev/stan/wiki/Prior-Choice-Recommendations#prior-for-degrees-of-freedom-in-students-t-distribution
+  sdyear_gam_strat ~ normal(0,0.05); // regularizing prior on variance of stratum level gam
+ //nu ~ gamma(2,0.1); // prior on df for t-distribution of heavy tailed site-effects from https://github.com/stan-dev/stan/wiki/Prior-Choice-Recommendations#prior-for-degrees-of-freedom-in-students-t-distribution
   sdseason ~ normal(0,1);//variance of GAM parameters
   B_season ~ normal(0,sdseason);//GAM parameters
   ALPHA1 ~ normal(0,1);// overall species intercept
@@ -97,14 +88,15 @@ model {
   alpha ~ normal(0,sdalpha); // fixed site-effects
   noise ~ normal(0,sdnoise); //heavy tailed extra Poisson log-normal variance
   B ~ normal(0,sdyear_gam);// prior on GAM hyperparameters
-  sigma ~ normal(0,1); //prior on scale of spatial variation
-  year_effect ~ normal(0,sdyear); //prior on scale of spatial variation
+  year_effect ~ normal(0,sdyear); //prior on scale of annual fluctuations
   sum(year_effect) ~ normal(0,0.0001*nyears);//sum to zero constraint on year-effects
   sum(alpha) ~ normal(0,0.001*nsites);//sum to zero constraint on site-effects
   sum(B) ~ normal(0,0.001*nknots_year);//sum to zero constraint on GAM hyperparameters
   
-  for(k in 1:nknots_year){
-  b_raw[,k] ~ icar_normal_lpdf(nstrata, node1, node2);
+  for(s in 1:nstrata){
+ b[s,] ~ normal(0,sdyear_gam_strat[s]);
+  sum(b[s,]) ~ normal(0,0.001*nknots_year);//sum to zero constraint on GAM hyperparameters
+  
   }
 }
 

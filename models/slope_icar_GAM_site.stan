@@ -92,7 +92,7 @@ model {
   alpha ~ normal(0,sdalpha); // fixed site-effects
   noise ~ normal(0,sdnoise); //heavy tailed extra Poisson log-normal variance
   B ~ normal(0,sdyear_gam);// prior on GAM hyperparameters
-  sigma ~ normal(0,1); //prior on scale of spatial variation
+  sigma ~ normal(0,0.25); //regularizing prior on scale of spatial variation
   year_effect ~ normal(0,sdyear); //prior on scale of spatial variation
   sum(year_effect) ~ normal(0,0.0001*nyears);//sum to zero constraint on year-effects
   sum(alpha) ~ normal(0,0.001*nsites);//sum to zero constraint on site-effects
@@ -100,7 +100,7 @@ model {
   sum(B_season) ~ normal(0,0.001*nknots_season);//sum to zero constraint on GAM seasonal parameters
   
   for(k in 1:nknots_year){
-  b_raw[,k] ~ icar_normal_lpdf(nsites, node1, node2);
+  b_raw[,k] ~ icar_normal_lpdf(nsites, node1, node2); 
   }
 }
 
@@ -109,20 +109,20 @@ generated quantities {
   real<lower=0> NSmooth[nyears];
   real<lower=0> n[nsites,nyears];
   real<lower=0> nsmooth[nsites,nyears];
-  
+  real seas_max = max(season_pred);
       for(s in 1:nsites){
 
   for(y in 1:nyears){
 
-      n[s,y] = exp(ALPHA1 + year_pred[y,s] + year_effect[y] + season_pred[50] + alpha[s] + (0.5*(sdnoise^2)));
-      nsmooth[s,y] = exp(ALPHA1 + year_pred[y,s] + season_pred[50] + alpha[s] + (0.5*(sdnoise^2)));
+      n[s,y] = exp(ALPHA1 + year_pred[y,s] + year_effect[y] + seas_max + alpha[s] + (0.5*(sdnoise^2)));
+      nsmooth[s,y] = exp(ALPHA1 + year_pred[y,s] + seas_max + alpha[s] + (0.5*(sdnoise^2)));
     }
   }
   
     for(y in 1:nyears){
 
-      N[y] = exp(ALPHA1 + Y_pred[y] + year_effect[y] + season_pred[50] + (0.5*(sdnoise^2)) + (0.5*(sdalpha^2)));
-      NSmooth[y] = exp(ALPHA1 + Y_pred[y] + season_pred[50] + (0.5*(sdnoise^2)) + (0.5*(sdalpha^2)));
+      N[y] = exp(ALPHA1 + Y_pred[y] + year_effect[y] + seas_max + (0.5*(sdnoise^2)) + (0.5*(sdalpha^2)));
+      NSmooth[y] = exp(ALPHA1 + Y_pred[y] + seas_max+ (0.5*(sdnoise^2)) + (0.5*(sdalpha^2)));
       
     }
     
