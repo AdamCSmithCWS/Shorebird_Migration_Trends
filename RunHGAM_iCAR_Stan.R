@@ -308,14 +308,15 @@ parms = c("sdnoise",
           "sdyear_gam",
           "year_effect",
           "sdseason",
-          "B_season",
+          "B_season_raw",
           "season_pred",
           "n",
           "nsmooth",
           "N",
-          "NSmooth")
+          "NSmooth",
+          "log_lik")
 
-mod.file = "models/slope_HGAM.stan"
+mod.file = "models/GAMYE_strata.stan"
 
 ## compile model
 slope_icar_model = stan_model(file=mod.file)
@@ -325,9 +326,9 @@ stime = system.time(slope_icar_stanfit <-
                       sampling(slope_icar_model,
                                data=stan_data,
                                verbose=TRUE, refresh=100,
-                               chains=10, iter=3500,
-                               warmup=3000,
-                               cores = 10,
+                               chains=1, iter=2000,
+                               warmup=1000,
+                               cores = 1,
                                pars = parms,
                                control = list(adapt_delta = 0.8,
                                               max_treedepth = 15)))
@@ -338,14 +339,70 @@ stime = system.time(slope_icar_stanfit <-
 
 
 save(list = c("slope_icar_stanfit",
-              "stan_data"),
-     file = paste0(sp,"_08delta10ch_Stan_icar_GAM.RData"))
+              "stan_data",
+              "dts"),
+     file = paste0(sp,"_08delta15ch_Stan_icar_GAM.RData"))
+
+load(paste0(sp,"_08delta15ch_Stan_icar_GAM.RData"))
+
+# Calculate Annual indices using samples ----------------------------------
+
 
 source("functions/utility_functions.R")
 
 
-# Extract Annual Indices ------------------------------------------------
+Nsamples <- slope_icar_stanfit %>% gather_draws(N[y])
+Nsamples$year <- Nsamples$y + (syear-1)
 
+NSmoothsamples <- slope_icar_stanfit %>% gather_draws(NSmooth[y])
+NSmoothsamples$year <- NSmoothsamples$y + (syear-1)
+
+
+
+# calculate trends continent --------------------------------------------------------
+
+
+t_NSmooth_84 <- ItoT(inds = NSmoothsamples,
+                  start = 1984,
+                  end = 2019,
+                  regions = FALSE,
+                  qs = 95,
+                  trend_type = "endpoint",
+                  index_type = "smooth",
+                  retransformation_type = "standard")
+t_NSmooth_74 <- ItoT(inds = NSmoothsamples,
+                  start = 1974,
+                  end = 2019,
+                  regions = FALSE,
+                  qs = 95,
+                  trend_type = "endpoint",
+                  index_type = "smooth",
+                  retransformation_type = "standard")
+
+t_NSmooth_07 <- ItoT(inds = NSmoothsamples,
+                        start = 2007,
+                        end = 2019,
+                        regions = FALSE,
+                        qs = 95,
+                        index_type = "smooth")
+
+anot_funct <- function(x){
+  ant = paste(signif(x$percent_change,3),
+        "% since",
+        x$start_year,
+        "[",
+        signif(x$p_ch_lci,3),
+        " : ",
+        signif(x$p_ch_uci,3),
+        "]")
+}
+
+anot_74 = anot_funct(t_NSmooth_74)
+anot_84 = anot_funct(t_NSmooth_84)
+anot_07 = anot_funct(t_NSmooth_07)
+
+
+# Extract Annual Indices ------------------------------------------------
 
 
 indicesN <- index_summary(parm = "N",
@@ -359,16 +416,22 @@ indicesNSmooth <- index_summary(parm = "NSmooth",
   
   indices = bind_rows(indicesN,indicesNSmooth)
 indices$year = indices$year + (syear-1)
-
+yup = max(max(indices$PI97_5),max(indices$obsmean))
 
 N_gg = ggplot(data = indices,aes(x = year, y = PI50,fill = parm))+
   geom_ribbon(aes(ymin = PI2_5,ymax = PI97_5),alpha = 0.2)+
   geom_line(aes(colour = parm))+
+  labs(title = paste(sp,"GAMYE continental traj (full and smooth) with obs means"))+
+  theme(legend.position = "none")+
+  annotate("text", x = 1997, y = yup*0.9, label = anot_74)+
+  annotate("text", x = 1997, y = yup*0.8, label = anot_84)+
+  annotate("text", x = 1997, y = yup*0.7, label = anot_07)+
   geom_point(aes(y = obsmean),colour = grey(0.5),alpha = 0.3)
 
+
+pdf(paste0("figures/",sp,"_GAMYE_survey_wide_trajectory.pdf"))
 print(N_gg)
-
-
+dev.off()
 
 indicesnsmooth <- index_summary(parm = "nsmooth",
                                 dims = c("stratn","year"))
@@ -380,7 +443,7 @@ indices_strat = bind_rows(indicesn,indicesnsmooth)
 indices_strat$year = indices_strat$year + (syear-1)
 indices_strat <- left_join(indices_strat,strats_dts, by = "stratn")
 
-pdf(file = paste0("figures/", sp," Strata trajectories.pdf"),
+pdf(file = paste0("figures/", sp,"_GAMYE_Strata_trajectories.pdf"),
     width = 8.5,
     height = 11)
 for(jj in 1:ceiling(nstrata/12)){
@@ -395,34 +458,6 @@ print(n_gg)
 
 
 
-
-# Calculate Annual indices using samples ----------------------------------
-
-Nsamples <- slope_icar_stanfit %>% gather_draws(N[y])
-Nsamples$year <- Nsamples$y + (syear-1)
-
-NSmoothsamples <- slope_icar_stanfit %>% gather_draws(NSmooth[y])
-NSmoothsamples$year <- NSmoothsamples$y + (syear-1)
-
-
-
-# calculate trends continent --------------------------------------------------------
-
-t_NSmooth <- ItoT(inds = NSmoothsamples,
-            start = 1980,
-            end = 2019,
-            regions = FALSE,
-            qs = 95,
-            trend_type = "endpoint",
-            index_type = "smooth",
-            retransformation_type = "standard")
-
-t_NSmooth_short <- ItoT(inds = NSmoothsamples,
-                  start = 2009,
-                  end = 2019,
-                  regions = FALSE,
-                  qs = 95,
-                  index_type = "smooth")
 
 
 
@@ -486,214 +521,214 @@ t_NSmooth_short <- ItoT(inds = NSmoothsamples,
 stopCluster(cl = cluster)
 
 
-
-
-
-# Plotting ----------------------------------------------------------------
-
-library(tidybayes)
-
-load("data/allShorebirdPrismFallCounts.RData")
-source("functions/Utility_functions.R")
-
-for(sp in sps){
-  
-  if(file.exists(paste0("output/",sp,"slope_results.RData"))){
-  
-  load(paste0("output/",sp,"slope_ZIP_results.RData"))
-  
-    fyear = (min(dts$YearCollected))
-    
-  strats = unique(dts[,c("strat","Region")])
-  strats = rename(strats,s = strat)
-  
-  
-  
-  sums = data.frame(out2$summary)
-  names(sums) <- c("mean","sd","lci","lqrt","median","uqrt","uci","Rhat","n.eff","overlap0","f")
-  sums$Parameter = row.names(sums)
-  
-  # compiling indices -------------------------------------
-  
-  n_inds <- extr_inds(param = "n_s")
-  N_inds <- extr_inds(param = "N",regions = FALSE)
- 
- 
-  
-  sdnoise_st = extr_sum(param = "sdnoise",
-                    index = c("s"),
-                    log_retrans = F) 
-  sdnoise_st <- left_join(sdnoise_st,strats,by = "s")
-  
-  nu_st = extr_sum(param = "nu",
-                        index = c("s"),
-                        log_retrans = F) 
-  nu_st <- left_join(nu_st,strats,by = "s")
-  
-  
-  
-  psi_st = extr_sum(param = "psi",
-                       index = c("j","s"),
-                       log_retrans = F) 
- 
-  psiSamples <- out2$samples %>% gather_draws(psi)
-  sdnoiseSamples <- out2$samples %>% gather_draws(sdnoise[s])
-  
-# extracting the seasonal smooth ------------------------------------------
-
-  season_sm = extr_sum(param = "vis.sm_season",
-                       index = c("day","s"),
-                       log_retrans = TRUE) 
-  
-  season_sm <- left_join(season_sm,strats)
-  pp <- ggplot()+
-    geom_line(data = season_sm,aes(x = day,y = mean,colour = Region,group = Region))+
-    geom_ribbon(data = season_sm,aes(x = day,ymax = uci,ymin = lci),alpha = 0.2)+
-    ylab("")+
-    xlab("Days since July 1")+
-    facet_wrap(facets = ~Region,ncol = 3,scales = "free")
-  
-  
-  
-  pdf(file = paste0("Figures/",sp,"_Season_slope.pdf"),
-      width = 8.5,
-      height = 11)
-  print(pp)
-  dev.off()
-  
-  # calculating trends  -----------------------------------------------------
-  
-  NSamples <- out2$samples %>% gather_draws(N[y])
-  NSamples$year <- NSamples$y + fyear-1
-  
-
-  
-  N_compSamples <- out2$samples %>% gather_draws(N_comp[y])
-  N_compSamples$year <- N_compSamples$y + fyear-1
-  
-  n_sSamples <- out2$samples %>% gather_draws(n_s[s,y])
-  n_sSamples$year <- n_sSamples$y + fyear-1
-  n_sSamples <- left_join(n_sSamples,strats,by = "s")
-  
- 
-
-  t_n_s <- ItoT(inds = n_sSamples,regions = TRUE)
-
-  
-  
-  
-  t_n_sS <- ItoT_slope(inds = n_sSamples,regions = TRUE)
-
-  
-  # t_n_s_a1 <- ItoT(inds = n_s_a1Samples,regions = TRUE,retransformation_type = "lognormal_only")
-  # 
-  # 
-  # t_n_s_a2 <- ItoT(inds = n_s_a2Samples,regions = TRUE,retransformation_type = "none")
-  # 
-  # 
-  # 
-  t_N <- ItoT(inds = NSamples,regions = FALSE)
-
-  
-  t_n_s_15 <- ItoT(inds = n_sSamples,regions = TRUE,start= 2004)
-
-  
-  t_n_sS_15 <- ItoT_slope(inds = n_sSamples,regions = TRUE,start= 2004)
-
-  
-  t_N_15 <- ItoT(inds = NSamples,regions = FALSE,start= 2004)
-
-  t_NS <- ItoT_slope(inds = NSamples,regions = FALSE)
-  t_NS_15 <- ItoT_slope(inds = NSamples,regions = FALSE,start= 2004)
-  
-  
-  
-  t_N_comp <- ItoT(inds = N_compSamples,regions = FALSE,start = 1978)
-  
-  t_N_comp_15 <- ItoT(inds = N_compSamples,regions = FALSE,start= 2004)
-  
-  t_N_compS <- ItoT_slope(inds = N_compSamples,regions = FALSE)
-  t_N_compS_15 <- ItoT_slope(inds = N_compSamples,regions = FALSE,start= 2004)
-  
-  
-
-  trend_out <- bind_rows(t_N,
-                         t_N_15,
-                         t_NS,
-                         t_NS_15,
-                         t_N_comp,
-                         t_N_comp_15,
-                         t_N_compS,
-                         t_N_compS_15,
-                         t_n_s,
-                         t_n_sS,
-                         t_n_s_15,
-                         t_n_sS_15)
-  
-  write.csv(trend_out,file = paste0("Trends/trends_slope_",sp,".csv"),row.names = F)
-  
-  # plotting indices --------------------------------------------------------
-  
-  
-  # plot_Hyper <- plot_ind(inds = N_inds,
-  #                        #smooth_inds = ,
-  #                        raw = dts,
-  #                        add_observed = TRUE,
-  #                        add_samplesize = TRUE,
-  #                        species = sp,
-  #                        regions = FALSE,
-  #                        title_size = 20,
-  #                        axis_title_size = 18,
-  #                        axis_text_size = 16)  
-  # 
-  # pdf(file = paste0("Figures/",sp,"_Hyperparameter_slope.pdf"),
-  #     width = 8.5,
-  #     height = 11)
-  # print(plot_Hyper)
-  # dev.off()
-  
-  
-  
-  
-#   plot_by_st <- plot_ind(inds = n_inds_a2,
-#                          #smooth_inds = ,
-#                          raw = dts,
-#                          add_observed = TRUE,
-#                          add_samplesize = TRUE,
-#                          species = sp,
-#                          regions = TRUE,
-#                          title_size = 20,
-#                          axis_title_size = 18,
-#                          axis_text_size = 16)  
+# 
+# 
+# 
+# # Plotting ----------------------------------------------------------------
+# 
+# library(tidybayes)
+# 
+# load("data/allShorebirdPrismFallCounts.RData")
+# source("functions/Utility_functions.R")
+# 
+# for(sp in sps){
 #   
-#   pdf(file = paste0("Figures/",sp,"_A2_slope.pdf"),
+#   if(file.exists(paste0("output/",sp,"slope_results.RData"))){
+#   
+#   load(paste0("output/",sp,"slope_ZIP_results.RData"))
+#   
+#     fyear = (min(dts$YearCollected))
+#     
+#   strats = unique(dts[,c("strat","Region")])
+#   strats = rename(strats,s = strat)
+#   
+#   
+#   
+#   sums = data.frame(out2$summary)
+#   names(sums) <- c("mean","sd","lci","lqrt","median","uqrt","uci","Rhat","n.eff","overlap0","f")
+#   sums$Parameter = row.names(sums)
+#   
+#   # compiling indices -------------------------------------
+#   
+#   n_inds <- extr_inds(param = "n_s")
+#   N_inds <- extr_inds(param = "N",regions = FALSE)
+#  
+#  
+#   
+#   sdnoise_st = extr_sum(param = "sdnoise",
+#                     index = c("s"),
+#                     log_retrans = F) 
+#   sdnoise_st <- left_join(sdnoise_st,strats,by = "s")
+#   
+#   nu_st = extr_sum(param = "nu",
+#                         index = c("s"),
+#                         log_retrans = F) 
+#   nu_st <- left_join(nu_st,strats,by = "s")
+#   
+#   
+#   
+#   psi_st = extr_sum(param = "psi",
+#                        index = c("j","s"),
+#                        log_retrans = F) 
+#  
+#   psiSamples <- out2$samples %>% gather_draws(psi)
+#   sdnoiseSamples <- out2$samples %>% gather_draws(sdnoise[s])
+#   
+# # extracting the seasonal smooth ------------------------------------------
+# 
+#   season_sm = extr_sum(param = "vis.sm_season",
+#                        index = c("day","s"),
+#                        log_retrans = TRUE) 
+#   
+#   season_sm <- left_join(season_sm,strats)
+#   pp <- ggplot()+
+#     geom_line(data = season_sm,aes(x = day,y = mean,colour = Region,group = Region))+
+#     geom_ribbon(data = season_sm,aes(x = day,ymax = uci,ymin = lci),alpha = 0.2)+
+#     ylab("")+
+#     xlab("Days since July 1")+
+#     facet_wrap(facets = ~Region,ncol = 3,scales = "free")
+#   
+#   
+#   
+#   pdf(file = paste0("Figures/",sp,"_Season_slope.pdf"),
 #       width = 8.5,
 #       height = 11)
+#   print(pp)
+#   dev.off()
+#   
+#   # calculating trends  -----------------------------------------------------
+#   
+#   NSamples <- out2$samples %>% gather_draws(N[y])
+#   NSamples$year <- NSamples$y + fyear-1
+#   
+# 
+#   
+#   N_compSamples <- out2$samples %>% gather_draws(N_comp[y])
+#   N_compSamples$year <- N_compSamples$y + fyear-1
+#   
+#   n_sSamples <- out2$samples %>% gather_draws(n_s[s,y])
+#   n_sSamples$year <- n_sSamples$y + fyear-1
+#   n_sSamples <- left_join(n_sSamples,strats,by = "s")
+#   
+#  
+# 
+#   t_n_s <- ItoT(inds = n_sSamples,regions = TRUE)
+# 
+#   
+#   
+#   
+#   t_n_sS <- ItoT_slope(inds = n_sSamples,regions = TRUE)
+# 
+#   
+#   # t_n_s_a1 <- ItoT(inds = n_s_a1Samples,regions = TRUE,retransformation_type = "lognormal_only")
+#   # 
+#   # 
+#   # t_n_s_a2 <- ItoT(inds = n_s_a2Samples,regions = TRUE,retransformation_type = "none")
+#   # 
+#   # 
+#   # 
+#   t_N <- ItoT(inds = NSamples,regions = FALSE)
+# 
+#   
+#   t_n_s_15 <- ItoT(inds = n_sSamples,regions = TRUE,start= 2004)
+# 
+#   
+#   t_n_sS_15 <- ItoT_slope(inds = n_sSamples,regions = TRUE,start= 2004)
+# 
+#   
+#   t_N_15 <- ItoT(inds = NSamples,regions = FALSE,start= 2004)
+# 
+#   t_NS <- ItoT_slope(inds = NSamples,regions = FALSE)
+#   t_NS_15 <- ItoT_slope(inds = NSamples,regions = FALSE,start= 2004)
+#   
+#   
+#   
+#   t_N_comp <- ItoT(inds = N_compSamples,regions = FALSE,start = 1978)
+#   
+#   t_N_comp_15 <- ItoT(inds = N_compSamples,regions = FALSE,start= 2004)
+#   
+#   t_N_compS <- ItoT_slope(inds = N_compSamples,regions = FALSE)
+#   t_N_compS_15 <- ItoT_slope(inds = N_compSamples,regions = FALSE,start= 2004)
+#   
+#   
+# 
+#   trend_out <- bind_rows(t_N,
+#                          t_N_15,
+#                          t_NS,
+#                          t_NS_15,
+#                          t_N_comp,
+#                          t_N_comp_15,
+#                          t_N_compS,
+#                          t_N_compS_15,
+#                          t_n_s,
+#                          t_n_sS,
+#                          t_n_s_15,
+#                          t_n_sS_15)
+#   
+#   write.csv(trend_out,file = paste0("Trends/trends_slope_",sp,".csv"),row.names = F)
+#   
+#   # plotting indices --------------------------------------------------------
+#   
+#   
+#   # plot_Hyper <- plot_ind(inds = N_inds,
+#   #                        #smooth_inds = ,
+#   #                        raw = dts,
+#   #                        add_observed = TRUE,
+#   #                        add_samplesize = TRUE,
+#   #                        species = sp,
+#   #                        regions = FALSE,
+#   #                        title_size = 20,
+#   #                        axis_title_size = 18,
+#   #                        axis_text_size = 16)  
+#   # 
+#   # pdf(file = paste0("Figures/",sp,"_Hyperparameter_slope.pdf"),
+#   #     width = 8.5,
+#   #     height = 11)
+#   # print(plot_Hyper)
+#   # dev.off()
+#   
+#   
+#   
+#   
+# #   plot_by_st <- plot_ind(inds = n_inds_a2,
+# #                          #smooth_inds = ,
+# #                          raw = dts,
+# #                          add_observed = TRUE,
+# #                          add_samplesize = TRUE,
+# #                          species = sp,
+# #                          regions = TRUE,
+# #                          title_size = 20,
+# #                          axis_title_size = 18,
+# #                          axis_text_size = 16)  
+# #   
+# #   pdf(file = paste0("Figures/",sp,"_A2_slope.pdf"),
+# #       width = 8.5,
+# #       height = 11)
+# # print(plot_by_st)
+# # dev.off()
+# 
+# 
+# plot_by_st <- plot_ind(inds = n_inds,
+#                        smooth_inds = NULL,
+#                        raw = dts,
+#                        add_observed = TRUE,
+#                        add_samplesize = TRUE,
+#                        species = sp,
+#                        regions = TRUE,
+#                        title_size = 20,
+#                        axis_title_size = 18,
+#                        axis_text_size = 16)  
+# 
+# pdf(file = paste0("Figures/",sp,"_A1_slope.pdf"),
+#     width = 8.5,
+#     height = 11)
 # print(plot_by_st)
 # dev.off()
-
-
-plot_by_st <- plot_ind(inds = n_inds,
-                       smooth_inds = NULL,
-                       raw = dts,
-                       add_observed = TRUE,
-                       add_samplesize = TRUE,
-                       species = sp,
-                       regions = TRUE,
-                       title_size = 20,
-                       axis_title_size = 18,
-                       axis_text_size = 16)  
-
-pdf(file = paste0("Figures/",sp,"_A1_slope.pdf"),
-    width = 8.5,
-    height = 11)
-print(plot_by_st)
-dev.off()
-
-
-
-
-}# end if output exists
-
-}
+# 
+# 
+# 
+# 
+# }# end if output exists
+# 
+# }
 
