@@ -97,6 +97,9 @@ texp <- function(x,ny = 2019-1974){
   (x^(1/ny)-1)*100
 }
 
+chng <- function(x){
+  (x-1)*100
+}
 # 
 # extr_inds <- function(param = "n_s",
 #                       sumtable = sums,
@@ -184,11 +187,16 @@ ItoT <- function(inds = NSamples,
   
   
   tt <- indt %>% group_by(.draw) %>% 
-    summarise(t = texp(end/start,ny = nyrs),.groups = "keep") %>%
+    summarise(t = texp(end/start,ny = nyrs),
+              ch = chng(end/start),
+              .groups = "keep") %>%
     ungroup() %>% 
     summarise(trend = mean(t),
               lci = quantile(t,lq,names = FALSE),
-              uci = quantile(t,uq,names = FALSE))
+              uci = quantile(t,uq,names = FALSE),
+              percent_change = median(ch),
+              p_ch_lci = quantile(ch,lq,names = FALSE),
+              p_ch_uci = quantile(ch,uq,names = FALSE))
   
   if(regions){
     
@@ -204,18 +212,26 @@ ItoT <- function(inds = NSamples,
     
     
     tt1 <- indt %>% group_by(.draw,Region) %>% 
-      summarise(t = texp(end/start,ny = nyrs),.groups = "keep") %>%
+      summarise(t = texp(end/start,ny = nyrs),
+                ch = chng(end/start),
+                .groups = "keep") %>%
       ungroup() %>% 
       group_by(Region) %>% 
       summarise(trend = mean(t),
                 lci = quantile(t,lq,names = FALSE),
                 uci = quantile(t,uq,names = FALSE),
+                percent_change = median(ch),
+                p_ch_lci = quantile(ch,lq,names = FALSE),
+                p_ch_uci = quantile(ch,uq,names = FALSE),
                 .groups = "keep")
+    
     
     tt2 <- indt %>% group_by(.draw) %>% 
       summarise(end = sum(end),
-                start = sum(start),.groups = "keep") %>% 
-      summarise(t = texp(end/start,ny = nyrs),.groups = "keep") %>%
+                start = sum(start),.groups = "keep") %>%       
+      summarise(t = texp(end/start,ny = nyrs),
+               ch = chng(end/start),
+               .groups = "keep") %>%
       ungroup() %>% 
       summarise(trend = mean(t),
                 lci = quantile(t,lq,names = FALSE),

@@ -36,7 +36,7 @@
                       #### if there is a better value then insert the index for the relevant value of predpoints
                       # for(y in 1:nyears){
                       # for(s in 1:nstrata){
-                      # n[i,t] <- exp(strata[i] + beta[i]*(t-fixedyear) + yeareffect[i,t] + vis.sm_year[10] ) 
+                      # n[i,t] <- exp(strata[i] + beta[i]*(t-fixedyear) + yeareffect[i,t] + vis.sm_year[23] ) 
                       # }
                       # }
                       # 	
