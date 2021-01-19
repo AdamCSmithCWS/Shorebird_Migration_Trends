@@ -94,7 +94,8 @@ model {
   sum(B) ~ normal(0,0.001*nknots_year);//sum to zero constraint on GAM hyperparameters
   
   for(s in 1:nstrata){
- b[s,] ~ normal(0,sdyear_gam_strat[s]);
+ b[s,] ~ student_t(4,0,sdyear_gam_strat[s]);//t-distribution for shrinkage prior with nu = 4 for finite kurtosis
+ // priors place 90% of the prior distribution between -0.1 and 0.1 for b-values
   sum(b[s,]) ~ normal(0,0.001*nknots_year);//sum to zero constraint on GAM hyperparameters
   
   }
