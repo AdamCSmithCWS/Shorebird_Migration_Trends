@@ -1,6 +1,7 @@
 # SPECIES MCMC data-prep -------------------------------------------------------
 library(tidyverse)
 library(rstan)
+rstan_options(auto_write = TRUE,javascript = FALSE)
 library(shinystan)
 library(sf)
 library(spdep)
@@ -23,6 +24,37 @@ source("functions/mungeCARdata4stan.R")
  ssData <- filter(ssData,StateProvince != "US-HI")
  ssData <- filter(ssData,StateProvince != "US-AK")
  ssData <- filter(ssData,StateProvince != "NT")
+ 
+ 
+
+# generate site-size predictors for species groups ------------------------
+
+sp_groups = read.csv("data/Flock_Sizes.csv") 
+ 
+sp_groups$flock <- ifelse(is.na(sp_groups$Large_flocks),"small","large")
+
+ssData <- inner_join(ssData,sp_groups[,c("Species","flock")],
+                           by = c("CommonName" = "Species"))
+ 
+q_max_flock <- ssData %>% group_by(SurveyAreaIdentifier,flock) %>% 
+  summarise(max_count = max(ObservationCount),
+            Q98_count = quantile(ObservationCount,0.98),
+            dif = max_count-Q98_count) %>% 
+  mutate(size = ifelse(Q98_count == 0,log(max_count/2),log(Q98_count)))
+
+q_m_large = filter(q_max_flock,flock == "large",
+                   max_count > 0)
+ 
+ 
+q_m_small = filter(q_max_flock,flock == "small",
+                   max_count > 0)
+
+species_large <- sp_groups[which(sp_groups$flock == "large"),"Species"]
+species_small <- sp_groups[which(sp_groups$flock == "small"),"Species"]
+
+#### size value in q_m_large and q_m_small are now log-scale predictors of the "size" of
+#### each site. They
+
  
  # generate equal-area grid stratification and neighbourhoods --------------------------------------
  
@@ -96,6 +128,10 @@ source("functions/mungeCARdata4stan.R")
 
 #for(sp in sps){
 sp = sps[11]
+
+if(sp %in% species_large){site_sizes <- q_m_large}
+if(sp %in% species_small){site_sizes <- q_m_small}
+
 FYYYY = 1974
 dts <- filter(ssData,CommonName == sp,
               YearCollected >= FYYYY)
@@ -175,6 +211,7 @@ strats_dts <- data.frame(SurveyAreaIdentifier = real_grid$SurveyAreaIdentifier,
 
 dts <- left_join(dts,strats_dts,by = "SurveyAreaIdentifier")
 
+dts <- left_join(dts,site_sizes[,c("SurveyAreaIdentifier","size")])
 # generate neighbourhoods -------------------------------------------------
 
 coords = st_coordinates(st_centroid(real_grid))
@@ -201,14 +238,15 @@ dts <- dts %>% mutate(count = as.integer(ObservationCount),
                       yr = as.integer(year-(syear-1)),
                       strat = stratn,
                       date = doy-fday,
-                      site = as.integer(factor(SurveyAreaIdentifier))) 
+                      site = as.integer(factor(SurveyAreaIdentifier)),
+                      size_cent = as.numeric(scale(size))) 
 
 nstrata = max(dts$strat)
 nsites = max(dts$site)
 
 
-
-
+sizes_by_site <- unique(dts[,c("site","size_cent")])
+sizes_by_site <- sizes_by_site[order(sizes_by_site$site),]
 
 ncounts = nrow(dts)
 
@@ -276,6 +314,7 @@ stan_data <- list(count = as.integer(unlist(dts$count)),
                   ncounts = ncounts,
                   ndays = ndays,
                   
+                  site_size = sizes_by_site$size_cent,
                   #nsites_strat = nsites_strat,
                   #max_sites = max_sites,
                   #sites = sites,
@@ -302,33 +341,33 @@ parms = c("sdnoise",
           "B",
           "alpha",
           "ALPHA1",
-          "sigma",
+          #"sigma",
           "sdyear",
           "year_effect",
           "sdseason",
-          "B_season",
+          #"B_season",
           "season_pred",
-          "n",
+          #"n",
           "nsmooth",
           "N",
-          "NSmooth")
+          "NSmooth",
+          "beta_size")
 
-mod.file = "models/slope_icar_GAM_site.stan"
+mod.file = "models/GAMYE_route.stan"
 
 ## compile model
 slope_icar_model = stan_model(file=mod.file)
 
 ## run sampler on model, data
-stime = system.time(slope_icar_stanfit <-
-                      sampling(slope_icar_model,
+slope_icar_stanfit <- sampling(slope_icar_model,
                                data=stan_data,
                                verbose=TRUE, refresh=50,
-                               chains=5, iter=3000,
-                               warmup=2000,
-                               cores = 5,
+                               chains=1, iter=650,
+                               warmup=600,
+                               cores = 1,
                                pars = parms,
                                control = list(adapt_delta = 0.8,
-                                              max_treedepth = 15)))
+                                              max_treedepth = 15))
 
 
  launch_shinystan(slope_icar_stanfit) 
