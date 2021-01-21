@@ -353,7 +353,7 @@ parms = c("sdnoise",
           "NSmooth",
           "beta_size")
 
-mod.file = "models/GAMYE_route.stan"
+mod.file = "models/GAMYE_site.stan"
 
 ## compile model
 slope_icar_model = stan_model(file=mod.file)
