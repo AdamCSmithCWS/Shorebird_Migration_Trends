@@ -29,7 +29,7 @@ source("functions/mungeCARdata4stan.R")
 
 # generate site-size predictors for species groups ------------------------
 
-sp_groups = read.csv("data/Flock_Sizes.csv") 
+sp_groups = read.csv("Flock_Sizes.csv") 
  
 sp_groups$flock <- ifelse(is.na(sp_groups$Large_flocks),"small","large")
 
@@ -127,7 +127,7 @@ species_small <- sp_groups[which(sp_groups$flock == "small"),"Species"]
     
 
 #for(sp in sps){
-sp = sps[11]
+sp = sps[25]
 
 if(sp %in% species_large){site_sizes <- q_m_large}
 if(sp %in% species_small){site_sizes <- q_m_small}
@@ -362,21 +362,23 @@ slope_icar_model = stan_model(file=mod.file)
 slope_icar_stanfit <- sampling(slope_icar_model,
                                data=stan_data,
                                verbose=TRUE, refresh=50,
-                               chains=1, iter=650,
-                               warmup=600,
-                               cores = 1,
+                               chains=4, iter=2000,
+                               warmup=1000,
+                               cores = 4,
                                pars = parms,
-                               control = list(adapt_delta = 0.8,
+                               control = list(adapt_delta = 0.95,
                                               max_treedepth = 15))
 
-
- launch_shinystan(slope_icar_stanfit) 
 
 
 
 save(list = c("slope_icar_stanfit",
               "stan_data"),
-     file = paste0(sp,"_Stan_icar_GAM_site_level.RData"))
+     file = paste0("output/",sp,"_Stan_icar_GAM_site_level.RData"))
+
+
+launch_shinystan(slope_icar_stanfit) 
+
 
 source("functions/utility_functions.R")
 
@@ -386,11 +388,13 @@ source("functions/utility_functions.R")
 
 
 indicesN <- index_summary(parm = "N",
-                          dims = "year")
+                          dims = "year",
+                          site_scale = TRUE)
 
 
 indicesNSmooth <- index_summary(parm = "NSmooth",
-                                dims = "year")
+                                dims = "year",
+                                site_scale = TRUE)
 
 
   
@@ -401,9 +405,44 @@ indices$year = indices$year + (syear-1)
 N_gg = ggplot(data = indices,aes(x = year, y = PI50,fill = parm))+
   geom_ribbon(aes(ymin = PI2_5,ymax = PI97_5),alpha = 0.2)+
   geom_line(aes(colour = parm))+
-  geom_point(aes(y = obsmean),colour = grey(0.5),alpha = 0.3)
+  geom_point(aes(y = obsmean,size = sqrt_n),colour = grey(0.5),alpha = 0.3)+
+  theme_light()+
+  labs(title = paste(sp,"Survey-wide mean - including site corrections"))
+  
 
 print(N_gg)
+
+
+
+# without site-corrections ------------------------------------------------
+
+
+
+indicesN2 <- index_summary(parm = "N",
+                          dims = "year",
+                          site_scale = FALSE)
+
+
+indicesNSmooth2 <- index_summary(parm = "NSmooth",
+                                dims = "year",
+                                site_scale = FALSE)
+
+
+
+indices2 = bind_rows(indicesN2,indicesNSmooth2)
+indices2$year = indices2$year + (syear-1)
+
+
+N_gg2 = ggplot(data = indices2,aes(x = year, y = PI50,fill = parm))+
+  geom_ribbon(aes(ymin = PI2_5,ymax = PI97_5),alpha = 0.2)+
+  geom_line(aes(colour = parm))+
+  geom_point(aes(y = obsmean,size = sqrt_n),colour = grey(0.5),alpha = 0.3)+
+  theme_light()+
+  labs(title = paste(sp,"Survey-wide mean - no site corrections in observed means"))
+
+
+print(N_gg2)
+
 
 
 
@@ -411,23 +450,22 @@ indicesnsmooth <- index_summary(parm = "nsmooth",
                                 dims = c("site","year"),
                                 probs = c(0.05,0.5,0.95))
 
-indicesn <- index_summary(parm = "n",
-                          dims = c("site","year"),
-                          probs = c(0.05,0.5,0.95))
-
-indices_strat = bind_rows(indicesn,indicesnsmooth)
+indices_strat = indicesnsmooth
 indices_strat$year = indices_strat$year + (syear-1)
 sites_dts <- distinct(dts,site,SurveyAreaIdentifier)
 indices_strat <- left_join(indices_strat,sites_dts, by = "site")
 
-pdf(file = paste0("figures/", sp," Site trajectories.pdf"),
+pdf(file = paste0("figures/", sp," GAM Site trajectories.pdf"),
     width = 8.5,
     height = 11)
+print(N_gg)
+print(N_gg2)
 for(jj in 1:ceiling(nsites/12)){
 n_gg = ggplot(data = indices_strat,aes(x = year, y = PI50,fill = parm))+
   geom_ribbon(aes(ymin = PI5,ymax = PI95),alpha = 0.2)+
   geom_line(aes(colour = parm))+
-  geom_point(aes(y = obsmean),colour = grey(0.5),alpha = 0.1)+
+  geom_point(aes(y = obsmean,size = sqrt_n),colour = grey(0.5),alpha = 0.3)+
+  theme_light()+
   facet_wrap_paginate(facets = ~SurveyAreaIdentifier,page = jj,nrow = 4, ncol = 3,scales = "free")
 print(n_gg)
 }

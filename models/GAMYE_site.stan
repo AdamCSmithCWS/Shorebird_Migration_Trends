@@ -145,6 +145,7 @@ generated quantities {
 
   real<lower=0> N[nyears];
   real<lower=0> NSmooth[nyears];
+  real<lower=0> NSmooth_n[nyears];
   real<lower=0> nsmooth[nsites,nyears];
     real seas_max = max(season_pred);
  
@@ -168,6 +169,7 @@ generated quantities {
       N[y] = exp(ALPHA1 + Y_pred[y] + year_effect[y] + seas_max + 0.5*(sdalpha^2) + 0.5*(sdnoise^2) );
       NSmooth[y] = exp(ALPHA1 + Y_pred[y] + seas_max + 0.5*(sdalpha^2) + 0.5*(sdnoise^2) );
       
+      NSmooth_n[y] = mean(nsmooth[,y]);
     }
     
 }

@@ -37,12 +37,15 @@ myrename = function(fit){
 
 
 
+# Index_summary -----------------------------------------------------------
 
 index_summary <- function(fit = slope_icar_stanfit,
                           rawdat = dts,
-                          parm = "n",
-                          dims = c("stratn","year"),
-                          probs = c(0.025,0.5,0.975))
+                          parm = "nsmooth",
+                          dims = c("site","year"),
+                          probs = c(0.025,0.5,0.975),
+                          season_scale = TRUE,
+                          site_scale = FALSE)
 {
   
   indsout = as.data.frame(summary(fit,
@@ -53,6 +56,7 @@ index_summary <- function(fit = slope_icar_stanfit,
   indsout = myrename(indsout)#removes the special characters in the column names
   indsout$Parameter = row.names(indsout)
   indsout$parm = parm
+  
   for(dn in 1:length(dims)){
     dd = dims[dn]
     indsout[,dd] = jags_dim(dim = dn,
@@ -62,30 +66,107 @@ index_summary <- function(fit = slope_icar_stanfit,
     
   }
   
-  if(length(dims) == 1){
-    obs = rawdat %>% group_by(yr) %>% 
-      summarise(obsmean = mean(count),
-                obsmed = median(count),
-                nsurveys = n())
-    indsout <- left_join(indsout,obs,by = c("year" = "yr"))
-  }else{
-    if(dims[1] == "stratn"){
-      obs = rawdat %>% group_by(stratn,yr) %>% 
-        summarise(obsmean = mean(count),
-                  obsmed = median(count),
-                  nsurveys = n())
-      indsout <- left_join(indsout,obs,by = c("stratn" = "stratn",
-                                              "year" = "yr"))
+  if(season_scale){
+    
+    seas = as.data.frame(summary(fit,
+                                    pars = "season_pred",
+                                    probs = probs)$summary)
+    seas_sc = 1/exp(seas$mean)
+    
+    if(site_scale){
       
-    }else{
-    obs = rawdat %>% group_by(site,yr) %>% 
-      summarise(obsmean = mean(count),
-                obsmed = median(count),
-                nsurveys = n())
-    indsout <- left_join(indsout,obs,by = c("site" = "site",
-                                            "year" = "yr"))
+    alphas = as.data.frame(summary(fit,
+                                 pars = "alpha",
+                                 probs = probs)$summary)
+    
+    alphas_sc = exp(alphas$mean)
+    
+    alphas_sc = data.frame(site = 1:length(alphas_sc),
+                           alpha_sc = alphas_sc/sum(alphas_sc))
+    
+    sites_by_yr = unique(rawdat[,c("yr","site")])
+    sites_by_yr = inner_join(sites_by_yr,alphas_sc,by = "site")
+    
+    site_cor = sites_by_yr %>% group_by(yr) %>% 
+      summarise(p_alpha = 1/sum(alpha_sc,na.rm = T)) ## inverse of sum of the proportion of site effects included in that year
+## this should be a multiplicative re-scaling factor
+    ## if sum(alpha_sc) == 0.1 (10% of the site-sizes included in a year, means that years mean counts should be scaled by a factor of 10 (1/0.1))
+    
+    #rawdat$count_scale = rawdat$count * seas_sc[rawdat$date] * alphas_sc[rawdat$site]
     }
+      rawdat$count_scale = rawdat$count * seas_sc[rawdat$date]
+    
+  }else{
+    rawdat$count_scale = rawdat$count
   }
+  
+  
+    if(length(dims) == 1){
+      obs = rawdat %>% group_by(yr) %>% 
+        summarise(obsmean = mean(count_scale),
+                  obsmed = median(count_scale),
+                  nsurveys = n(),
+                  sqrt_n = sqrt(nsurveys))
+      indsout <- left_join(indsout,obs,by = c("year" = "yr"))
+      if(site_scale){
+       indsout <- left_join(indsout,site_cor,by = c("year" = "yr"))
+       indsout$obsmean <- indsout$obsmean * indsout$p_alpha
+       indsout$obsmed <- indsout$obsmed * indsout$p_alpha
+      }
+    }else{
+      if(dims[1] == "stratn"){
+        obs = rawdat %>% group_by(stratn,yr) %>% 
+          summarise(obsmean = mean(count_scale),
+                    obsmed = median(count_scale),
+                    nsurveys = n(),
+                    sqrt_n = sqrt(nsurveys))
+        indsout <- left_join(indsout,obs,by = c("stratn" = "stratn",
+                                                "year" = "yr"))
+        
+      }else{
+        obs = rawdat %>% group_by(site,yr) %>% 
+          summarise(obsmean = mean(count_scale),
+                    obsmed = median(count_scale),
+                    nsurveys = n(),
+                    sqrt_n = sqrt(nsurveys))
+        indsout <- left_join(indsout,obs,by = c("site" = "site",
+                                                "year" = "yr"))
+      }
+    }
+    
+    
+  # }else{
+  #   
+  # 
+  # if(length(dims) == 1){
+  #   obs = rawdat %>% group_by(yr) %>% 
+  #     summarise(obsmean = mean(count),
+  #               obsmed = median(count),
+  #               nsurveys = n(),
+  #               sqrt_n = sqrt(nsurveys))
+  #   indsout <- left_join(indsout,obs,by = c("year" = "yr"))
+  # }else{
+  #   if(dims[1] == "stratn"){
+  #     obs = rawdat %>% group_by(stratn,yr) %>% 
+  #       summarise(obsmean = mean(count),
+  #                 obsmed = median(count),
+  #                 nsurveys = n(),
+  #                 sqrt_n = sqrt(nsurveys))
+  #     indsout <- left_join(indsout,obs,by = c("stratn" = "stratn",
+  #                                             "year" = "yr"))
+  #     
+  #   }else{
+  #   obs = rawdat %>% group_by(site,yr) %>% 
+  #     summarise(obsmean = mean(count),
+  #               obsmed = median(count),
+  #               nsurveys = n(),
+  #               sqrt_n = sqrt(nsurveys))
+  #   indsout <- left_join(indsout,obs,by = c("site" = "site",
+  #                                           "year" = "yr"))
+  #   }
+  # }
+  # }
+  
   
   return(indsout)
 }
