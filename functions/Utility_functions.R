@@ -244,7 +244,7 @@ extr_sum <- function(param = "vis.sm_season",
 ItoT <- function(inds = NSamples,
                  start = syear,
                  end = 2019,
-                 regions = FALSE,
+                 regions = NULL,
                  qs = 95,
                  trend_type = "endpoint",
                  index_type = "standard",
@@ -257,7 +257,8 @@ ItoT <- function(inds = NSamples,
   uq = ((qs/100))+lq
   nyrs = end-start
   
-  indt <- inds %>% filter(year %in% c(start,end)) %>% 
+  if(is.null(regions)){
+    indt <- inds %>% filter(year %in% c(start,end)) %>% 
     ungroup %>% 
     select(-y) %>% 
     pivot_wider(names_from = year,
@@ -278,13 +279,14 @@ ItoT <- function(inds = NSamples,
               percent_change = median(ch),
               p_ch_lci = quantile(ch,lq,names = FALSE),
               p_ch_uci = quantile(ch,uq,names = FALSE))
+  }
   
-  if(regions){
-    
+  if(!is.null(regions)){
+    inds[,"region"] = inds[,regions]
     indt <- inds %>% filter(year %in% c(start,end)) %>% 
       ungroup %>% 
       select(-y,-s) %>% 
-      group_by(Region) %>% 
+      group_by(region) %>% 
       pivot_wider(names_from = year,
                   values_from = .value)
     
@@ -292,12 +294,14 @@ ItoT <- function(inds = NSamples,
     indt[,"end"] <- indt[,as.character(end)] 
     
     
-    tt1 <- indt %>% group_by(.draw,Region) %>% 
+    tt1 <- indt %>% group_by(.draw,region) %>%
+      summarise(end = sum(end),
+                start = sum(start),.groups = "keep") %>%  
       summarise(t = texp(end/start,ny = nyrs),
                 ch = chng(end/start),
                 .groups = "keep") %>%
       ungroup() %>% 
-      group_by(Region) %>% 
+      group_by(region) %>% 
       summarise(trend = mean(t),
                 lci = quantile(t,lq,names = FALSE),
                 uci = quantile(t,uq,names = FALSE),
@@ -316,9 +320,12 @@ ItoT <- function(inds = NSamples,
       ungroup() %>% 
       summarise(trend = mean(t),
                 lci = quantile(t,lq,names = FALSE),
-                uci = quantile(t,uq,names = FALSE))
+                uci = quantile(t,uq,names = FALSE),
+                percent_change = median(ch),
+                p_ch_lci = quantile(ch,lq,names = FALSE),
+                p_ch_uci = quantile(ch,uq,names = FALSE))
     
-    tt2$Region <- "Composite"     
+    tt2$region <- "Composite"     
     tt <- bind_rows(tt2,tt1)
     
   }
@@ -380,9 +387,9 @@ ItoT_slope <- function(inds = NSamples,
       filter(year %in% c(start:end)) %>% 
       # ungroup %>% 
       # select(-y,-s) %>% 
-      group_by(.draw,Region) %>% 
+      group_by(.draw,region) %>% 
       summarise(t = sltexp(slope_trend(x = .value,y = year)),.groups = "keep") %>%
-      group_by(Region) %>% 
+      group_by(region) %>% 
       #ungroup() %>% 
       summarise(trend = mean(t),
                 lci = quantile(t,lq,names = FALSE),
@@ -406,7 +413,7 @@ ItoT_slope <- function(inds = NSamples,
     
 
     
-    tt2$Region <- "Composite"     
+    tt2$region <- "Composite"     
     tt <- bind_rows(tt2,tt1)
 
   }
@@ -446,8 +453,8 @@ plot_ind <- function(inds = N_inds,
   if(regions){
     
       ss <- raw %>% 
-      select(Region,year) %>% 
-      group_by(Region,year) %>% 
+      select(region,year) %>% 
+      group_by(region,year) %>% 
       slice_sample(prop = 0.2)
     # summarizing observed values ---------------------------------------------
     
@@ -502,8 +509,8 @@ plot_ind <- function(inds = N_inds,
                                   sep = ""),
                     x = "Year",
                     y = "Annual index of abundance (mean count)") +
-      ggplot2::geom_line(data = inds, ggplot2::aes(x = year, y = median,group = Region),colour = cls[1]) +
-      ggplot2::geom_ribbon(data = inds, ggplot2::aes(x = year, ymin = lci, ymax = uci,group = Region),alpha = 0.3,fill = cls[1])+
+      ggplot2::geom_line(data = inds, ggplot2::aes(x = year, y = median,group = region),colour = cls[1]) +
+      ggplot2::geom_ribbon(data = inds, ggplot2::aes(x = year, ymin = lci, ymax = uci,group = region),alpha = 0.3,fill = cls[1])+
       
       ggplot2::scale_x_continuous(breaks = yys)+
       ggplot2::scale_y_continuous(limits = c(0,NA))
@@ -511,24 +518,24 @@ plot_ind <- function(inds = N_inds,
     if(!is.null(smooth_inds)){
       
       
-      p <- p+ ggplot2::geom_line(data = smooth_inds, ggplot2::aes(x = year, y = median,group = Region),colour = cls[2]) +
-        ggplot2::geom_ribbon(data = smooth_inds, ggplot2::aes(x = year, ymin = lci, ymax = uci,group = Region),alpha = 0.3,fill = cls[2])
+      p <- p+ ggplot2::geom_line(data = smooth_inds, ggplot2::aes(x = year, y = median,group = region),colour = cls[2]) +
+        ggplot2::geom_ribbon(data = smooth_inds, ggplot2::aes(x = year, ymin = lci, ymax = uci,group = region),alpha = 0.3,fill = cls[2])
       
       
     }
     if(add_samplesize){
       
-      p <- p + ggplot2::geom_dotplot(data = ss,mapping = ggplot2::aes(x = year,group = Region),drop = TRUE,binaxis = "x", stackdir = "up",method = "histodot",binwidth = 1,width = 0.2,inherit.aes = FALSE,fill = grDevices::grey(0.6),colour = grDevices::grey(0.6),alpha = 0.2,dotsize = 0.3)
+      p <- p + ggplot2::geom_dotplot(data = ss,mapping = ggplot2::aes(x = year,group = region),drop = TRUE,binaxis = "x", stackdir = "up",method = "histodot",binwidth = 1,width = 0.2,inherit.aes = FALSE,fill = grDevices::grey(0.6),colour = grDevices::grey(0.6),alpha = 0.2,dotsize = 0.3)
       
     }
     if(add_observed){
       p <- p + 
-        ggplot2::geom_pointrange(data = obs,ggplot2::aes(x = year,y = mean_counts,ymin = lqrt_counts,ymax = uqrt_counts,group = Region),colour = grDevices::grey(0.6))
+        ggplot2::geom_pointrange(data = obs,ggplot2::aes(x = year,y = mean_counts,ymin = lqrt_counts,ymax = uqrt_counts,group = region),colour = grDevices::grey(0.6))
         # ggplot2::annotate(geom = "text",x = annotobs$year,y = annotobs$mean_counts,label = "Observed means",colour = grDevices::grey(0.6))
         # 
     }
     
-    p <- p + facet_wrap(facets = ~ Region,nrow = 3,scales = "free")
+    p <- p + facet_wrap(facets = ~ region,nrow = 3,scales = "free")
     
   }else{
     p <- ggplot2::ggplot() +
@@ -576,6 +583,61 @@ plot_ind <- function(inds = N_inds,
 
 
 
+
+
+
+
+
+
+
+ItoI <- function(inds = nsmoothsamples,
+                 start = syear,
+                 end = 2019,
+                 regions = "hex_name",
+                 qs = 95){
+  
+  
+  varbl <- unique(inds$.variable)
+  
+  lq = (1-(qs/100))/2
+  uq = ((qs/100))+lq
+  nyrs = end-start
+  
+
+  
+  if(!is.null(regions)){
+    inds[,"region"] = inds[,regions]
+    
+     tt1 <- inds %>% group_by(.draw,region,year) %>%
+      summarise(i = sum(.value),.groups = "keep") %>%  
+      ungroup() %>% 
+      group_by(region,year) %>% 
+      summarise(median = median(i),
+                mean = mean(i),
+                lci = quantile(i,lq,names = FALSE),
+                uci = quantile(i,uq,names = FALSE),
+                .groups = "keep")
+    
+    
+    tt2 <- inds %>% group_by(.draw,year) %>%
+      summarise(i = sum(.value),.groups = "keep") %>%  
+      ungroup() %>% 
+      group_by(year) %>% 
+      summarise(median = median(i),
+                mean = mean(i),
+                lci = quantile(i,lq,names = FALSE),
+                uci = quantile(i,uq,names = FALSE),
+                .groups = "keep")
+    
+    
+    
+    tt2$region <- "Composite"     
+    tt <- bind_rows(tt2,tt1)
+    
+  }
+  
+  return(tt)
+}
 
 
 

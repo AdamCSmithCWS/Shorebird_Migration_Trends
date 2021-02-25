@@ -1,5 +1,8 @@
 // This is a full hierarchical GAM time-series, with spatial gam parameters 
 // as well as a gam-based Seasonal adjustment and sruvey-wide random year-effects
+// uses spatially defined strata
+// only differences from GAMYE_strata.stan is that the sd of the HGAM components is 
+// the shared across all knots, instead of knot-specific sd
 
 
 functions {
@@ -64,7 +67,7 @@ parameters {
   real<lower=0> sdyear;    // sd of year effects
   real<lower=0> sdseason;    // sd of year effects
   real<lower=0> sdyear_gam;    // sd of GAM coefficients
-  real<lower=0> sdyear_gam_strat[nknots_year]; //sd of strata level gams for each knot
+  real<lower=0> sdyear_gam_strat; //sd of strata level gams for each knot
   real ALPHA1; // overall intercept
 }
 
@@ -86,7 +89,7 @@ transformed parameters {
   
  
     for(k in 1:nknots_year){
-    b[,k] = (sdyear_gam_strat[k] * b_raw[,k]) + B[k];
+    b[,k] = (sdyear_gam_strat * b_raw[,k]) + B[k];
   }
   
   
@@ -120,7 +123,7 @@ model {
 
   count ~ poisson_log(E); //vectorized count likelihood
   alpha_raw ~ std_normal(); // fixed site-effects
-  noise_raw ~ student_t(4,0,1);//std_normal(); // extra Poisson log-normal variance
+  noise_raw ~ std_normal(); // extra Poisson log-normal variance
   B_raw ~ std_normal();// prior on GAM hyperparameters
   year_effect_raw ~ std_normal(); //prior on ▲annual fluctuations
   sum(year_effect_raw) ~ normal(0,0.0001*nyears);//sum to zero constraint on year-effects
@@ -154,19 +157,17 @@ generated quantities {
   
   
       for(s in 1:nstrata){
-
-        
-  for(y in 1:nyears){
-            real atmp[nsites_strat[s]];
-            real atmp_smo[nsites_strat[s]];
-            
+        real atmp[nsites_strat[s]];
         //a stratum-scaling component that tracks the alphas for sites in stratum
         for(j in 1:nsites_strat[s]){
-          atmp[j] = exp(ALPHA1 + year_pred[y,s] + year_effect[y] + seas_max + 0.5*(sdnoise^2) + alpha[sites[j,s]]);
-          atmp_smo[j] = exp(ALPHA1 + year_pred[y,s] + seas_max + 0.5*(sdnoise^2) + alpha[sites[j,s]]);
+          atmp[j] = exp(alpha[sites[j,s]]);
         }
-        n[s,y] = mean(atmp);
-        nsmooth[s,y] = mean(atmp_smo);
+        a[s] = mean(atmp);
+        
+  for(y in 1:nyears){
+
+      n[s,y] = exp(ALPHA1 + year_pred[y,s] + year_effect[y] + seas_max + 0.5*(sdnoise^2)) + a[s];
+      nsmooth[s,y] = exp(ALPHA1 + year_pred[y,s] + seas_max + 0.5*(sdnoise^2) ) + a[s];
     }
   }
   

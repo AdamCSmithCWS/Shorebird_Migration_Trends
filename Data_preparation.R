@@ -231,7 +231,7 @@ oss <- read.csv("data/OSS_8July2020.csv",stringsAsFactors = F)
 acss <- read.delim("data/ACSS_8July2020.txt",stringsAsFactors = F)
 
 
-
+acss <- acss[-which(acss$SamplingEventIdentifier == ""),]
 
 
 # Filtering columns -------------------------------------------------------

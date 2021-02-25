@@ -8,5 +8,9 @@ doc/
 output/
 Figures/
 **arch/
+earlier_versions/
+models/**.rds
+
+
 
 
