@@ -448,7 +448,7 @@ car_stan_dat <- mungeCARdata4stan(adjBUGS = nb_info$adj,
 mean_counbts_year = ggplot(data = dts,aes(x = year,y = count+1,colour = Region))+
   scale_y_log10()+
   geom_point(position = position_jitter(width = 0.1,height = 0),alpha = 0.3)+
-  geom_smooth(method = "gam", formula = y ~ s(x, bs = "cs",k = 5))+
+  geom_smooth(method = "lm")+
   labs(title = sp)+
   facet_wrap(facets = ~strat,nrow = 8,ncol = 5,scales = "free_y")
 
