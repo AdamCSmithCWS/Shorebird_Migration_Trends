@@ -374,6 +374,35 @@ save(list = c("ssData",
 
 
 
+# ADD a table to describe the sampling events at each site
+
+
+# ADD a table to describe the sampling events at each site
+
+
+# ADD a table to describe the sampling events at each site
+
+
+# ADD a table to describe the sampling events at each site
+
+
+# ADD a table to describe the sampling events at each site
+
+
+# ADD a table to describe the sampling events at each site
+
+
+# ADD a table to describe the sampling events at each site
+
+
+
+
+
+
+
+
+
+
 
 
 

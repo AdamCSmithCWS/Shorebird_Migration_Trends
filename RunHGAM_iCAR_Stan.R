@@ -17,6 +17,7 @@ load("data/allShorebirdPrismFallCounts.RData")
 grid_spacing <- 300000  # size of squares, in units of the CRS (i.e. meters for lae)
 
  
+FYYYY = 1980
  for(sp in sps){
   
    
@@ -91,9 +92,12 @@ load(paste0(sp,"_GAMYE_strat_offset",grid_spacing/1000,".RData"))
 
 # Calculate Annual indices using samples ----------------------------------
 
+syear = min(dts$YearCollected)
 
 source("functions/utility_functions.R")
+library(loo)
 
+loo_ic = loo(slope_icar_stanfit)
 
 Nsamples <- slope_icar_stanfit %>% gather_draws(N[y])
 Nsamples$year <- Nsamples$y + (syear-1)
@@ -102,6 +106,46 @@ NSmoothsamples <- slope_icar_stanfit %>% gather_draws(NSmooth[y])
 NSmoothsamples$year <- NSmoothsamples$y + (syear-1)
 
 
+
+# visualize the seasonal corrections --------------------------------------
+
+# # extracting the seasonal smooth ------------------------------------------
+# 
+
+season_samples <- slope_icar_stanfit %>% gather_draws(season_pred[d,s])
+
+
+
+seasonEffect = season_samples %>% group_by(d,s) %>% 
+  summarise(mean = mean(exp(.value)),
+            lci = quantile(exp(.value),0.025),
+            uci = quantile(exp(.value),0.975)) %>% 
+  mutate(day = d,
+         seas_strat = s) 
+
+obs_season <- dts %>% group_by(date,seas_strat) %>% 
+  summarise(mean = mean(count),
+            median = median(count),
+            lqrt = quantile(count,0.25),
+            uqrt = quantile(count,0.85)) %>% 
+  mutate(day = date)
+
+pp <- ggplot(data = seasonEffect,aes(x = day,y = mean))+
+    geom_line()+
+    geom_ribbon(aes(x = day,y = mean,ymax = uci,ymin = lci),alpha = 0.2)+
+  geom_point(data = obs_season,inherit.aes = FALSE,
+                  aes(x = day,y = mean),alpha = 0.1)+
+    ylab("")+
+    xlab("Days since July 1")+
+    facet_wrap(facets = ~seas_strat,ncol = 3,scales = "free")
+
+
+
+  pdf(file = paste0("Figures/",sp,"_Season.pdf"),
+      width = 8.5,
+      height = 8.5)
+  print(pp)
+  dev.off()
 
 # calculate trends continent --------------------------------------------------------
 
@@ -152,13 +196,13 @@ anot_07 = anot_funct(t_NSmooth_07)
 indicesN <- index_summary(parm = "N",
                           dims = "year",
                           site_scale = FALSE,
-                          season_scale = TRUE)
+                          season_scale = FALSE)
 
 
 indicesNSmooth <- index_summary(parm = "NSmooth",
                                 dims = "year",
                                 site_scale = FALSE,
-                                season_scale = TRUE)
+                                season_scale = FALSE)
 
 
 
@@ -185,6 +229,8 @@ pdf(paste0("figures/",sp,FYYYY,"_GAMYE_survey_wide_trajectory",grid_spacing/1000
 print(N_gg)
 dev.off()
 
+
+nstrata = stan_data$nstrata
 indicesnsmooth <- index_summary(parm = "nsmooth",
                                 dims = c("stratn","year"),
                                 season_scale = FALSE,
@@ -208,7 +254,7 @@ n_gg = ggplot(data = indices_strat,aes(x = year, y = PI50,fill = parm))+
   geom_ribbon(aes(ymin = PI2_5,ymax = PI97_5),alpha = 0.2)+
   geom_line(aes(colour = parm))+
   geom_point(aes(y = obsmean),colour = grey(0.5),alpha = 0.1)+
-  facet_wrap_paginate(facets = ~hex_name,page = jj,nrow = 4, ncol = 3,scales = "free")
+  facet_wrap_paginate(facets = ~stratn,page = jj,nrow = 4, ncol = 3,scales = "free")
 print(n_gg)
 }
   dev.off()
@@ -227,10 +273,10 @@ print(n_gg)
   # real_grid
   
 
-  reg_strats <- data.frame(hex_name = real_grid_regs$hex_name,
-                           Region = real_grid_regs$Region)
-  
- strats_dts <- left_join(strats_dts,reg_strats,by = "hex_name")
+  # reg_strats <- data.frame(hex_name = real_grid_regs$hex_name,
+  #                          Region = real_grid_regs$Region)
+  # 
+ strats_dts <- left_join(strats_dts,strat_regions,by = c("stratn" = "strat"))
   
  
   nsmoothsamples <- slope_icar_stanfit %>% gather_draws(nsmooth[s,y])
@@ -277,9 +323,9 @@ print(n_gg)
   nsamples$year <- nsamples$y + (syear-1)
   nsamples <- left_join(nsamples,strats_dts,by = c("s" = "stratn"))
   
-  st_drop <- "2305040_1068494"
-  nsamples <- nsamples %>% filter(hex_name != st_drop)
-  
+  # st_drop <- "2305040_1068494"
+  # nsamples <- nsamples %>% filter(hex_name != st_drop)
+  # 
   indsn_region = ItoI(inds = nsmoothsamples,
                regions = "Region")
   
@@ -304,56 +350,6 @@ print(ind_fc)
   
   
   
-  
-slopes = as.data.frame(summary(slope_icar_stanfit,
-                 pars = c("b"),
-                 probs = c(0.025,0.5,0.975))$summary)
-
-myrename = function(fit){
-  rename_with(fit,~ paste0("PI",gsub(".","_",gsub("%", "", .x, fixed = TRUE), fixed = TRUE)),ends_with("%"))
-
-}
-slopes = myrename(slopes)
-slopes$stratn = 1:nrow(slopes)
-slopes$trend = (exp(slopes$mean)-1)*100
-
-breaks <- c(-7, -4, -2, -1, -0.5, 0.5, 1, 2, 4, 7)
-labls = c(paste0("< ",breaks[1]),paste0(breaks[-c(length(breaks))],":", breaks[-c(1)]),paste0("> ",breaks[length(breaks)]))
-labls = paste0(labls, " %")
-
-slopes$Tplot <- cut(slopes$trend,breaks = c(-Inf, breaks, Inf),labels = labls)
-
-map_palette <- c("#a50026", "#d73027", "#f46d43", "#fdae61", "#fee090", "#ffffbf",
-                 "#e0f3f8", "#abd9e9", "#74add1", "#4575b4", "#313695")
-names(map_palette) <- labls
-
-hex_map <- left_join(real_grid,strats_dts)
-
-hex_map <- left_join(hex_map,slopes,by = "stratn")
-
-trend_map <- ggplot()+
-  geom_sf(data = prov_state,colour = grey(0.8))+
-  geom_sf(data = hex_map,aes(fill = Tplot,colour = Tplot))+
-  coord_sf(ylim = c(-1509123,1890567),expand = TRUE)+
-  scale_colour_manual(values = map_palette, aesthetics = c("fill","colour"),
-                      guide = ggplot2::guide_legend(reverse=TRUE),
-                      name = "Trends")#paste0("Trend\n",fyr,"-",lyr))
-print(trend_map)
-
-
-
-
-
-save(list = c("stan_data",
-              #"basis_season",
-              "dts",
-              "slope_icar_model",
-              "hex_map",
-              "strats_dts"),
-     file = paste0("output/",sp,"slope_iCAR_results.RData"))
-
-
-
 
 
 }#end species loops

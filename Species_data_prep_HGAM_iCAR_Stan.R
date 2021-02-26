@@ -150,7 +150,15 @@ source("functions/mungeCARdata4stan.R")
  names(ggp_out) <- sps
  mean_counbts_year_out <- vector(mode = "list",length = length(sps))
  names(mean_counbts_year_out) <- sps
+ off_check_out <- vector(mode = "list",length = length(sps))
+ names(off_check_out) <- sps
  
+ 
+ 
+ 
+ 
+
+
  
 for(sp in sps){
 #sp = sps[11]
@@ -267,6 +275,39 @@ real_grid_regs <- inner_join(real_grid_regs,strats_dts)
 
 
 dts <- left_join(dts,site_sizes[,c("SurveyAreaIdentifier","size")])
+
+# Comparison of the site offset and the mean count for that  --------
+
+off_comp <- dts %>% mutate(decade = cut(YearCollected,breaks = c(1970,1979,1989,1999,2009,2020),
+                                        labels = c("70s","80s","90s","00s","10s"))) %>% 
+  group_by(SurveyAreaIdentifier,decade) %>% 
+  summarise(offset = mean(size),
+            mean_count = mean(ObservationCount),
+            median_count = median(ObservationCount),
+            n_count = n())
+  
+  
+  
+off_check = ggplot(data = off_comp,aes(x = offset,y = mean_count+0.01,size = n_count))+
+  geom_point(alpha = 0.5)+
+  scale_y_log10()+
+  xlab("log scale site size predictor")+
+  ylab("observed mean count + 0.01 (log-scale axis)")+
+  labs(title = sp,subtitle = "observed mean counts by decade vs site level size predictors")+
+  geom_smooth(method = "lm")+
+  theme(legend.position = "none")+
+  facet_wrap(~decade,nrow = 3,ncol = 2)
+
+  off_check_out[[sp]] <- off_check
+
+
+
+
+
+
+
+
+
 
 
 
@@ -423,10 +464,10 @@ mean_counbts_doy = ggplot(data = dts,aes(x = doy,y = count+1,colour = Region))+
   labs(title = sp)+
   facet_wrap(facets = ~strat,nrow = 8,ncol = 5,scales = "free_y")
 
-pdf(paste0("Figures/",sp,"seasonal_counts ",grid_spacing/1000,".pdf"),
-    width = 11,height = 8.5)
-print(mean_counbts_doy)
-dev.off()
+# pdf(paste0("Figures/",sp,"seasonal_counts ",grid_spacing/1000,".pdf"),
+#     width = 11,height = 8.5)
+# print(mean_counbts_doy)
+# dev.off()
 mean_counbts_doy_out[[sp]] <- mean_counbts_doy
 
 
@@ -452,10 +493,10 @@ mean_counbts_year = ggplot(data = dts,aes(x = year,y = count+1,colour = Region))
   labs(title = sp)+
   facet_wrap(facets = ~strat,nrow = 8,ncol = 5,scales = "free_y")
 
-pdf(paste0("Figures/",sp,"annual_counts ",grid_spacing/1000,".pdf"),
-    width = 11,height = 8.5)
-print(mean_counbts_year)
-dev.off()
+# pdf(paste0("Figures/",sp,"annual_counts ",grid_spacing/1000,".pdf"),
+#     width = 11,height = 8.5)
+# print(mean_counbts_year)
+# dev.off()
 mean_counbts_year_out[[sp]] <- mean_counbts_year
 
 
@@ -643,14 +684,25 @@ if(two_seasons){
 save(list = c("stan_data",
               "dts",
               "real_grid",
+              "real_grid_regs",
               "strats_dts",
               "strat_regions",
               "mod.file",
               "parms"),
      file = paste0("data/data",sp,"_GAMYE_strat_offset_",grid_spacing/1000,".RData"))
-}
 
 
+
+
+} ### end species loop
+
+
+ 
+ 
+ 
+ #print graphs
+ 
+ 
  pdf(paste0("Figures/","All_seasonal_counts ",grid_spacing/1000,".pdf"),
      width = 11,height = 8.5)
  for(sp in sps){
@@ -679,4 +731,13 @@ save(list = c("stan_data",
  }
  dev.off()
  
+ pdf(file = paste0("Figures/","ALL_site_size_",grid_spacing/1000,".pdf"))
+ 
+ for(sp in sps){
+   print(off_check_out[[sp]]+
+           labs(title = sp))
+   
+ }
+ 
+ dev.off()
  
