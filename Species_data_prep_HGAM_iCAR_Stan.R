@@ -38,7 +38,14 @@ source("functions/mungeCARdata4stan.R")
  #                                                      "Red Knot",
  #                                                      "Piping Plover",
  #                                                      "Rudy Turnstone",
- #                                                      "Hudsonian Godwit"))] <- TRUE
+ #                                                      "Hudsonian Godwit",
+ #                                                      "American Avocet",
+ #                                                      "Semipalmated Plover",
+ #                                                      "Marbled Godwit",
+ #                                                      "Stilt Sandpiper",
+ #                                                      "Least Sandpiper",
+ #                                                      "Lesser Yellowlegs",
+ #                                                      "Greater Yellowlegs"))] <- TRUE
  # 
  # sp_groups$regions_w_alt_season <- NA
  # sp_groups$regions_w_alt_season[which(sp_groups$Species %in% c("Willet",
@@ -46,14 +53,22 @@ source("functions/mungeCARdata4stan.R")
  #                                                      "Sanderling",
  #                                                      "Red Knot",
  #                                                      "Piping Plover",
- #                                                      "Rudy Turnstone"))] <- "Southeast Coastal - Texas Coastal"
+ #                                                      "Rudy Turnstone",
+ #                                                      "Semipalmated Plover",
+ #                                                      "Marbled Godwit"))] <- "Southeast Coastal - Texas Coastal"
  # 
  # sp_groups$regions_w_alt_season[which(sp_groups$Species %in% c( "Black-bellied Plover"))] <- "Southeast Coastal - Texas Coastal - Pacific and Intermountain"
  # sp_groups$regions_w_alt_season[which(sp_groups$Species %in% c(  "Hudsonian Godwit"))] <- "East Inland - Ontario"
+ # sp_groups$regions_w_alt_season[which(sp_groups$Species %in% c(  "American Avocet"))] <- "Texas Coastal"
+ # sp_groups$regions_w_alt_season[which(sp_groups$Species %in% c(  "Stilt Sandpiper",
+ #                                                                 "Lesser Yellowlegs"))] <- "Southeast Coastal"
+ # sp_groups$regions_w_alt_season[which(sp_groups$Species %in% c(   "Least Sandpiper",
+ #                                                                  "Greater Yellowlegs"))] <- "Southeast Coastal - Midcontinental"
  # 
- #
+ # 
+ # 
  # write.csv(sp_groups,"Flock_Sizes.csv",row.names = FALSE)
- 
+ # 
  
  
  sp_groups$flock <- ifelse(is.na(sp_groups$Large_flocks),"small","large")

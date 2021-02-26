@@ -1,20 +1,20 @@
 "Species","Large_flocks","Small_flocks","two_seasons","regions_w_alt_season"
-"American Avocet",NA,1,FALSE,NA
+"American Avocet",NA,1,TRUE,"Texas Coastal"
 "Black-bellied Plover",1,2,TRUE,"Southeast Coastal - Texas Coastal - Pacific and Intermountain"
 "American Golden-Plover",NA,1,FALSE,NA
-"Semipalmated Plover",1,2,FALSE,NA
+"Semipalmated Plover",1,2,TRUE,"Southeast Coastal - Texas Coastal"
 "Piping Plover",NA,1,TRUE,"Southeast Coastal - Texas Coastal"
 "Killdeer",NA,1,FALSE,NA
 "Whimbrel",1,2,FALSE,NA
 "Hudsonian Godwit",NA,1,TRUE,"East Inland - Ontario"
-"Marbled Godwit",NA,1,FALSE,NA
+"Marbled Godwit",NA,1,TRUE,"Southeast Coastal - Texas Coastal"
 "Ruddy Turnstone",1,NA,FALSE,NA
 "Red Knot",1,NA,TRUE,"Southeast Coastal - Texas Coastal"
-"Stilt Sandpiper",NA,1,FALSE,NA
+"Stilt Sandpiper",NA,1,TRUE,"Southeast Coastal"
 "Sanderling",1,NA,TRUE,"Southeast Coastal - Texas Coastal"
 "Dunlin",1,NA,FALSE,NA
 "Baird's Sandpiper",NA,1,FALSE,NA
-"Least Sandpiper",1,NA,FALSE,NA
+"Least Sandpiper",1,NA,TRUE,"Southeast Coastal - Midcontinental"
 "White-rumped Sandpiper",1,NA,FALSE,NA
 "Buff-breasted Sandpiper",NA,1,FALSE,NA
 "Pectoral Sandpiper",NA,1,FALSE,NA
@@ -23,7 +23,7 @@
 "Long-billed Dowitcher",NA,1,FALSE,NA
 "Spotted Sandpiper",NA,1,FALSE,NA
 "Solitary Sandpiper",NA,1,FALSE,NA
-"Lesser Yellowlegs",1,2,FALSE,NA
+"Lesser Yellowlegs",1,2,TRUE,"Southeast Coastal"
 "Willet",1,NA,TRUE,"Southeast Coastal - Texas Coastal"
-"Greater Yellowlegs",NA,1,FALSE,NA
+"Greater Yellowlegs",NA,1,TRUE,"Southeast Coastal - Midcontinental"
 "Wilson's Phalarope",1,NA,FALSE,NA
