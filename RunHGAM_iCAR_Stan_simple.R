@@ -19,11 +19,11 @@ grid_spacing <- 300000  # size of squares, in units of the CRS (i.e. meters for 
  
 FYYYY = 1980
 
-
- for(sp in sps){
+w_cosewic = sps[c(2:4,7,10,12:20,22,11,25)]
+ for(sp in w_cosewic[1:3]){
   
    
-    load(paste0("data/data",sp,"_GAMYE_strat_offset_",grid_spacing/1000,".RData"))
+    load(paste0("data/data",sp,"_GAMYE_strat_simple",grid_spacing/1000,".RData"))
 
 
 
@@ -35,11 +35,11 @@ print(sp)
 slope_icar_stanfit <- sampling(slope_icar_model,
                                data=stan_data,
                                verbose=TRUE, refresh=100,
-                               chains=4, iter=1500,
-                               warmup=1000,
+                               chains=4, iter=2000,
+                               warmup=1200,
                                cores = 4,
                                pars = parms,
-                               control = list(adapt_delta = 0.85,
+                               control = list(adapt_delta = 0.9,
                                               max_treedepth = 14))
 
 
@@ -54,7 +54,7 @@ save(list = c("slope_icar_stanfit",
               "strat_regions",
               "mod.file",
               "parms"),
-     file = paste0("output/",sp,"_GAMYE_strat_o",grid_spacing/1000,".RData"))
+     file = paste0("output/",sp,"_GAMYE_strat_simple",grid_spacing/1000,".RData"))
 
 
 }#end modeling loop
@@ -79,7 +79,7 @@ save(list = c("slope_icar_stanfit",
 
 launch_shinystan(slope_icar_stanfit) 
 
-load(paste0(sp,"_GAMYE_strat_offset",grid_spacing/1000,".RData"))
+load(paste0("output/",sp,"_GAMYE_strat_offset",grid_spacing/1000,".RData"))
 
 
 # CONSIDERATIONS ----------------------------------------------------------
@@ -173,21 +173,22 @@ obs_season <- dts %>% group_by(date,seas_strat) %>%
   mutate(day = date)
 
 pp <- ggplot(data = seasonEffect,aes(x = day,y = mean))+
-    geom_line()+
-    geom_ribbon(aes(x = day,y = mean,ymax = uci,ymin = lci),alpha = 0.2)+
+  geom_line()+
+  geom_ribbon(aes(x = day,y = mean,ymax = uci,ymin = lci),alpha = 0.2)+
   geom_point(data = obs_season,inherit.aes = FALSE,
-                  aes(x = day,y = mean),alpha = 0.1)+
-    ylab("")+
-    xlab("Days since July 1")+
-    facet_wrap(facets = ~seas_strat,ncol = 3,scales = "free")
+             aes(x = day,y = mean),alpha = 0.1)+
+  ylab("")+
+  xlab("Days since July 1")+
+  facet_wrap(facets = ~seas_strat,ncol = 3,scales = "free")
 
 
 
-  pdf(file = paste0("Figures/",sp,"_Season.pdf"),
-      width = 8.5,
-      height = 8.5)
-  print(pp)
-  dev.off()
+pdf(file = paste0("Figures/",sp,"simple_Season.pdf"),
+    width = 8.5,
+    height = 8.5)
+print(pp)
+dev.off()
+
 
 # calculate trends continent --------------------------------------------------------
 
@@ -267,7 +268,7 @@ N_gg = ggplot(data = indices,aes(x = year, y = PI50,fill = parm))+
   geom_point(aes(y = obsmean),colour = grey(0.5),alpha = 0.3)
 
 
-pdf(paste0("figures/",sp,FYYYY,"_GAMYE_survey_wide_trajectory",grid_spacing/1000,".pdf"))
+pdf(paste0("figures/",sp,FYYYY,"_GAMYE_survey_wide_trajectory_simple",grid_spacing/1000,".pdf"))
 print(N_gg)
 dev.off()
 
@@ -287,7 +288,7 @@ indices_strat = bind_rows(indicesn,indicesnsmooth)
 indices_strat$year = indices_strat$year + (syear-1)
 indices_strat <- left_join(indices_strat,strats_dts, by = "stratn")
 
-pdf(file = paste0("figures/", sp,FYYYY,"_GAMYE_Strata_trajectories",grid_spacing/1000,".pdf"),
+pdf(file = paste0("figures/", sp,FYYYY,"_GAMYE_Strata_trajectories_simple",grid_spacing/1000,".pdf"),
     width = 8.5,
     height = 11)
 print(N_gg)
@@ -335,6 +336,14 @@ print(n_gg)
                        qs = 95,
                        index_type = "smooth")
   
+  t_nsmooth_strat_80 <- ItoT(inds = nsmoothsamples,
+                             start = 1980,
+                             end = 2019,
+                             regions = "hex_name",
+                             qs = 95,
+                             index_type = "smooth")
+  
+  
   t_nsmooth_reg_07 <- ItoT(inds = nsmoothsamples,
                        start = 2007,
                        end = 2019,
@@ -380,61 +389,25 @@ print(n_gg)
 print(ind_fc)  
   
   
+  
+  
+
 
 # Trend heatmaps ----------------------------------------------------------
-laea = st_crs("+proj=laea +lat_0=40 +lon_0=-95") # Lambert equal area coord reference system
-
-locat = system.file("maps",
-                    package = "bbsBayes")
-map.file = "BBS_ProvState_strata"
-
-strata_map = read_sf(dsn = locat,
-                     layer = map.file)
-strata_map = st_transform(strata_map,crs = laea)
 
 
-#join the hex map with trends
-#bring in the bbsBayes colour ramp
-#map short and long-term versions
+pdf(paste0("Figures/Trend_Heat_maps_",sp,".pdf"),
+    width = 11,
+    height = 8.5)
+t_80 = trend_map(t_nsmooth_strat_80,
+                 size_value = "Mean Observed Count")
+print(t_80)
+t_07 = trend_map(t_nsmooth_strat_07,
+                 size_value = "Mean Observed Count")
+print(t_07)
 
-centres = st_centroid(real_grid_regs)
-t_map_07 <- left_join(centres,t_nsmooth_strat_07,by = c("hex_name" = "region"))
+dev.off()
 
-
-
-map_palette <- c("#a50026", "#d73027", "#f46d43", "#fdae61", "#fee090", "#ffffbf",
-                 "#e0f3f8", "#abd9e9", "#74add1", "#4575b4", "#313695")
-names(map_palette) <- labls
-
-breaks <- c(-7, -4, -2, -1, -0.5, 0.5, 1, 2, 4, 7)
-labls = c(paste0("< ",breaks[1]),paste0(breaks[-c(length(breaks))],":", breaks[-c(1)]),paste0("> ",breaks[length(breaks)]))
-labls = paste0(labls, " %")
-
-
-  t_map_07$Tplot <- as.numeric(as.character(t_map_07$trend))
-
-  t_map_07$Tplot <- cut(t_map_07$Tplot,breaks = c(-Inf, breaks, Inf),labels = labls)
-
-
-  ptit = paste(sp,"trends",fyr,"-",lyr)
-
-fyr = unique(t_map_07$start_year)
-lyr = unique(t_map_07$end_year)
-
-
-tmap = ggplot()+
-  geom_sf(data = strata_map,alpha = 0,colour = grey(0.8))+
-  geom_sf(data = real_grid_regs,alpha = 0,colour = grey(0.8))+
-  geom_sf(data = t_map_07,aes(colour = Tplot,size = mean_mod_count))+
-  labs(title = paste0(sp," Trends ",fyr,"-",lyr))+
-  scale_colour_manual(values = map_palette, aesthetics = c("colour"),
-                      guide = ggplot2::guide_legend(reverse=TRUE),
-                      name = paste0("Trend\n",fyr,"-",lyr))
-
-
-  print(tmap)
-  
-  
   
   
   

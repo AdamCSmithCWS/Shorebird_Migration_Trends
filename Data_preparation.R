@@ -394,8 +394,48 @@ save(list = c("ssData",
 
 # ADD a table to describe the sampling events at each site
 
+library(tidyverse)
+library(ggforce)
+load("data/allShorebirdPrismFallCounts.RData")
+
+events <- ssData %>% select(SamplingEventIdentifier:Region) %>% 
+  distinct() %>% 
+  group_by(Country,StateProvince,SurveyAreaIdentifier,Region,YearCollected) %>% 
+  summarise(n_surveys = n()) %>% 
+  ungroup() %>% 
+  group_by(Region)
 
 
+ ev_split <- group_split(events)
+ ev_key <- group_keys(events)
+ dd = 5 #dimension of plots below
+ 
+ for(i in 1:nrow(ev_key)){
+   tmp = ev_split[[i]]
+   nm = as.character(ev_key[i,"Region"])
+   ns <- length(unique(tmp$SurveyAreaIdentifier))
+   np <- floor(ns/dd^2)
+   nrem = ns-np*(dd^2)
+   yup = as.numeric(quantile(tmp$n_surveys,0.95))
+   if(nrem >= dd){np = np+1}
+   pdf(paste0("Figures/",nm,"N_counts_by_year.pdf"),
+       width = 11,
+       height = 8.5)
+   for(j in 1:np){
+   ns_y <- ggplot(data = tmp,aes(x = YearCollected,y = n_surveys))+
+     geom_col(aes(fill = StateProvince))+
+     theme_minimal()+
+     ylab("Number of Surveys Conducted")+
+     coord_cartesian(ylim = c(0,yup),xlim = c(1974,2019))+
+     theme(legend.position = "top")+
+     facet_wrap_paginate(~SurveyAreaIdentifier,ncol = dd,nrow = dd,
+                         page = j, scales = "fixed")
+   print(ns_y)
+   } 
+     
+   dev.off()
+   
+ }
 
 
 

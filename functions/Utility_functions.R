@@ -248,7 +248,8 @@ ItoT <- function(inds = NSamples,
                  qs = 95,
                  trend_type = "endpoint",
                  index_type = "standard",
-                 retransformation_type = "standard"){
+                 retransformation_type = "standard",
+                 raw_data = dts){
   
   
   varbl <- unique(inds$.variable)
@@ -259,7 +260,7 @@ ItoT <- function(inds = NSamples,
   
   if(is.null(regions)){
     indt <- inds %>% filter(year %in% c(start,end)) %>% 
-    ungroup %>% 
+    ungroup() %>% 
     select(-y) %>% 
     pivot_wider(names_from = year,
                 values_from = .value)
@@ -279,6 +280,24 @@ ItoT <- function(inds = NSamples,
               percent_change = median(ch),
               p_ch_lci = quantile(ch,lq,names = FALSE),
               p_ch_uci = quantile(ch,uq,names = FALSE))
+  
+  mn <- inds %>% filter(year %in% c(start:end)) %>% 
+    ungroup() %>%
+    group_by(year) %>% 
+    summarise(ym = mean(.value)) %>% 
+    ungroup() %>% 
+    summarise(mean_abundance = mean(ym))
+  
+  obs <- raw_data %>% filter(year %in% c(start:end)) %>% 
+    group_by(year) %>% 
+    summarise(ym = mean(count),
+              n_c = n()) %>% 
+    ungroup() %>% 
+    summarise(mean_observed = mean(ym),
+              mean_n_surveys = mean(n_c))
+  
+  tt <- bind_cols(tt,mn,obs)
+  
   }
   
   if(!is.null(regions)){
@@ -309,6 +328,26 @@ ItoT <- function(inds = NSamples,
                 p_ch_lci = quantile(ch,lq,names = FALSE),
                 p_ch_uci = quantile(ch,uq,names = FALSE),
                 .groups = "keep")
+    mn <- inds %>% filter(year %in% c(start:end)) %>% 
+      ungroup() %>%
+      group_by(region,year) %>% 
+      summarise(ym = mean(.value)) %>% 
+      ungroup() %>% 
+      group_by(region) %>% 
+      summarise(mean_abundance = mean(ym))
+    
+    obs <- raw_data %>% mutate(region = hex_name) %>% 
+      filter(year %in% c(start:end)) %>% 
+      group_by(region,year) %>% 
+      summarise(ym = mean(count),
+                n_c = n()) %>% 
+      ungroup() %>% 
+      group_by(region) %>% 
+      summarise(mean_observed = mean(ym),
+                mean_n_surveys = mean(n_c))
+    
+    tt1 <- left_join(tt1,mn,by = "region")
+    tt1 <- left_join(tt1,obs,by = "region")
     
     
     tt2 <- indt %>% group_by(.draw) %>% 
@@ -325,8 +364,24 @@ ItoT <- function(inds = NSamples,
                 p_ch_lci = quantile(ch,lq,names = FALSE),
                 p_ch_uci = quantile(ch,uq,names = FALSE))
     
+    mn <- inds %>% filter(year %in% c(start:end)) %>% 
+      ungroup() %>%
+      group_by(year) %>% 
+      summarise(ym = mean(.value)) %>% 
+      ungroup() %>% 
+      summarise(mean_abundance = mean(ym))
+    
+    obs <- raw_data %>% filter(year %in% c(start:end)) %>% 
+      group_by(year) %>% 
+      summarise(ym = mean(count),
+                n_c = n()) %>% 
+      ungroup() %>% 
+      summarise(mean_observed = mean(ym),
+                mean_n_surveys = mean(n_c))
+    tt2 <- bind_cols(tt2,mn,obs)
     tt2$region <- "Composite"     
     tt <- bind_rows(tt2,tt1)
+    
     
   }
   tt$start_year <- start
@@ -642,6 +697,80 @@ ItoI <- function(inds = nsmoothsamples,
 
 
 
+
+trend_map = function(
+  trends = t_nsmooth_strat_80,
+  map.file = "BBS_ProvState_strata",
+  hex_map = real_grid_regs,
+  size_value = "Mean Abundance")
+{
+  laea = st_crs("+proj=laea +lat_0=40 +lon_0=-95") # Lambert equal area coord reference system
+  
+  locat = system.file("maps",
+                      package = "bbsBayes")
+  
+  strata_map = read_sf(dsn = locat,
+                       layer = map.file)
+  strata_map = st_transform(strata_map,crs = laea)
+  
+  
+  #join the hex map with trends
+  #bring in the bbsBayes colour ramp
+  #map short and long-term versions
+  
+  centres = suppressWarnings(st_centroid(hex_map))
+  t_map <- left_join(centres,trends,by = c("hex_name" = "region"))
+  
+  
+  
+  
+  breaks <- c(-7, -4, -2, -1, -0.5, 0.5, 1, 2, 4, 7)
+  labls = c(paste0("< ",breaks[1]),paste0(breaks[-c(length(breaks))],":", breaks[-c(1)]),paste0("> ",breaks[length(breaks)]))
+  labls = paste0(labls, " %")
+  map_palette <- c("#a50026", "#d73027", "#f46d43", "#fdae61", "#fee090", "#ffffbf",
+                   "#e0f3f8", "#abd9e9", "#74add1", "#4575b4", "#313695")
+  names(map_palette) <- labls
+  
+  
+  t_map$Tplot <- as.numeric(as.character(t_map$trend))
+  
+  t_map$Tplot <- cut(t_map$Tplot,breaks = c(-Inf, breaks, Inf),labels = labls)
+  
+  if(grepl(pattern = "bund",size_value)){
+    t_map = t_map %>% mutate(size_s = mean_abundance)}
+  if(grepl(pattern = "umber",size_value)){
+    t_map = t_map %>% mutate(size_s = mean_n_surveys) 
+  }
+  if(grepl(pattern = "bserve",size_value)){
+    t_map = t_map %>% mutate(size_s = mean_observed) 
+  }
+  
+  fyr = unique(t_map$start_year)
+  lyr = unique(t_map$end_year)
+  
+  ptit = paste(sp,"trends",fyr,"-",lyr)
+  
+
+  bb = st_bbox(hex_map)
+  xl = c(bb["xmin"],bb["xmax"])
+  yl = c(bb["ymin"],bb["ymax"])
+  
+  tmap = ggplot()+
+    geom_sf(data = strata_map,alpha = 0,colour = grey(0.8))+
+    geom_sf(data = hex_map,alpha = 0,colour = grey(0.9))+
+    geom_sf(data = t_map,aes(colour = Tplot,size = size_s),alpha = 1)+
+    labs(title = paste0(sp," Trends ",fyr,"-",lyr))+
+    coord_sf(xlim = xl,ylim = yl)+
+    theme_bw()+
+    scale_colour_manual(values = map_palette, aesthetics = c("colour"),
+                        guide = ggplot2::guide_legend(reverse=TRUE),
+                        name = paste0("Trend\n",fyr,"-",lyr))+
+    scale_size(name = size_value)
+  
+  
+  return(tmap)
+  
+}#end function
 
 
 
