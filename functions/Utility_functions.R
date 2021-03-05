@@ -701,7 +701,7 @@ ItoI <- function(inds = nsmoothsamples,
 trend_map = function(
   trends = t_nsmooth_strat_80,
   map.file = "BBS_ProvState_strata",
-  hex_map = real_grid_regs,
+  hex_map = real_grid,
   size_value = "Mean Abundance")
 {
   laea = st_crs("+proj=laea +lat_0=40 +lon_0=-95") # Lambert equal area coord reference system

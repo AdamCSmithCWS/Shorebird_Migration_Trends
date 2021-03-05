@@ -20,7 +20,9 @@ grid_spacing <- 300000  # size of squares, in units of the CRS (i.e. meters for 
 FYYYY = 1980
 
 w_cosewic = sps[c(2:4,7,10,12:20,22,11,25)]
- for(sp in w_cosewic[1:3]){
+
+
+ for(sp in w_cosewic[13:15]){
   
    
     load(paste0("data/data",sp,"_GAMYE_strat_simple",grid_spacing/1000,".RData"))
@@ -79,7 +81,7 @@ save(list = c("slope_icar_stanfit",
 
 launch_shinystan(slope_icar_stanfit) 
 
-load(paste0("output/",sp,"_GAMYE_strat_offset",grid_spacing/1000,".RData"))
+load(paste0("output/",sp,"_GAMYE_strat_simple",grid_spacing/1000,".RData"))
 
 
 # CONSIDERATIONS ----------------------------------------------------------
@@ -99,15 +101,22 @@ load(paste0("output/",sp,"_GAMYE_strat_offset",grid_spacing/1000,".RData"))
 syear = min(dts$YearCollected)
 
 source("functions/utility_functions.R")
-library(loo)
-
-loo_ic = loo(slope_icar_stanfit)
 
 Nsamples <- slope_icar_stanfit %>% gather_draws(N[y])
 Nsamples$year <- Nsamples$y + (syear-1)
 
 NSmoothsamples <- slope_icar_stanfit %>% gather_draws(NSmooth[y])
 NSmoothsamples$year <- NSmoothsamples$y + (syear-1)
+
+
+
+# looic -------------------------------------------------------------------
+
+
+library(loo)
+
+loo_ic = loo(slope_icar_stanfit)
+
 
 
 
@@ -265,7 +274,9 @@ N_gg = ggplot(data = indices,aes(x = year, y = PI50,fill = parm))+
   annotate("text", x = 1997, y = yup*0.8, label = anot_90)+
   annotate("text", x = 1997, y = yup*0.7, label = anot_07)+
   coord_cartesian(ylim = c(0,yup))+
-  geom_point(aes(y = obsmean),colour = grey(0.5),alpha = 0.3)
+  geom_point(aes(y = obsmean,size = nsurveys),colour = grey(0.5),alpha = 0.3)+
+  theme_classic()+
+  scale_size_area()
 
 
 pdf(paste0("figures/",sp,FYYYY,"_GAMYE_survey_wide_trajectory_simple",grid_spacing/1000,".pdf"))
@@ -292,12 +303,21 @@ pdf(file = paste0("figures/", sp,FYYYY,"_GAMYE_Strata_trajectories_simple",grid_
     width = 8.5,
     height = 11)
 print(N_gg)
-for(jj in 1:ceiling(nstrata/12)){
+ncl = 3
+ppag = ncl^2
+rem = nstrata-(floor(nstrata/ppag)*ppag)
+if(rem < ncl){ncl = 4
+ppag = ncl^2
+rem = nstrata-(floor(nstrata/ppag)*ppag)}
+
+for(jj in 1:ceiling(nstrata/ppag)){
 n_gg = ggplot(data = indices_strat,aes(x = year, y = PI50,fill = parm))+
   geom_ribbon(aes(ymin = PI2_5,ymax = PI97_5),alpha = 0.2)+
   geom_line(aes(colour = parm))+
-  geom_point(aes(y = obsmean),colour = grey(0.5),alpha = 0.1)+
-  facet_wrap_paginate(facets = ~stratn,page = jj,nrow = 4, ncol = 3,scales = "free")
+  geom_point(aes(y = obsmean,size = nsurveys),colour = grey(0.5),alpha = 0.3)+
+  theme_classic()+
+  facet_wrap_paginate(facets = ~stratn,page = jj,nrow = ncl, ncol = ncl,scales = "free")+
+  scale_size_area()
 print(n_gg)
 }
   dev.off()

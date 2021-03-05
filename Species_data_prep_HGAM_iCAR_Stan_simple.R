@@ -742,13 +742,4 @@ save(list = c("stan_data",
  }
  dev.off()
  
- pdf(file = paste0("Figures/","ALL_site_size_",grid_spacing/1000,".pdf"))
- 
- for(sp in sps){
-   print(off_check_out[[sp]]+
-           labs(title = sp))
-   
- }
- 
- dev.off()
- 
+
