@@ -765,7 +765,7 @@ trend_map = function(
     scale_colour_manual(values = map_palette, aesthetics = c("colour"),
                         guide = ggplot2::guide_legend(reverse=TRUE),
                         name = paste0("Trend\n",fyr,"-",lyr))+
-    scale_size(name = size_value)
+    scale_size(name = size_value,range = c(3,9))
   
   
   return(tmap)
