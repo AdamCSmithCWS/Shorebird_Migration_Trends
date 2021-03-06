@@ -414,7 +414,7 @@ print(ind_fc)
 
 
 # Trend heatmaps ----------------------------------------------------------
-
+## consider adding site-locations, stratum labels, etc.
 
 pdf(paste0("Figures/Trend_Heat_maps_",sp,".pdf"),
     width = 11,
