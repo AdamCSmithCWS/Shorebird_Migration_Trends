@@ -30,7 +30,30 @@ loo_ic <- blank_list
 trendsout <- NULL
 TRENDSout <- NULL
 
-three_gen <- 17
+
+# Loading gen times from Bird et al 2020 --------
+gens = read.csv("data/cobi13486-sup-0004-tables4.csv")
+fullgensnames = read.csv("data/cobi13486-sup-0001-tables1.csv")
+
+fullgensnames <- fullgensnames %>% select(Scientific_name,Common_name)
+gens <- gens %>% select(Scientific_name,
+                        GenLength) %>% 
+  left_join(.,fullgensnames)
+
+gens[which(gens$Common_name == "American Golden Plover"),"Common_name"] <- "American Golden-Plover"
+gens[which(gens$Common_name == "Grey Plover"),"Common_name"] <- "Black-bellied Plover"
+
+sps[-which(sps %in% gens$Common_name)]
+ 
+  gens <- gens %>% filter(Common_name %in% sps)
+
+
+
+spslist <- left_join(spslist,gens,by = c("sci_name" = "Scientific_name"))
+
+
+
+
 grid_spacing <- 300000  # size of squares, in units of the CRS (i.e. meters for lae)
 
 
@@ -41,6 +64,7 @@ for(sp in sps){
   if(file.exists(paste0("output/",sp,"_GAMYE_strat_simple",grid_spacing/1000,".RData"))){
     load(paste0("output/",sp,"_GAMYE_strat_simple",grid_spacing/1000,".RData"))
     
+    three_gen <- ceiling(gens[which(gens$Common_name == sp),"GenLength"]*3)
     #Three generation assessment time in COSEWIC report
     y3g <- 2019-three_gen
       
@@ -121,13 +145,12 @@ for(sp in sps){
     # # extracting the seasonal smooth ------------------------------------------
     # 
     
-    season_samples <- slope_icar_stanfit %>% gather_draws(season_pred[d,s])
-    
-    
     scale_adj_means <- summary(slope_icar_stanfit,pars = c("sdnoise","ALPHA1"))$summary[,1]
     
     scale_adj <- ((scale_adj_means[["sdnoise"]]^2)*0.5 + scale_adj_means[["ALPHA1"]])
     
+    if(mod.file == "models/GAMYE_strata_two_season_simple.stan"){
+    season_samples <- slope_icar_stanfit %>% gather_draws(season_pred[d,s])
     seasonEffect = season_samples %>% group_by(d,s) %>% 
       summarise(mean = mean(exp(.value+scale_adj)),
                 lci = quantile(exp(.value+scale_adj),0.025),
@@ -152,6 +175,35 @@ for(sp in sps){
       labs(title = sp)+
       facet_wrap(facets = ~seas_strat,ncol = 3,scales = "free")
     
+    
+    }else{
+      season_samples <- slope_icar_stanfit %>% gather_draws(season_pred[d])
+      seasonEffect = season_samples %>% group_by(d) %>% 
+        summarise(mean = mean(exp(.value+scale_adj)),
+                  lci = quantile(exp(.value+scale_adj),0.025),
+                  uci = quantile(exp(.value+scale_adj),0.975)) %>% 
+        mutate(day = d) 
+      
+      obs_season <- dts %>% group_by(date) %>% 
+        summarise(mean = mean(count),
+                  median = median(count),
+                  lqrt = quantile(count,0.05),
+                  uqrt = quantile(count,0.95)) %>% 
+        mutate(day = date)
+      
+      pp <- ggplot(data = seasonEffect,aes(x = day,y = mean))+
+        geom_pointrange(data = obs_season,inherit.aes = FALSE,
+                        aes(x = day,y = mean,ymin = lqrt,ymax = uqrt),alpha = 0.1)+
+        geom_line()+
+        geom_ribbon(aes(x = day,y = mean,ymax = uci,ymin = lci),alpha = 0.2)+
+        ylab("")+
+        xlab("Days since July 1")+
+        labs(title = sp)
+      
+    }
+    
+
+   
     
     
     pdf(file = paste0("Figures/",sp,"simple_Season.pdf"),
@@ -215,9 +267,9 @@ for(sp in sps){
                   "]")
     }
     
-    anot_90 = anot_funct(t_NSmooth_90)
+    anot_90 = anot_funct(t_NSmooth_L3g)
     anot_80 = anot_funct(t_NSmooth_80)
-    anot_07 = anot_funct(t_NSmooth_07)
+    anot_07 = anot_funct(t_NSmooth_3g)
     
     
     # Extract Annual Indices ------------------------------------------------
@@ -366,7 +418,7 @@ for(sp in sps){
     
     
     t_nsmooth_strat_3g <- ItoT(inds = nsmoothsamples,
-                               start = Y3g,
+                               start = y3g,
                                end = 2019,
                                regions = "hex_name",
                                qs = 95,
@@ -408,25 +460,25 @@ for(sp in sps){
     trendsout <- bind_rows(trendsout,
                            t_nsmooth_reg_80)
     
-    t_nsmooth_strat_3g <- ItoT(inds = nsmoothsamples,
-                               start = Y3g,
+    t_nsmooth_reg_3g <- ItoT(inds = nsmoothsamples,
+                               start = y3g,
                                end = 2019,
                                regions = "Region",
                                qs = 95,
                                sp = sp,
                                type = "Three-generation")
     trendsout <- bind_rows(trendsout,
-                           t_nsmooth_strat_3g)
+                           t_nsmooth_reg_3g)
     
-    t_nsmooth_strat_L3g <- ItoT(inds = nsmoothsamples,
+    t_nsmooth_reg_L3g <- ItoT(inds = nsmoothsamples,
                                 start = syL3g,
-                                end = Y3g,
+                                end = y3g,
                                 regions = "Region",
                                 qs = 95,
                                 sp = sp,
                                 type = "Previous-three-generation")
     trendsout <- bind_rows(trendsout,
-                           t_nsmooth_strat_L3g)
+                           t_nsmooth_reg_L3g)
     
     
     
