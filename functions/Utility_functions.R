@@ -37,7 +37,6 @@ myrename = function(fit){
 
 
 
-# Index_summary -----------------------------------------------------------
 
 index_summary <- function(fit = slope_icar_stanfit,
                           rawdat = dts,
@@ -104,6 +103,8 @@ index_summary <- function(fit = slope_icar_stanfit,
     if(length(dims) == 1){
       obs = rawdat %>% group_by(yr) %>% 
         summarise(obsmean = mean(count_scale),
+                  obslci = quantile(count_scale,0.05),
+                  obsuci = quantile(count_scale,0.95),
                   obsmed = median(count_scale),
                   nsurveys = n(),
                   sqrt_n = sqrt(nsurveys))
@@ -117,6 +118,8 @@ index_summary <- function(fit = slope_icar_stanfit,
       if(dims[1] == "stratn"){
         obs = rawdat %>% group_by(stratn,yr) %>% 
           summarise(obsmean = mean(count_scale),
+                    obslci = quantile(count_scale,0.05),
+                    obsuci = quantile(count_scale,0.95),
                     obsmed = median(count_scale),
                     nsurveys = n(),
                     sqrt_n = sqrt(nsurveys))
@@ -126,6 +129,8 @@ index_summary <- function(fit = slope_icar_stanfit,
       }else{
         obs = rawdat %>% group_by(site,yr) %>% 
           summarise(obsmean = mean(count_scale),
+                    obslci = quantile(count_scale,0.05),
+                    obsuci = quantile(count_scale,0.95),
                     obsmed = median(count_scale),
                     nsurveys = n(),
                     sqrt_n = sqrt(nsurveys))
@@ -135,37 +140,7 @@ index_summary <- function(fit = slope_icar_stanfit,
     }
     
     
-  # }else{
-  #   
-  # 
-  # if(length(dims) == 1){
-  #   obs = rawdat %>% group_by(yr) %>% 
-  #     summarise(obsmean = mean(count),
-  #               obsmed = median(count),
-  #               nsurveys = n(),
-  #               sqrt_n = sqrt(nsurveys))
-  #   indsout <- left_join(indsout,obs,by = c("year" = "yr"))
-  # }else{
-  #   if(dims[1] == "stratn"){
-  #     obs = rawdat %>% group_by(stratn,yr) %>% 
-  #       summarise(obsmean = mean(count),
-  #                 obsmed = median(count),
-  #                 nsurveys = n(),
-  #                 sqrt_n = sqrt(nsurveys))
-  #     indsout <- left_join(indsout,obs,by = c("stratn" = "stratn",
-  #                                             "year" = "yr"))
-  #     
-  #   }else{
-  #   obs = rawdat %>% group_by(site,yr) %>% 
-  #     summarise(obsmean = mean(count),
-  #               obsmed = median(count),
-  #               nsurveys = n(),
-  #               sqrt_n = sqrt(nsurveys))
-  #   indsout <- left_join(indsout,obs,by = c("site" = "site",
-  #                                           "year" = "yr"))
-  #   }
-  # }
-  # }
+ 
   
   
   return(indsout)
@@ -181,37 +156,7 @@ texp <- function(x,ny = 2019-1974){
 chng <- function(x){
   (x-1)*100
 }
-# 
-# extr_inds <- function(param = "n_s",
-#                       sumtable = sums,
-#                       regions = TRUE){
-#   
-#   pat <- paste0(param,"[")
-#   wn_s <- grep(pattern = pat,
-#                x = sumtable$Parameter,
-#                fixed = TRUE)
-#   inds <- sumtable[wn_s,]
-#   
-#   if(regions){
-#     inds[,"s"] <- jags_dim(dim = 1,
-#                          var = param,
-#                          dat = inds)
-#     inds[,"y"] <- jags_dim(dim = 2,
-#                            var = param,
-#                            dat = inds)
-#     inds <- left_join(inds,strats,by = "s")
-#   
-#     }else{
-#   
-#   inds[,"y"] <- jags_dim(dim = 1,
-#                          var = param,
-#                          dat = inds)
-#     }
-#   inds$year <- inds$y +1973
-# 
-#   return(inds)
-# }
-# 
+
 
 
 extr_sum <- function(param = "vis.sm_season",
@@ -244,11 +189,10 @@ extr_sum <- function(param = "vis.sm_season",
 ItoT <- function(inds = NSamples,
                  start = syear,
                  end = 2019,
-                 regions = NULL,
+                 regions = "hex_name",
                  qs = 95,
-                 trend_type = "endpoint",
-                 index_type = "standard",
-                 retransformation_type = "standard",
+                 sp = "species",
+                 type = "",
                  raw_data = dts){
   
   
@@ -297,7 +241,8 @@ ItoT <- function(inds = NSamples,
               mean_n_surveys = mean(n_c))
   
   tt <- bind_cols(tt,mn,obs)
-  
+  tt$trend_type <- type
+  tt$species <- sp
   }
   
   if(!is.null(regions)){
@@ -386,9 +331,10 @@ ItoT <- function(inds = NSamples,
   }
   tt$start_year <- start
   tt$end_year <- end
-  tt$trend_type <- trend_type
-  tt$index_type <- index_type
-  tt$retransformation_type <- retransformation_type
+  tt$species <- sp
+  tt$region_type <- regions
+  tt$trend_type <- type
+  
   tt$parameter = varbl
   
   return(tt)
