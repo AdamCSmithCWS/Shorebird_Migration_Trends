@@ -7,6 +7,7 @@ source("functions/utility_functions.R")
 
 library(loo)
 load("data/allShorebirdPrismFallCounts.RData")
+source("Functions/palettes.R")
 
 
 #lists for stored figures
@@ -20,6 +21,9 @@ trend_maps_3gen <- blank_list
 trend_maps_L3gen <- blank_list
 
 composite_trajectories <- blank_list
+
+sp_ind_plots_strat_diagnostic <- blank_list
+sp_ind_plots_diagnostic <- blank_list
 
 sp_ind_plots_strat <- blank_list
 sp_ind_plots <- blank_list
@@ -49,22 +53,18 @@ sps[-which(sps %in% gens$Common_name)]
 
 
 
-spslist <- left_join(spslist,gens,by = c("sci_name" = "Scientific_name"))
-
-
-
-
 grid_spacing <- 300000  # size of squares, in units of the CRS (i.e. meters for lae)
 
 
 FYYYY = 1980
 
+t1 = Sys.time()
 
 for(sp in sps){
   if(file.exists(paste0("output/",sp,"_GAMYE_strat_simple",grid_spacing/1000,".RData"))){
     load(paste0("output/",sp,"_GAMYE_strat_simple",grid_spacing/1000,".RData"))
     
-    three_gen <- ceiling(gens[which(gens$Common_name == sp),"GenLength"]*3)
+    three_gen <- max(10,ceiling(gens[which(gens$Common_name == sp),"GenLength"]*3))
     #Three generation assessment time in COSEWIC report
     y3g <- 2019-three_gen
       
@@ -74,9 +74,7 @@ for(sp in sps){
     
     ## add some variation to the plotting of the observed means (box and whisker info)
     
-    ## assess the fit of the site adjustment model and the non-adjusted model
-    
-    ## export a table with an n-surveys by site by year matrix for the data holders to confirm
+     ## export a table with an n-surveys by site by year matrix for the data holders to confirm
     ## send the model summary to Paul - seasonal-split, maps of regions, etc.
     ## rationalize the 1980 start date (see above table), plot number of surveys and sites by time
     
@@ -101,7 +99,7 @@ for(sp in sps){
     
     
     
-    # Alphas by year ----------------------------------------------------------
+    # Alphas by site ----------------------------------------------------------
     alpha_samples <- slope_icar_stanfit %>% gather_draws(alpha[s])
     
     sites_strat = (stan_data$sites)
@@ -134,7 +132,7 @@ for(sp in sps){
       facet_wrap(~strat,nrow = nr,ncol = nr,scales = "free")+
       theme_minimal()
     
-    pdf(paste0("Figures/",sp,"obs_by_alpha.pdf"),
+    pdf(paste0("Figures/",sp,"_obs_by_alpha.pdf"),
         width = 11,
         height = 11)
     print(obs_by_alpha)
@@ -149,9 +147,32 @@ for(sp in sps){
     
     scale_adj <- ((scale_adj_means[["sdnoise"]]^2)*0.5 + scale_adj_means[["ALPHA1"]])
     
+ 
+    # n_by_strat <- dts %>% group_by(strat) %>% 
+    #   summarise(n_cst = n())
+    # n_countsby_site <- dts %>% group_by(site,strat) %>% 
+    #   summarise(n_c = n()) %>% 
+    #   left_join(.,n_by_strat,by = "strat") %>% 
+    #   mutate(n_c = n_c/n_cst) %>% 
+    #   select(site,strat,n_c)
+    
+
+    n_countsby_site <- dts %>% group_by(site) %>% 
+      summarise(n_c = n()) 
+
     if(mod.file == "models/GAMYE_strata_two_season_simple.stan"){
+      
+      strat_season_strat <- dts %>% distinct(seas_strat,strat,hex_name)
+      
+      alphas <- left_join(alphas,strat_season_strat,by = "strat")
+      
+      
+      strat_offs <- alphas %>% left_join(.,n_countsby_site,by = "site") %>% 
+        group_by(strat,seas_strat) %>% 
+        summarise(adjs = mean(mean))
+      
     season_samples <- slope_icar_stanfit %>% gather_draws(season_pred[d,s])
-    seasonEffect = season_samples %>% group_by(d,s) %>% 
+    seasonEffectT = season_samples %>% group_by(d,s) %>% 
       summarise(mean = mean(exp(.value+scale_adj)),
                 lci = quantile(exp(.value+scale_adj),0.025),
                 uci = quantile(exp(.value+scale_adj),0.975)) %>% 
@@ -165,18 +186,83 @@ for(sp in sps){
                 uqrt = quantile(count,0.95)) %>% 
       mutate(day = date)
     
-    pp <- ggplot(data = seasonEffect,aes(x = day,y = mean))+
-      geom_pointrange(data = obs_season,inherit.aes = FALSE,
-                      aes(x = day,y = mean,ymin = lqrt,ymax = uqrt),alpha = 0.1)+
-      geom_line()+
-      geom_ribbon(aes(x = day,y = mean,ymax = uci,ymin = lci),alpha = 0.2)+
-      ylab("")+
-      xlab("Days since July 1")+
-      labs(title = sp)+
-      facet_wrap(facets = ~seas_strat,ncol = 3,scales = "free")
+    sse <- seasonEffectT %>% group_by(seas_strat) %>% 
+      group_split()
     
+    #seasonEffect <- expand_grid(seasonEffect,strat = c(1:nstrata))
+    tout <- NULL
+    for(j in 1:nstrata){
+      wg = as.integer(strat_offs[which(strat_offs$strat == j),"seas_strat"])
+      tmp <- sse[[wg]]
+      tmp$strat <- j
+      tout <- bind_rows(tout,tmp)
+    }
+    
+    seasonEffect <- left_join(tout,strat_offs,by = "strat") %>% 
+      mutate(mean = mean*adjs,
+             lci = lci*adjs,
+             uci = uci*adjs)
+    
+    
+    
+    ncl = 3
+    nrr = 3
+    ppag = ncl*nrr
+    rem = nstrata-(floor(nstrata/ppag)*ppag)
+    if(rem < ncl){
+      nrr = 4
+      ppag = ncl*nrr
+      rem = nstrata-(floor(nstrata/ppag)*ppag)
+    }
+    if(rem < ncl){
+      nrr = 3
+      ncl = 2
+      ppag = ncl*nrr
+      rem = nstrata-(floor(nstrata/ppag)*ppag)
+    }
+    
+    tmp_season_graphs <- vector(mode = "list",length = ceiling(nstrata/ppag))
+    
+    pdf(file = paste0("Figures/",sp,"simple_Season.pdf"),
+        width = 8.5,
+        height = 8.5)
+    
+    
+    for(jj in 1:ceiling(nstrata/ppag)){
+      #yup <- quantile(dts$count,0.99)
+      pp <- ggplot()+
+        # geom_pointrange(data = obs_season,inherit.aes = FALSE,
+        #                 aes(x = day,y = mean,ymin = lqrt,ymax = uqrt),alpha = 0.1)+
+        geom_point(data = dts,aes(x = date,y = count,colour = year),alpha = 0.5,size = 1,position = position_jitter(width = 0.7,height = 0))+
+        scale_colour_viridis_c()+
+        geom_line(data = seasonEffect,aes(x = day,y = mean),inherit.aes = FALSE)+
+        #coord_cartesian(ylim = c(0,yup))+
+        geom_ribbon(data = seasonEffect,aes(x = day,y = mean,ymax = uci,ymin = lci),alpha = 0.2,inherit.aes = FALSE)+
+        ylab("")+
+        xlab("Days since July 1")+
+        facet_wrap_paginate(facets = ~strat,page = jj,nrow = nrr, ncol = ncl,scales = "free")+
+        labs(title = sp)
+      tmp_season_graphs[[jj]] <- pp
+      print(pp)
+    }
+    dev.off()
+    
+    # pp <- ggplot(data = seasonEffect,aes(x = day,y = mean))+
+    #   # geom_pointrange(data = obs_season,inherit.aes = FALSE,
+    #   #                 aes(x = day,y = mean,ymin = lqrt,ymax = uqrt),alpha = 0.1)+
+    #   geom_point(data = dts,inherit.aes = FALSE,aes(x = day,y = count),alpha = 0.1,size = 1)+
+    #   geom_line()+
+    #   geom_ribbon(aes(x = day,y = mean,ymax = uci,ymin = lci),alpha = 0.2)+
+    #   ylab("")+
+    #   xlab("Days since July 1")+
+    #   labs(title = sp)+
+    #   facet_wrap(facets = ~seas_strat,ncol = 3,scales = "free")
+    # 
     
     }else{
+      strat_offs <- alphas %>% group_by(strat) %>% 
+        summarise(adjs = mean(mean))
+      
       season_samples <- slope_icar_stanfit %>% gather_draws(season_pred[d])
       seasonEffect = season_samples %>% group_by(d) %>% 
         summarise(mean = mean(exp(.value+scale_adj)),
@@ -191,29 +277,65 @@ for(sp in sps){
                   uqrt = quantile(count,0.95)) %>% 
         mutate(day = date)
       
-      pp <- ggplot(data = seasonEffect,aes(x = day,y = mean))+
-        geom_pointrange(data = obs_season,inherit.aes = FALSE,
-                        aes(x = day,y = mean,ymin = lqrt,ymax = uqrt),alpha = 0.1)+
-        geom_line()+
-        geom_ribbon(aes(x = day,y = mean,ymax = uci,ymin = lci),alpha = 0.2)+
+      seasonEffect <- expand_grid(seasonEffect,strat = c(1:nstrata))
+      seasonEffect <- left_join(seasonEffect,strat_offs) %>% 
+        mutate(mean = mean*adjs,
+               lci = lci*adjs,
+               uci = uci*adjs)
+      
+      
+      ncl = 3
+      nrr = 3
+      ppag = ncl*nrr
+      rem = nstrata-(floor(nstrata/ppag)*ppag)
+      if(rem < ncl){
+        nrr = 4
+        ppag = ncl*nrr
+        rem = nstrata-(floor(nstrata/ppag)*ppag)
+      }
+      if(rem < ncl){
+        nrr = 3
+        ncl = 2
+        ppag = ncl*nrr
+        rem = nstrata-(floor(nstrata/ppag)*ppag)
+      }
+      
+      tmp_season_graphs <- vector(mode = "list",length = ceiling(nstrata/ppag))
+ 
+           pdf(file = paste0("Figures/",sp,"simple_Season.pdf"),
+          width = 8.5,
+          height = 8.5)
+      
+      for(jj in 1:ceiling(nstrata/ppag)){
+        #yup <- quantile(dts$count,0.99)
+      pp <- ggplot()+
+        # geom_pointrange(data = obs_season,inherit.aes = FALSE,
+        #                 aes(x = day,y = mean,ymin = lqrt,ymax = uqrt),alpha = 0.1)+
+        geom_point(data = dts,aes(x = date,y = count,colour = year),alpha = 0.5,size = 1,position = position_jitter(width = 0.7,height = 0))+
+        scale_colour_viridis_c()+
+        geom_line(data = seasonEffect,aes(x = day,y = mean),inherit.aes = FALSE)+
+        #coord_cartesian(ylim = c(0,yup))+
+        geom_ribbon(data = seasonEffect,aes(x = day,y = mean,ymax = uci,ymin = lci),alpha = 0.2,inherit.aes = FALSE)+
         ylab("")+
         xlab("Days since July 1")+
+        facet_wrap_paginate(facets = ~strat,page = jj,nrow = nrr, ncol = ncl,scales = "free")+
         labs(title = sp)
+      tmp_season_graphs[[jj]] <- pp
+    print(pp)
+      }
+      dev.off()
       
-    }
+      }
     
+    season_graphs[[sp]] <- tmp_season_graphs
+    
+    
+
 
    
     
     
-    pdf(file = paste0("Figures/",sp,"simple_Season.pdf"),
-        width = 8.5,
-        height = 8.5)
-    print(pp)
-    dev.off()
-    
-    season_graphs[[sp]] <- pp
-    
+
     # calculate trends continent --------------------------------------------------------
     
     t_NSmooth_80 <- ItoT(inds = NSmoothsamples,
@@ -240,7 +362,7 @@ for(sp in sps){
                          regions = NULL,
                          qs = 95,
                          sp = sp,
-                         type = "Three-generation")
+                         type = "Recent-three-generation")
     TRENDSout <- bind_rows(TRENDSout,t_NSmooth_3g)
     
     
@@ -258,8 +380,10 @@ for(sp in sps){
     
     anot_funct <- function(x){
       ant = paste(signif(x$percent_change,3),
-                  "% since",
+                  "% ",
                   x$start_year,
+                  ":",
+                  x$end_year,
                   "[",
                   signif(x$p_ch_lci,3),
                   " : ",
@@ -274,17 +398,19 @@ for(sp in sps){
     
     # Extract Annual Indices ------------------------------------------------
     
-    
+   
     indicesN <- index_summary(parm = "N",
                               dims = "year",
                               site_scale = FALSE,
-                              season_scale = FALSE)
+                              season_scale = FALSE,
+                              strat_offsets = strat_offs)
     
     
     indicesNSmooth <- index_summary(parm = "NSmooth",
                                     dims = "year",
                                     site_scale = FALSE,
-                                    season_scale = FALSE)
+                                    season_scale = FALSE,
+                                    strat_offsets = strat_offs)
     
     
     
@@ -295,40 +421,74 @@ for(sp in sps){
     indices$year = indices$year + (syear-1)
     yup = max(max(indices$PI97_5)*1.5,quantile(indices$obsmean,0.7))
     
+    indices$parm <- factor(indices$parm,ordered = T,levels = c("NSmooth","N"))
+    
     N_gg = ggplot(data = indices,aes(x = year, y = PI50,fill = parm))+
       geom_ribbon(aes(ymin = PI2_5,ymax = PI97_5),alpha = 0.2)+
       geom_line(aes(colour = parm))+
       labs(title = paste(sp,"Survey-wide trajectory (full and smooth) with obs means"))+
-      theme(legend.position = "none")+
       annotate("text", x = 1997, y = yup*0.9, label = anot_80)+
       annotate("text", x = 1997, y = yup*0.8, label = anot_90)+
       annotate("text", x = 1997, y = yup*0.7, label = anot_07)+
       coord_cartesian(ylim = c(0,yup))+
-      geom_point(aes(y = obsmean,size = nsurveys),colour = grey(0.5),alpha = 0.3)+
+      geom_point(aes(y = obsmean,size = mean_counts_incl_strata),colour = grey(0.5),alpha = 0.3)+
       theme_classic()+
-      scale_size_area()
+      theme(legend.position = "none")#+
+      #scale_size_area()
     
     
     pdf(paste0("figures/",sp,FYYYY,"_GAMYE_survey_wide_trajectory_simple",grid_spacing/1000,".pdf"))
     print(N_gg)
     dev.off()
-    sp_ind_plots[[sp]] <- N_gg
     
+    sp_ind_plots_diagnostic[[sp]] <- N_gg
+    
+    
+    
+    
+    N_gg_simple = ggplot(data = indices,aes(x = year, y = PI50,fill = parm))+
+      geom_ribbon(aes(ymin = PI2_5,ymax = PI97_5),alpha = 0.2)+
+      geom_line(aes(colour = parm))+
+      labs(title = paste(sp,"Survey-wide trajectory (full and smooth)"))+
+      my_col2+
+      xlab("")+
+      ylab("Modeled mean count")+
+      theme_classic()+
+      theme(legend.position = "none")#+
+    #scale_size_area()
+    
+    #print(N_gg_simple)
+    
+    sp_ind_plots[[sp]] <- N_gg_simple
+    
+    
+    # pdf(paste0("figures/",sp,FYYYY,"_GAMYE_survey_wide_trajectory_simple",grid_spacing/1000,".pdf"))
+    # print(N_gg_simple)
+    # dev.off()
+    
+
+    alpha_adjs <- alphas %>% mutate(adjs = mean) %>% select(site,adjs)
+      
     
     nstrata = stan_data$nstrata
     indicesnsmooth <- index_summary(parm = "nsmooth",
                                     dims = c("stratn","year"),
                                     season_scale = FALSE,
-                                    site_scale = FALSE)
+                                    site_scale = FALSE,
+                                    site_offsets = alpha_adjs)
     
     indicesn <- index_summary(parm = "n",
                               dims = c("stratn","year"),
                               season_scale = FALSE,
-                              site_scale = FALSE)
+                              site_scale = FALSE,
+                              site_offsets = alpha_adjs)
     
     indices_strat = bind_rows(indicesn,indicesnsmooth)
     indices_strat$year = indices_strat$year + (syear-1)
     indices_strat <- left_join(indices_strat,strats_dts, by = "stratn")
+    indices_strat$parm <- factor(indices_strat$parm,ordered = T,levels = c("nsmooth","n"))
+    
+    
     
     pdf(file = paste0("figures/", sp,FYYYY,"_GAMYE_Strata_trajectories_simple",grid_spacing/1000,".pdf"),
         width = 8.5,
@@ -351,21 +511,39 @@ for(sp in sps){
     }
     
     tmp_sp_ind_plots <- vector(mode = "list",length = ceiling(nstrata/ppag))
-    
+    tmp_sp_ind_plots_diagnostic <- tmp_sp_ind_plots
     for(jj in 1:ceiling(nstrata/ppag)){
+      n_gg_simple = ggplot(data = indices_strat,aes(x = year, y = PI50,fill = parm))+
+        geom_ribbon(aes(ymin = PI2_5,ymax = PI97_5),alpha = 0.2)+
+        geom_line(aes(colour = parm))+
+        my_col2+
+        xlab("")+
+        ylab("Modeled mean count")+
+        theme_classic()+
+        theme(legend.position = "none")+
+        labs(title = sp)+
+        facet_wrap_paginate(facets = ~stratn,page = jj,nrow = nrr, ncol = ncl,scales = "free")
+      tmp_sp_ind_plots[[jj]] <- n_gg_simple
+      
+      
       n_gg = ggplot(data = indices_strat,aes(x = year, y = PI50,fill = parm))+
         geom_ribbon(aes(ymin = PI2_5,ymax = PI97_5),alpha = 0.2)+
         geom_line(aes(colour = parm))+
-        geom_point(aes(y = obsmean,size = nsurveys),colour = grey(0.5),alpha = 0.3)+
+        geom_point(aes(y = obsmean,size = mean_counts_incl_sites),colour = grey(0.5),alpha = 0.3)+
         theme_classic()+
+        labs(title = sp)+
         facet_wrap_paginate(facets = ~stratn,page = jj,nrow = nrr, ncol = ncl,scales = "free")+
         scale_size_area()
-      tmp_sp_ind_plots[[jj]] <- n_gg
+      tmp_sp_ind_plots_diagnostic[[jj]] <- n_gg
+      
+      
+      
       print(n_gg)
     }
     dev.off()
     
     sp_ind_plots_strat[[sp]] <- tmp_sp_ind_plots
+    sp_ind_plots_strat_diagnostic[[sp]] <- tmp_sp_ind_plots_diagnostic
     
     
     
@@ -423,7 +601,7 @@ for(sp in sps){
                                regions = "hex_name",
                                qs = 95,
                                sp = sp,
-                               type = "Three-generation")
+                               type = "Recent-three-generation")
     trendsout <- bind_rows(trendsout,
                            t_nsmooth_strat_3g)
     
@@ -466,7 +644,7 @@ for(sp in sps){
                                regions = "Region",
                                qs = 95,
                                sp = sp,
-                               type = "Three-generation")
+                               type = "Recent-three-generation")
     trendsout <- bind_rows(trendsout,
                            t_nsmooth_reg_3g)
     
@@ -499,13 +677,16 @@ for(sp in sps){
     indsn_region$type = "Full"
     indsn_region <- bind_rows(indsnsmooth_region,indsn_region)
     
-    ind_fc = ggplot(data = indsn_region,aes(x = year,y = median,group = region))+
+    ind_fc = ggplot(data = indsn_region,aes(x = year,y = median,group = type))+
       geom_ribbon(aes(ymin = lci,ymax = uci,fill = type),alpha = 0.2)+
       geom_line(aes(colour = type))+
       coord_cartesian(ylim = c(0,NA))+
-      scale_colour_viridis_d()+
+      #scale_colour_viridis_d(aesthetics = c("fill","colour"))+
       theme(legend.position = "none")+
+      theme_classic()+
+      labs(title = sp)+
       facet_wrap(~region,scales = "free")
+    #print(ind_fc)
     
     composite_trajectories[[sp]] <- ind_fc  
     
@@ -542,13 +723,29 @@ for(sp in sps){
     trend_maps_3gen[[sp]] <- t_3g
     trend_maps_L3gen[[sp]] <- t_L3g
     
-    composite_trajectories
+    
     
   }# end if species output data exists
 }#end species loop
 
+t2 = Sys.time()
+t2-t1
 
-write.csv(trendsout,"trends/All_regional_trends.csv",row.names = FALSE)
+write.csv(trendsout,"trends/All_region_strata_composite_trends.csv",row.names = FALSE)
+
+TRENDSout <- TRENDSout %>% relocate(species,start_year,end_year,trend_type) %>% 
+  select(-parameter)
+
+trendsoutsplit <- trendsout %>% relocate(species,start_year,end_year,trend_type,region) %>% 
+  select(-c(parameter)) %>% 
+  filter(region != "Composite") %>% 
+           group_by(region_type) %>% 
+           group_split()
+
+
+write.csv(trendsoutsplit[[1]],"trends/All_strata_level_trends.csv",row.names = FALSE)
+write.csv(trendsoutsplit[[2]],"trends/All_region_level_trends.csv",row.names = FALSE)
+
 write.csv(TRENDSout,"trends/All_survey_wide_trends.csv",row.names = FALSE)
 
 save(list = c("trend_maps_1980",
@@ -560,8 +757,154 @@ save(list = c("trend_maps_1980",
               
               "sp_ind_plots_strat",
               "sp_ind_plots",
-              
+              "sp_ind_plots_strat_diagnostic",
+              "sp_ind_plots_diagnostic",              
               "season_graphs",
               "loo_ic"),
      file = "Figures/All_stored_maps.RData")
+
+
+
+# Printing the maps -------------------------------------------------------
+
+
+# Trend maps --------------------------------------------------------------
+pdf(file = "Figures/All_trend_maps.pdf",
+    width = 9, height = 6.5)
+for(sp in sps){
+  if(!is.null(trend_maps_1980[[sp]])){
+  print(trend_maps_1980[[sp]])
+    print(trend_maps_2004[[sp]])
+    print(trend_maps_L3gen[[sp]])
+    print(trend_maps_3gen[[sp]])
+      }
+}
+dev.off()
+
+
+
+
+# Season Graphs --------------------------------------------------------------
+pdf(file = "Figures/All_Season_graphs.pdf",
+    width = 9, height = 6.5)
+for(sp in sps){
+  if(!is.null(season_graphs[[sp]])){
+    print(season_graphs[[sp]])
+
+  }
+}
+dev.off()
+
+
+# Continental Trajectories ------------------------------------------------
+
+pdf(file = "Figures/All_Continental_Trajectories.pdf",
+    width = 9, height = 6.5)
+for(sp in sps){
+  if(!is.null(sp_ind_plots[[sp]])){
+    print(sp_ind_plots[[sp]])
+    
+  }
+}
+dev.off()
+
+
+# Stratum-level Trajectories ------------------------------------------------
+
+pdf(file = "Figures/All_Strata_Trajectories.pdf",
+    width = 9, height = 6.5)
+for(sp in sps){
+  if(!is.null(sp_ind_plots_strat[[sp]])){
+    tmp = sp_ind_plots_strat[[sp]]
+    for(j in 1:length(tmp))
+    print(tmp[[j]])
+  }
+}
+dev.off()
+
+
+
+# Composite Regional Trajectories --------------------------------------------------------------
+pdf(file = "Figures/All_Composite_Trajectories.pdf",
+    width = 9, height = 6.5)
+for(sp in sps){
+  if(!is.null(composite_trajectories[[sp]])){
+    print(composite_trajectories[[sp]])
+    
+  }
+}
+dev.off()
+
+
+# Continental Diagnostic Trajectories ------------------------------------------------
+
+pdf(file = "Figures/All_Diagnostic_Continental_Trajectories.pdf",
+    width = 9, height = 6.5)
+for(sp in sps){
+  if(!is.null(sp_ind_plots_diagnostic[[sp]])){
+    print(sp_ind_plots_diagnostic[[sp]])
+    
+  }
+}
+dev.off()
+
+
+# Stratum-level Diagnostic Trajectories ------------------------------------------------
+
+pdf(file = "Figures/All_Diagnostic_Strata_Trajectories.pdf",
+    width = 9, height = 6.5)
+for(sp in sps){
+  if(!is.null(sp_ind_plots_strat_diagnostic[[sp]])){
+    tmp = sp_ind_plots_strat_diagnostic[[sp]]
+    for(j in 1:length(tmp))
+      print(tmp[[j]])
+  }
+}
+dev.off()
+
+
+
+# Trend plots -------------------------------------------------------------
+TRENDSout$trend_type <- factor(TRENDSout$trend_type,ordered = TRUE,levels = c("Long-term","15-year","Previous-three-generation","Recent-three-generation"))
+
+LT_trends <- TRENDSout %>% filter(trend_type %in% c("Long-term","15-year"))
+
+lt_tplot <- ggplot(data = LT_trends,aes(x = species,y = trend,colour = trend_type))+
+  geom_pointrange(aes(ymax = uci,ymin = lci),position = position_dodge(width = 0.2))+
+  geom_abline(slope = 0,intercept = 0,alpha = 0.7)+
+  ylab("Trend (%/year)")+
+  xlab("")+
+  my_col_sim+
+  theme_classic()+
+  theme(legend.position = "bottom")+
+  coord_flip()
+
+pdf(file = "Figures/All_long_short_term_trends.pdf",
+    height = 9,
+    width = 6.5)
+print(lt_tplot)
+dev.off()
+
+EL_trends <- TRENDSout %>% filter(trend_type %in% c("Previous-three-generation","Recent-three-generation"))
+
+el_tplot <- ggplot(data = EL_trends,aes(x = species,y = trend,colour = trend_type))+
+  geom_pointrange(aes(ymax = uci,ymin = lci),position = position_dodge(width = 0.2))+
+  geom_abline(slope = 0,intercept = 0,alpha = 0.7)+
+  ylab("Trend (%/year)")+
+  xlab("")+
+  my_col_sim+
+  theme_classic()+
+  theme(legend.position = "bottom")+
+  coord_flip()
+
+
+pdf(file = "Figures/All_early_recent_3generation_trends.pdf",
+    height = 9,
+    width = 6.5)
+print(el_tplot)
+dev.off()
+
+
+
+
 
