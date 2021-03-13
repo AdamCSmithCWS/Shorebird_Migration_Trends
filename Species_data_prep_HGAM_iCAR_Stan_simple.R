@@ -253,12 +253,10 @@ nyrs_region <- dts %>%
             fyear = min(YearCollected),
             lyear = max(YearCollected))
 
-#strats with 7 or more years of non-zero, observations - species has to be observed in a region in at least 2/3 of the years in the time-series
-p_time_series = 0.5 #only required to have dat that span 20% of the time-series in a region.
+#strats with 7 or more years of non-zero, observations - 
+p_time_series = 0.5 #strata are required to have data that span 50% of the time-series in a region.
 regions_keep <- nyrs_region[which(nyrs_region$span_years >= nyrs_study*p_time_series),"hex_name"]
 
-
-# drop strata with < 7 years of non-zero observations ---------------------
 
 
 dts <- filter(dts,hex_name %in% regions_keep$hex_name) 
