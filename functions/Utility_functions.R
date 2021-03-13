@@ -44,7 +44,9 @@ index_summary <- function(fit = slope_icar_stanfit,
                           dims = c("site","year"),
                           probs = c(0.025,0.5,0.975),
                           season_scale = TRUE,
-                          site_scale = FALSE)
+                          site_scale = FALSE,
+                          strat_offsets = NULL,
+                          site_offsets = NULL)
 {
   
   indsout = as.data.frame(summary(fit,
@@ -101,13 +103,27 @@ index_summary <- function(fit = slope_icar_stanfit,
   
   
     if(length(dims) == 1){
+      if(!is.null(strat_offsets)){
+        rawdat <- left_join(rawdat,strat_offsets,by = "strat")
+        obs = rawdat %>% group_by(yr) %>% 
+          summarise(obsmean = mean(count_scale),
+                    obslci = quantile(count_scale,0.05),
+                    obsuci = quantile(count_scale,0.95),
+                    obsmed = median(count_scale),
+                    nsurveys = n(),
+                    sqrt_n = sqrt(nsurveys),
+                    nstrats = length(unique(strat)),
+                    mean_counts_incl_strata = mean(adjs))
+      }else{
       obs = rawdat %>% group_by(yr) %>% 
         summarise(obsmean = mean(count_scale),
                   obslci = quantile(count_scale,0.05),
                   obsuci = quantile(count_scale,0.95),
                   obsmed = median(count_scale),
                   nsurveys = n(),
-                  sqrt_n = sqrt(nsurveys))
+                  sqrt_n = sqrt(nsurveys),
+                  nstrats = length(unique(strat)))
+}
       indsout <- left_join(indsout,obs,by = c("year" = "yr"))
       if(site_scale){
        indsout <- left_join(indsout,site_cor,by = c("year" = "yr"))
@@ -116,16 +132,29 @@ index_summary <- function(fit = slope_icar_stanfit,
       }
     }else{
       if(dims[1] == "stratn"){
+        if(!is.null(site_offsets)){
+          rawdat <- left_join(rawdat,site_offsets,by = "site")
         obs = rawdat %>% group_by(stratn,yr) %>% 
           summarise(obsmean = mean(count_scale),
                     obslci = quantile(count_scale,0.05),
                     obsuci = quantile(count_scale,0.95),
                     obsmed = median(count_scale),
                     nsurveys = n(),
-                    sqrt_n = sqrt(nsurveys))
+                    sqrt_n = sqrt(nsurveys),
+                    nsites = length(unique(site)),
+                    mean_counts_incl_sites = mean(adjs))
         indsout <- left_join(indsout,obs,by = c("stratn" = "stratn",
                                                 "year" = "yr"))
-        
+        }else{
+          obs = rawdat %>% group_by(stratn,yr) %>% 
+            summarise(obsmean = mean(count_scale),
+                      obslci = quantile(count_scale,0.05),
+                      obsuci = quantile(count_scale,0.95),
+                      obsmed = median(count_scale),
+                      nsurveys = n(),
+                      sqrt_n = sqrt(nsurveys),
+                      nsites = length(unique(site)))
+        } 
       }else{
         obs = rawdat %>% group_by(site,yr) %>% 
           summarise(obsmean = mean(count_scale),
@@ -648,7 +677,8 @@ trend_map = function(
   trends = t_nsmooth_strat_80,
   map.file = "BBS_ProvState_strata",
   hex_map = real_grid,
-  size_value = "Mean Abundance")
+  size_value = "Mean Abundance",
+  raw = dts)
 {
   laea = st_crs("+proj=laea +lat_0=40 +lon_0=-95") # Lambert equal area coord reference system
   
@@ -659,7 +689,13 @@ trend_map = function(
                        layer = map.file)
   strata_map = st_transform(strata_map,crs = laea)
   
+  site_loc <- raw %>% distinct(SurveyAreaIdentifier,DecimalLatitude,DecimalLongitude,year) %>% 
+    group_by(SurveyAreaIdentifier,DecimalLatitude,DecimalLongitude) %>% 
+    summarise(n_years = n())
   
+  site_loc <- st_as_sf(site_loc,coords = c("DecimalLongitude","DecimalLatitude"), crs = 4326)
+  
+  site_loc <- st_transform(site_loc,crs = laea)
   #join the hex map with trends
   #bring in the bbsBayes colour ramp
   #map short and long-term versions
@@ -702,9 +738,11 @@ trend_map = function(
   yl = c(bb["ymin"],bb["ymax"])
   
   tmap = ggplot()+
+
     geom_sf(data = strata_map,alpha = 0,colour = grey(0.8))+
     geom_sf(data = hex_map,alpha = 0,colour = grey(0.9))+
     geom_sf(data = t_map,aes(colour = Tplot,size = size_s),alpha = 1)+
+    geom_sf(data = site_loc,alpha = 0.3,size = 1)+
     labs(title = paste0(sp," Trends ",fyr,"-",lyr))+
     coord_sf(xlim = xl,ylim = yl)+
     theme_bw()+
