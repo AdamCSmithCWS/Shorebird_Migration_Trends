@@ -57,6 +57,10 @@ gam.basis.func <- function(orig.preds = dts[,"yr"],
     knotsgamx<- quantile(vscale,qqs,names = F)
   }
   
+
+# basis function creation -------------------------------------------------
+# these functions are based on code from Crainiceanu et al. 2005: https://doi.org/10.18637/jss.v014.i14 
+  
   gamx_OMEGA_all<-(abs(outer(knotsgamx,knotsgamx,"-")))^3
   gamx_svd.OMEGA_all<-svd(gamx_OMEGA_all)
   gamx_sqrt.OMEGA_all<-t(gamx_svd.OMEGA_all$v  %*% (t(gamx_svd.OMEGA_all$u)*sqrt(gamx_svd.OMEGA_all$d)))
@@ -70,6 +74,10 @@ gam.basis.func <- function(orig.preds = dts[,"yr"],
   gamx.basis<-t(solve(gamx_sqrt.OMEGA_all,t(gamx_K1)))
   
   if(random){
+    # # currently this aspect doesn't work and is commented our.
+    # # it's more practical to use the non-random version to produce the basis function
+    # # then to manually replicate the GAM parameters in the Stan or JAGS model
+    # # instead of having this function create the relevant JAGS code
     # mod.code <- paste0("
     # ###########insert the following text into an existing JAGS model##############
     # ###########making sure to link the relevant parameters into section##############
