@@ -64,7 +64,7 @@ parameters {
   //real beta_size; //effect of site level predictor
   
  real<lower=0> sdnoise;    // sd of over-dispersion
- real<lower=2> nu; 
+ real<lower=2.1> nu; 
   real<lower=0> sdalpha;    // sd of site effects
   real<lower=0> sdyear;    // sd of year effects
   real<lower=0> sdseason[2];    // sd of season effects

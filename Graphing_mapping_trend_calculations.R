@@ -3,6 +3,7 @@ library(sf)
 library(spdep)
 library(ggforce)
 library(tidybayes)
+library(GGally)
 source("functions/utility_functions.R")
 
 library(loo)
@@ -30,6 +31,7 @@ sp_ind_plots <- blank_list
 
 season_graphs <- blank_list
 loo_ic <- blank_list
+sp_spag_plots_diagnostic <- blank_list
 
 trendsout <- NULL
 TRENDSout <- NULL
@@ -61,6 +63,7 @@ FYYYY = 1980
 t1 = Sys.time()
 
 for(sp in sps){
+  if(sp == "Semipalmated Sandpiper"){next}
   if(file.exists(paste0("output/",sp,"_GAMYE_strat_simple",grid_spacing/1000,".RData"))){
     load(paste0("output/",sp,"_GAMYE_strat_simple",grid_spacing/1000,".RData"))
     
@@ -73,6 +76,14 @@ for(sp in sps){
     ## map the looic values to see if some areas are being poorly predicted
     
     ## add some variation to the plotting of the observed means (box and whisker info)
+    
+    ## plot the changing mean alpha through time - are smaller sites being surveyed
+    ## more in recent years?
+    
+    ## add the mean trajectory to the composite trajectory plot for comparison
+    
+    ## generate some fake data to ensure there isn't a negative bias
+    
     
      ## export a table with an n-surveys by site by year matrix for the data holders to confirm
     ## send the model summary to Paul - seasonal-split, maps of regions, etc.
@@ -97,6 +108,36 @@ for(sp in sps){
     loo_ic[[sp]] = loo(slope_icar_stanfit)
     
     
+    pw_loo <- loo_ic[[sp]]
+    loopoint = as.data.frame(pw_loo$pointwise)
+    
+    dts_loo <- bind_cols(dts,loopoint) %>% 
+      mutate(log_countp1 <- log(count+1))
+    
+    wcl <- which(names(dts_loo) %in% c("stratn","log_countp1","year","date","influence_pareto_k","looic"))
+    prs_plot <- ggpairs(data = dts_loo,columns = wcl)
+    
+    
+    
+    
+    loo_by_strat <- dts_loo %>% group_by(hex_name) %>% 
+      summarise(mean_looic = mean(looic),
+                median_looic = median(looic),
+                q75_looic = as.numeric(quantile(looic,0.75)),
+                mean_k = mean(influence_pareto_k),
+                median_k = median(influence_pareto_k),
+                q75_k = as.numeric(quantile(influence_pareto_k,0.75)),
+                n_counts = n(),
+                median_count = median(count),
+                mean_count = mean(count))
+    
+    strat_pairs <- ggpairs(data = loo_by_strat,columns = 2:ncol(loo_by_strat))
+    pdf(paste0("Figures/",sp,"_loo_pairs.pdf"),
+        width = 11,
+        height = 11)
+    print(prs_plot)
+    print(strat_pairs)
+    dev.off()
     
     
     # Alphas by site ----------------------------------------------------------
@@ -220,6 +261,12 @@ for(sp in sps){
       ppag = ncl*nrr
       rem = nstrata-(floor(nstrata/ppag)*ppag)
     }
+    if(rem < ncl){
+      nrr = 5
+      ncl = 3
+      ppag = ncl*nrr
+      rem = nstrata-(floor(nstrata/ppag)*ppag)
+    }
     
     tmp_season_graphs <- vector(mode = "list",length = ceiling(nstrata/ppag))
     
@@ -299,7 +346,12 @@ for(sp in sps){
         ppag = ncl*nrr
         rem = nstrata-(floor(nstrata/ppag)*ppag)
       }
-      
+      if(rem < ncl){
+        nrr = 5
+        ncl = 3
+        ppag = ncl*nrr
+        rem = nstrata-(floor(nstrata/ppag)*ppag)
+      }
       tmp_season_graphs <- vector(mode = "list",length = ceiling(nstrata/ppag))
  
            pdf(file = paste0("Figures/",sp,"simple_Season.pdf"),
@@ -461,6 +513,42 @@ for(sp in sps){
     
     sp_ind_plots[[sp]] <- N_gg_simple
     
+
+# Continental Smooth spaghetti plot ---------------------------------------
+    indicesNSmooth$year = indicesNSmooth$year + (syear-1)
+    
+    set.seed(2019)
+    r_draws <- sample(size = 50,x = 1:max(NSmoothsamples$.draw))
+    spg_trajs <- NSmoothsamples %>% filter(.draw %in% r_draws) %>% 
+      mutate(draw_f = factor(.draw))
+    
+    lev = spg_trajs %>% 
+      ungroup() %>% 
+      filter(year == 2019) %>% 
+      select(draw_f,.value) %>% 
+      mutate(midp = log(.value)) %>% 
+      select(draw_f,midp)
+    
+    spg_trajs <- left_join(spg_trajs,lev,by = "draw_f")
+    
+    
+    n_gg_spag = ggplot(data = indicesNSmooth,aes(x = year, y = PI50))+
+      geom_ribbon(aes(ymin = PI2_5,ymax = PI97_5),alpha = 0.25)+
+      geom_line(size =2)+
+      labs(title = paste(sp,"Random selection of posterior draws of survey-wide trajectories"),
+           subtitle = "Colour of each posterior draw reflects the value in 1980, demonstrating similar smooths across draws")+
+      xlab("")+
+      ylab("Modeled mean count")+
+      theme_classic()+
+      theme(legend.position = "none") + 
+      geom_line(data = spg_trajs,aes(x = year,y = .value,group = draw_f,colour = midp),alpha = 0.8,inherit.aes = FALSE,size = 1)+
+      scale_color_viridis_c(aesthetics = "colour")+
+      scale_y_log10()
+    
+    sp_spag_plots_diagnostic[[sp]] <- n_gg_spag
+    
+        
+    #print(n_gg_spag)
     
     # pdf(paste0("figures/",sp,FYYYY,"_GAMYE_survey_wide_trajectory_simple",grid_spacing/1000,".pdf"))
     # print(N_gg_simple)
@@ -494,22 +582,27 @@ for(sp in sps){
         width = 8.5,
         height = 11)
     print(N_gg)
-    ncl = 3
-    nrr = 3
-    ppag = ncl*nrr
-    rem = nstrata-(floor(nstrata/ppag)*ppag)
-    if(rem < ncl){
-      nrr = 4
-      ppag = ncl*nrr
-      rem = nstrata-(floor(nstrata/ppag)*ppag)
-    }
-    if(rem < ncl){
-      nrr = 3
-      ncl = 2
-      ppag = ncl*nrr
-      rem = nstrata-(floor(nstrata/ppag)*ppag)
-    }
-    
+    # ncl = 3
+    # nrr = 3
+    # ppag = ncl*nrr
+    # rem = nstrata-(floor(nstrata/ppag)*ppag)
+    # if(rem < ncl){
+    #   nrr = 4
+    #   ppag = ncl*nrr
+    #   rem = nstrata-(floor(nstrata/ppag)*ppag)
+    # }
+    # if(rem < ncl){
+    #   nrr = 3
+    #   ncl = 2
+    #   ppag = ncl*nrr
+    #   rem = nstrata-(floor(nstrata/ppag)*ppag)
+    # }
+    # if(rem < ncl){
+    #   nrr = 5
+    #   ncl = 3
+    #   ppag = ncl*nrr
+    #   rem = nstrata-(floor(nstrata/ppag)*ppag)
+    # }
     tmp_sp_ind_plots <- vector(mode = "list",length = ceiling(nstrata/ppag))
     tmp_sp_ind_plots_diagnostic <- tmp_sp_ind_plots
     for(jj in 1:ceiling(nstrata/ppag)){
@@ -540,6 +633,7 @@ for(sp in sps){
       
       print(n_gg)
     }
+    print(n_gg_spag)
     dev.off()
     
     sp_ind_plots_strat[[sp]] <- tmp_sp_ind_plots
@@ -843,7 +937,7 @@ pdf(file = "Figures/All_Diagnostic_Continental_Trajectories.pdf",
 for(sp in sps){
   if(!is.null(sp_ind_plots_diagnostic[[sp]])){
     print(sp_ind_plots_diagnostic[[sp]])
-    
+    print(sp_spag_plots_diagnostic[[sp]])
   }
 }
 dev.off()
