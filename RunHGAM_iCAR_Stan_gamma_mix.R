@@ -31,14 +31,14 @@ sps_remain = sps[-which(sps %in% w_cosewic)]
 
 
 
- for(sp in sps_remain[9:10]){
+ for(sp in sps_remain[1:6]){
   
    if(file.exists(paste0("output/",sp,"_GAMYE_strat_simple",grid_spacing/1000,".RData"))){next}
    
    
     load(paste0("data/data",sp,"_GAMYE_strat_simple",grid_spacing/1000,".RData"))
 
-
+mod.file <- "models/GAMYE_strata_two_season_centered_noise_gamma_mix.stan"
 
 ## compile model
 slope_icar_model = stan_model(file=mod.file)
@@ -48,8 +48,8 @@ print(sp)
 slope_icar_stanfit <- sampling(slope_icar_model,
                                data=stan_data,
                                verbose=TRUE, refresh=100,
-                               chains=4, iter=1800,
-                               warmup=1200,
+                               chains=4, iter=1000,
+                               warmup=600,
                                cores = 4,
                                pars = c(parms,"nu"),
                                control = list(adapt_delta = 0.9,
@@ -86,7 +86,7 @@ save(list = c("slope_icar_stanfit",
 
 
 
-loo_out = loo(slope_icar_stanfit)
+
 
 
 
