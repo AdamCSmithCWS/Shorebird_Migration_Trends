@@ -62,7 +62,10 @@ FYYYY = 1980
 
 t1 = Sys.time()
 
-for(sp in sps){
+
+w_cosewic = sps[c(2:4,7,10,12:20,22,11,25)]
+
+for(sp in w_cosewic){
   if(sp == "Semipalmated Sandpiper"){next}
   if(file.exists(paste0("output/",sp,"_GAMYE_strat_simple",grid_spacing/1000,".RData"))){
     load(paste0("output/",sp,"_GAMYE_strat_simple",grid_spacing/1000,".RData"))
@@ -482,6 +485,7 @@ for(sp in sps){
       annotate("text", x = 1997, y = yup*0.9, label = anot_80)+
       annotate("text", x = 1997, y = yup*0.8, label = anot_90)+
       annotate("text", x = 1997, y = yup*0.7, label = anot_07)+
+      my_col2_traj+
       coord_cartesian(ylim = c(0,yup))+
       geom_point(aes(y = obsmean,size = mean_counts_incl_strata),colour = grey(0.5),alpha = 0.3)+
       theme_classic()+
@@ -502,7 +506,7 @@ for(sp in sps){
       geom_ribbon(aes(ymin = PI2_5,ymax = PI97_5),alpha = 0.2)+
       geom_line(aes(colour = parm))+
       labs(title = paste(sp,"Survey-wide trajectory (full and smooth)"))+
-      my_col2+
+      my_col2_traj+
       xlab("")+
       ylab("Modeled mean count")+
       theme_classic()+
@@ -609,7 +613,7 @@ for(sp in sps){
       n_gg_simple = ggplot(data = indices_strat,aes(x = year, y = PI50,fill = parm))+
         geom_ribbon(aes(ymin = PI2_5,ymax = PI97_5),alpha = 0.2)+
         geom_line(aes(colour = parm))+
-        my_col2+
+        my_col2_traj+
         xlab("")+
         ylab("Modeled mean count")+
         theme_classic()+
@@ -622,6 +626,7 @@ for(sp in sps){
       n_gg = ggplot(data = indices_strat,aes(x = year, y = PI50,fill = parm))+
         geom_ribbon(aes(ymin = PI2_5,ymax = PI97_5),alpha = 0.2)+
         geom_line(aes(colour = parm))+
+        my_col2_traj+
         geom_point(aes(y = obsmean,size = mean_counts_incl_sites),colour = grey(0.5),alpha = 0.3)+
         theme_classic()+
         labs(title = sp)+
@@ -776,6 +781,7 @@ for(sp in sps){
       geom_line(aes(colour = type))+
       coord_cartesian(ylim = c(0,NA))+
       #scale_colour_viridis_d(aesthetics = c("fill","colour"))+
+      my_col2_traj+
       theme(legend.position = "none")+
       theme_classic()+
       labs(title = sp)+
