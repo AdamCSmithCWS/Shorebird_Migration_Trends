@@ -137,8 +137,9 @@ year_pred[1:midyear,s] <- b1[s]*((1:midyear)-midyear)
 year_pred[(midyear+1):stan_data$nyears,s] <- b2[s]*((midyear+1):stan_data$nyears-midyear)
 }
 
-noise = rsgt(stan_data$ncounts,mu = 0,sigma = sdnoise,q = 4,p = 4) #p*q = df
+#noise = rsgt(stan_data$ncounts,mu = 0,sigma = sdnoise,q = 4,p = 4) #p*q = df
 
+noise = rnorm(stan_data$ncounts,0,sdnoise) 
 
 
 stan_data_sim = stan_data
@@ -158,6 +159,7 @@ t2_map <- ggplot(data = strats_xy,aes(x = x_scale,y = y_scale))+
 print(t2_map)
 
 stan_data <- stan_data_sim
+
 
 save(list = c("stan_data",
                    "dts",
