@@ -97,14 +97,18 @@ full_sum <- summary(slope_icar_stanfit)$summary
  ALPHA1 <- full_sum["ALPHA1","mean"]
  sdalpha <- full_sum["sdalpha","mean"]
  alphas <- full_sum[paste0("alpha[",1:stan_data$nsites,"]"),"mean"]
- year_effect <- rnorm(stan_data$nyears,0,full_sum[paste0("sdyear"),"mean"])
+ 
+ set_seed(2019)
+ year_effect <- rep(c(-1,1),length = stan_data$nyears)*abs(rnorm(stan_data$nyears,0,full_sum[paste0("sdyear"),"mean"]))
+ year_effect[c(1,stan_data$nyears)] <- 0
+ ## year-effects are 0 in first and last years, and alternate positive-negative for all other years
  season_pred1 <- full_sum[paste0("season_pred[",1:stan_data$ndays,",",1,"]"),"mean"]
  season_pred2 <- full_sum[paste0("season_pred[",1:stan_data$ndays,",",2,"]"),"mean"]
  
  season_pred <- matrix(c(season_pred1,season_pred2),
                        ncol = 2)
  sdnoise <- full_sum["sdnoise","mean"]
- nu <- 4#full_sum["nu","mean"]
+ #nu <- 4#full_sum["nu","mean"]
  
  year_pred <- matrix(NA,nrow = stan_data$nyears,ncol = stan_data$nstrata)
  
@@ -112,8 +116,8 @@ full_sum <- summary(slope_icar_stanfit)$summary
  BC = 0.03 #change in trend in year 20
  sdBC = 0.005 #sd on change in trend
  BCs = rnorm(stan_data$nstrata,BC,sdBC)
- bx = 0.005 #implies a 5%/year range in trends by longitude
- by = 0.005 #implies a 5%/year range in trends by latitude
+ bx = 0.01 #implies a 2%/year range in trends by longitude
+ by = 0.01 #implies a 2%/year range in trends by latitude
  
  strats_xy <- strats_dts %>% 
    mutate(x = as.numeric(str_split(hex_name,pattern = "_",simplify = TRUE)[,1]),
@@ -145,7 +149,14 @@ stan_data_sim$count[i] = rpois(n = 1,exp(ALPHA1 + year_pred[stan_data_sim$year_r
 
 }
  
- 
+plot(x = strats_xy$y_scale,strats_xy$b2) 
+plot(x = strats_xy$x_scale,strats_xy$b2) 
+
+t2_map <- ggplot(data = strats_xy,aes(x = x_scale,y = y_scale))+
+   geom_point(aes(colour = b2))+
+   scale_colour_viridis_c()
+print(t2_map)
+
 stan_data <- stan_data_sim
 
 save(list = c("stan_data",
@@ -155,7 +166,14 @@ save(list = c("stan_data",
                    "strats_dts",
                    "strat_regions",
                    "mod.file",
-                   "parms"),
+                   "parms",
+              "strats_xy",
+              "season_pred",
+              "alphas",
+              "ALPHA1",
+              "year_pred",
+              "year_effect",
+              "noise"),
           file = paste0("data/data_simulated_stable_uptick_GAMYE_strat_simple",grid_spacing/1000,".RData"))
 
  

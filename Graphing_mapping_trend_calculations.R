@@ -32,6 +32,9 @@ sp_ind_plots <- blank_list
 season_graphs <- blank_list
 loo_ic <- blank_list
 sp_spag_plots_diagnostic <- blank_list
+beta_overplots <- blank_list
+traj_overplots <- blank_list
+
 
 trendsout <- NULL
 TRENDSout <- NULL
@@ -644,8 +647,65 @@ for(sp in w_cosewic){
     sp_ind_plots_strat[[sp]] <- tmp_sp_ind_plots
     sp_ind_plots_strat_diagnostic[[sp]] <- tmp_sp_ind_plots_diagnostic
     
+
+# Trajectory Overplot log-scale -------------------------------------------
+
+      indices_strat_smooth <- indices_strat %>% filter(parm == "nsmooth")
+      
+      
+    
+    n_gg_over = ggplot(data = indices_strat_smooth,aes(x = year, y = PI50,colour = hex_name))+
+      #geom_ribbon(aes(ymin = PI2_5,ymax = PI97_5),alpha = 0.2)+
+      geom_line(alpha = 0.8)+
+        scale_colour_viridis_d()+
+      geom_line(data = indicesNSmooth,aes(x = year,y = PI50),inherit.aes = FALSE)+
+      theme_classic()+
+      labs(title = sp)+
+        theme(legend.position = "none")+
+      scale_y_log10()
+    
+    traj_overplots[[jj]] <- n_gg_over
+    
+
+
+# Beta plots --------------------------------------------------------------
+
+  B_samples <- slope_icar_stanfit %>% gather_draws(B[k])    
+    b_samples <- slope_icar_stanfit %>% gather_draws(b[s,k])    
+    b_samples <- left_join(b_samples,strats_dts,by = c("s" = "stratn"))
+  
+    B <- B_samples %>% group_by(k) %>% 
+      summarise(mean = mean(.value),
+                lci = quantile(.value,0.05),
+                uci = quantile(.value,0.95))
+    b <- b_samples %>% group_by(k,hex_name) %>% 
+      summarise(mean = mean(.value),
+                lci = quantile(.value,0.025),
+                uci = quantile(.value,0.975))
+    
+    sdbeta_samples <- slope_icar_stanfit %>% gather_draws(sdyear_gam_strat[k])
+    sdbeta <- sdbeta_samples %>% group_by(k) %>% 
+      summarise(mean = mean(.value),
+                lci = quantile(.value,0.025),
+                uci = quantile(.value,0.975)) %>% 
+      mutate(k = k+0.1)
+    #B_b <- bind_rows(B,b)
+    
+    b_plot <- ggplot(data = b,aes(x = k,y = mean,colour = hex_name))+
+      geom_point(data = B, inherit.aes = FALSE, 
+                      aes(x = k,y = mean),size = 1)+
+      geom_errorbar(data = B, inherit.aes = FALSE, 
+                 aes(x = k,y = mean,ymin = lci,ymax = uci),width = 0,alpha = 0.5)+
+      geom_point()+
+      theme_classic()+
+      labs(title = sp)+
+      geom_pointrange(data = sdbeta,inherit.aes = FALSE,aes(x = k,y = mean,ymin = lci,ymax = uci),colour = "red")+
+      scale_colour_viridis_d()+
+    theme(legend.position = "none")
+    #print(b_plot)
     
     
+    beta_overplots[[jj]] <- b_plot
     
     # combine the trajectories within the original regional strata ------------
     
