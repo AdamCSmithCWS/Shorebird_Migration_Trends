@@ -664,7 +664,7 @@ for(sp in w_cosewic){
         theme(legend.position = "none")+
       scale_y_log10()
     
-    traj_overplots[[jj]] <- n_gg_over
+    traj_overplots[[sp]] <- n_gg_over
     
 
 
@@ -705,21 +705,64 @@ for(sp in w_cosewic){
     #print(b_plot)
     
     
-    beta_overplots[[jj]] <- b_plot
+    beta_overplots[[sp]] <- b_plot
+    
+    
+
+# Trajectories without any intercepts -------------------------------------
+
+    traj_funct <- function(basis,bs){
+      out_vec = as.numeric(basis %*% bs)
+      return(out_vec)
+    }
+    yr_funct <- function(basis){
+      out_vec = 1:nrow(basis)+(FYYYY-1)
+      return(out_vec)
+    }
+
+    btraj <- b_samples %>% group_by(.draw,hex_name) %>% 
+      summarise(traj = traj_funct(stan_data$year_basispred,.value),
+                year = yr_funct(stan_data$year_basispred),
+                .groups = "drop") %>%
+      group_by(hex_name,year) %>% 
+      summarise(mean = mean((traj)),
+                lci = quantile((traj),0.025),
+                uci = quantile((traj),0.975))
+      
+    Btraj <- B_samples %>% group_by(.draw) %>% 
+      summarise(traj = traj_funct(stan_data$year_basispred,.value),
+                year = yr_funct(stan_data$year_basispred),
+                .groups = "drop") %>%
+      group_by(year) %>% 
+      summarise(mean = mean((traj)),
+                lci = quantile((traj),0.025),
+                uci = quantile((traj),0.975))
+    
+    
+
+    
+    b_plot_alt = ggplot(data = btraj,aes(x = year, y = mean))+
+      geom_line(data = Btraj,aes(x = year,y = mean),inherit.aes = FALSE,size = 2)+
+      geom_ribbon(data = Btraj,aes(ymin = uci,ymax = lci),alpha = 0.1)+
+      geom_line(alpha = 0.8,aes(colour = hex_name))+
+      scale_colour_viridis_d(aesthetics = c("colour","fill"))+
+      theme_classic()+
+      labs(title = sp)+
+      ylab("Centered log-scale smooths")+
+      #scale_y_log10()+
+      theme(legend.position = "none")
+    #print(b_plot_alt)
+    alternate_traj_overplots[[sp]] <- b_plot_alt
+    
+    
+    #(stan_data$year_basispred * transpose(b[s,]))
+    
+        
     
     # combine the trajectories within the original regional strata ------------
     
     
-    
-    
-    # map the trend estimates -------------------------------------------------
-    
-    # real_grid
-    
-    
-    # reg_strats <- data.frame(hex_name = real_grid_regs$hex_name,
-    #                          Region = real_grid_regs$Region)
-    # 
+
     strats_dts <- left_join(strats_dts,strat_regions,by = c("stratn" = "strat"))
     
     
@@ -1065,6 +1108,26 @@ print(el_tplot)
 dev.off()
 
 
+
+
+pdf(file = "Figures/All_beta_plots.pdf",
+    width = 9, height = 6.5)
+for(sp in sps){
+  if(!is.null(sp_ind_plots_strat_diagnostic[[sp]])){
+    print(beta_overplots[[sp]])
+}
+}
+dev.off()
+
+
+pdf(file = "Figures/All_trajectory_plots.pdf",
+    width = 9, height = 6.5)
+for(sp in sps){
+  if(!is.null(sp_ind_plots_strat_diagnostic[[sp]])){
+    print(traj_overplots[[sp]])
+  }
+}
+dev.off()
 
 
 
