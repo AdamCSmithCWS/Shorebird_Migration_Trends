@@ -27,13 +27,13 @@ w_cosewic = sps[c(2:4,7,10,12:20,22,11,25)]
 # 
 # }  
 
-sps_remain = sps[-which(sps %in% w_cosewic)]
+#sps_remain = sps[-which(sps %in% w_cosewic)]
 
 
 
- for(sp in sps_remain[9:10]){
+ for(sp in w_cosewic[3:4]){
   
-   if(file.exists(paste0("output/",sp,"_GAMYE_strat_simple",grid_spacing/1000,".RData"))){next}
+   #if(file.exists(paste0("output/",sp,"_GAMYE_strat_simple",grid_spacing/1000,".RData"))){next}
    
    
     load(paste0("data/data",sp,"_GAMYE_strat_simple",grid_spacing/1000,".RData"))
@@ -51,7 +51,7 @@ slope_icar_stanfit <- sampling(slope_icar_model,
                                chains=4, iter=1800,
                                warmup=1200,
                                cores = 4,
-                               pars = c(parms,"nu"),
+                               pars = c(parms),
                                control = list(adapt_delta = 0.9,
                                               max_treedepth = 14))
 

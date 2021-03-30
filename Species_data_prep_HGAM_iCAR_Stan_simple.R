@@ -597,7 +597,7 @@ if(two_seasons){
                     N_edges = car_stan_dat$N_edges,
                     node1 = car_stan_dat$node1,
                     node2 = car_stan_dat$node2)
-  mod.file = "models/GAMYE_strata_two_season_simple.stan"
+  mod.file = "models/GAMYE_strata_two_season_normal_tail.stan"
   
   parms = c("sdnoise",
             #"nu", #
@@ -653,7 +653,7 @@ if(two_seasons){
                     node1 = car_stan_dat$node1,
                     node2 = car_stan_dat$node2)
   
-  mod.file = "models/GAMYE_strata_simple.stan"
+  mod.file = "models/GAMYE_strata_normal_tail.stan"
   
   parms = c("sdnoise",
             #"nu", #
