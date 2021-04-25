@@ -182,9 +182,13 @@ texp <- function(x,ny = 2019-1974){
   (x^(1/ny)-1)*100
 }
 
+
+
+
 chng <- function(x){
   (x-1)*100
 }
+
 
 
 
@@ -222,7 +226,8 @@ ItoT <- function(inds = NSamples,
                  qs = 95,
                  sp = "species",
                  type = "",
-                 raw_data = dts){
+                 raw_data = dts,
+                 centered_trends = TRUE){
   
   
   varbl <- unique(inds$.variable)
@@ -353,7 +358,33 @@ ItoT <- function(inds = NSamples,
       summarise(mean_observed = mean(ym),
                 mean_n_surveys = mean(n_c))
     tt2 <- bind_cols(tt2,mn,obs)
-    tt2$region <- "Composite"     
+    tt2$region <- "Composite"  
+    
+    if(centered_trends){
+      ttt1 <- indt %>% group_by(.draw,region) %>%
+        summarise(end = sum(end),
+                  start = sum(start),.groups = "keep") %>%  
+        summarise(t_c = log(end/start),
+                  .groups = "keep")
+      
+      ttt2 <- indt %>% group_by(.draw) %>% 
+        summarise(end = sum(end),
+                  start = sum(start),.groups = "keep") %>%       
+        summarise(t = log(end/start),
+                  .groups = "keep")
+      
+      ttt1 <- left_join(ttt1,ttt2,by = ".draw")
+      ttt1 <- ttt1 %>% 
+        mutate(td = t_c - t) %>% 
+        ungroup() %>% 
+        group_by(region) %>% 
+        summarise(centered_log_trend = mean(td),
+                  centered_log_trend_lci = quantile(td,lq,names = FALSE),
+                  centered_log_trend_uci = quantile(td,uq,names = FALSE))
+      tt1 <- left_join(tt1,ttt1,by = "region")
+      
+    }
+    
     tt <- bind_rows(tt2,tt1)
     
     
@@ -756,6 +787,100 @@ trend_map = function(
   
 }#end function
 
+
+
+
+
+
+
+
+trend_map_composite = function(
+  trends = strat_sums,
+  map.file = "BBS_ProvState_strata",
+  hex_map = poly_grid,
+  size_value = "Probability > or < zero",
+  tlab = time)
+{
+  laea = st_crs("+proj=laea +lat_0=40 +lon_0=-95") # Lambert equal area coord reference system
+  
+  locat = system.file("maps",
+                      package = "bbsBayes")
+  
+  strata_map = read_sf(dsn = locat,
+                       layer = map.file)
+  strata_map = st_transform(strata_map,crs = laea)
+  
+ #join the hex map with trends
+  #bring in the bbsBayes colour ramp
+  #map short and long-term versions
+  if(nrow(hex_map) > nrow(trends)){
+    hex_map <- filter(hex_map,hex_name %in% trends$region)
+  }
+  
+  centres = suppressWarnings(st_centroid(hex_map))
+  t_map <- left_join(centres,trends,by = c("hex_name" = "region"))
+  
+  
+  
+  
+  #breaks <- c(-7, -4, -2, -1, -0.5, 0.5, 1, 2, 4, 7)
+  breaks <- c(-2.5,-1.5, -1, -0.5,-0.25, 0.25, 0.5, 1, 1.5, 2.5)
+  
+  labls = c(paste0("< ",breaks[1]),paste0(breaks[-c(length(breaks))],":", breaks[-c(1)]),paste0("> ",breaks[length(breaks)]))
+  labls = paste0(labls, " %")
+  map_palette <- c("#a50026", "#d73027", "#f46d43", "#fdae61", "#fee090", "#ffffbf",
+                   "#e0f3f8", "#abd9e9", "#74add1", "#4575b4", "#313695")
+  names(map_palette) <- labls
+  
+  
+  t_map$Tplot <- as.numeric(as.character(t_map$trend))
+  
+  t_map$Tplot <- cut(t_map$Tplot,breaks = c(-Inf, breaks, Inf),labels = labls)
+  # 
+  # if(grepl(pattern = "bund",size_value)){
+  #   t_map = t_map %>% mutate(size_s = mean_abundance)}
+  # if(grepl(pattern = "umber",size_value)){
+  #   t_map = t_map %>% mutate(size_s = mean_n_surveys) 
+  # }
+  # if(grepl(pattern = "bserve",size_value)){
+  #   t_map = t_map %>% mutate(size_s = mean_observed) 
+  # }
+  
+  if(grepl(pattern = "pecies",size_value)){
+    t_map = t_map %>% mutate(size_s = nspecies) 
+  }
+  if(grepl(pattern = "zero",size_value)){
+    t_map = t_map %>% mutate(size_s = p_not_zero) 
+  }
+  
+  
+  fyr = unique(t_map$start_year)
+  lyr = unique(t_map$end_year)
+  
+  # ptit = paste(sp,"trends",fyr,"-",lyr)
+  # 
+  
+  bb = st_bbox(hex_map)
+  xl = c(bb["xmin"],bb["xmax"])
+  yl = c(bb["ymin"],bb["ymax"])
+  
+  tmap = ggplot()+
+    
+    geom_sf(data = strata_map,alpha = 0,colour = grey(0.8))+
+    geom_sf(data = hex_map,alpha = 0,colour = grey(0.9))+
+    geom_sf(data = t_map,aes(colour = Tplot,size = size_s),alpha = 1)+
+    labs(title = paste0("Mean regional variation in trend ",tlab))+
+    coord_sf(xlim = xl,ylim = yl)+
+    theme_bw()+
+    scale_colour_manual(values = map_palette, aesthetics = c("colour"),
+                        guide = ggplot2::guide_legend(reverse=TRUE),
+                        name = paste0(" Difference\n","Trend"))+
+    scale_size(name = size_value,range = c(3,9))
+  
+  
+  return(tmap)
+  
+}#end function
 
 
 

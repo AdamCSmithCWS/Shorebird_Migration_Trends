@@ -141,6 +141,7 @@ source("functions/mungeCARdata4stan.R")
  ssData <- left_join(ssData,strats,by = "SurveyAreaIdentifier")
  ### hex_name is now the new stratification
  
+ save(list = c("poly_grid"),file = "data/hexagon_grid.RData")
  
  source("functions/GAM_basis_function.R")
 

@@ -18,22 +18,26 @@ grid_spacing <- 300000  # size of squares, in units of the CRS (i.e. meters for 
 
  
 FYYYY = 1980
-
-w_cosewic = sps[c(2:4,7,10,12:20,22,11,25)]
-
-# for(sp in w_cosewic){
-#   
-#   if(file.exists(paste0("output/",sp,"_GAMYE_strat_simple",grid_spacing/1000,".RData"))){w_cosewic <- w_cosewic[-which(w_cosewic == sp)]}
 # 
-# }  
-
-sps_remain = sps[-which(sps %in% w_cosewic)]
+# w_cosewic = sps[c(2:4,7,10,12:20,22,11,25)]
+# 
+# # for(sp in w_cosewic){
+# #   
+# #   if(file.exists(paste0("output/",sp,"_GAMYE_strat_simple",grid_spacing/1000,".RData"))){w_cosewic <- w_cosewic[-which(w_cosewic == sp)]}
+# # 
+# # }  
+# 
+# sps_remain = sps[-which(sps %in% w_cosewic)]
 
 
  
    
-    load(paste0("data/data_simulated_stable_uptick_GAMYE_strat_simple",grid_spacing/1000,".RData"))
+    #load(paste0("data/data_simulated_stable_upturn_GAMYE_strat_simple",".RData"))
+#load(paste0("data/data_simulated_stable_Balanced_upturn_GAMYE_strat_simple",".RData"))
 
+#load(paste0("data/data_simulated_stable_downturn2_GAMYE_strat_simple.RData"))
+    #load(paste0("data/data_simulated_stable_Balanced_downturn2_GAMYE_strat_simple.RData"))
+    
 mod.file = c("models/GAMYE_strata_two_season_normal_tail.stan")
 
 ## compile model
@@ -52,6 +56,27 @@ slope_icar_stanfit <- sampling(slope_icar_model,
 
 
 
+save(list = c("slope_icar_stanfit",
+              "stan_data",
+              "dts",
+              "real_grid",
+              "strats_dts",
+              "strat_regions",
+              "mod.file",
+              "parms"),
+     file = paste0("output/simulated_stable_Balanced_upturn_GAMYE_strat_simple.RData"))
+
+save(list = c("slope_icar_stanfit",
+              "stan_data",
+              "dts",
+              "real_grid",
+              "strats_dts",
+              "strat_regions",
+              "mod.file",
+              "parms"),
+     file = paste0("output/simulated_stable_upturn_GAMYE_strat_simple.RData"))
+
+
 
 
 save(list = c("slope_icar_stanfit",
@@ -62,7 +87,40 @@ save(list = c("slope_icar_stanfit",
               "strat_regions",
               "mod.file",
               "parms"),
-     file = paste0("output/simulated_stable_uptick_GAMYE_strat_simple",grid_spacing/1000,".RData"))
+     file = paste0("output/simulated_stable_downturn2altprior_GAMYE_strat_simple.RData"))
+
+
+
+save(list = c("slope_icar_stanfit",
+              "stan_data",
+              "dts",
+              "real_grid",
+              "strats_dts",
+              "strat_regions",
+              "mod.file",
+              "parms"),
+     file = paste0("output/simulated_stable_downturn2altsdyeargam_GAMYE_strat_simple.RData"))
+
+save(list = c("slope_icar_stanfit",
+              "stan_data",
+              "dts",
+              "real_grid",
+              "strats_dts",
+              "strat_regions",
+              "mod.file",
+              "parms"),
+     file = paste0("output/simulated_stable_uptick_GAMYE_strat_simple.RData"))
+
+
+save(list = c("slope_icar_stanfit",
+              "stan_data",
+              "dts",
+              "real_grid",
+              "strats_dts",
+              "strat_regions",
+              "mod.file",
+              "parms"),
+     file = paste0("output/simulated_stable_Balanced_downturn2_GAMYE_strat_simple.RData"))
 
 
 
@@ -86,8 +144,11 @@ loo_out = loo(slope_icar_stanfit)
 
 launch_shinystan(slope_icar_stanfit) 
 
+source("functions/utility_functions.R")
+source("functions/palettes.R")
 
-sp = "Simulated"
+
+sp = "stable_Balanced_upturn"
 three_gen = 20
 y3g <- 2019-three_gen
 
@@ -156,7 +217,7 @@ scale_adj <- ((scale_adj_means[["sdnoise"]]^2)*0.5 + scale_adj_means[["ALPHA1"]]
 n_countsby_site <- dts %>% group_by(site) %>% 
    summarise(n_c = n()) 
 
-if(mod.file == "models/GAMYE_strata_two_season_simple.stan"){
+if(grepl(x = mod.file,pattern = "two_season")){
    
    strat_season_strat <- dts %>% distinct(seas_strat,strat,hex_name)
    
@@ -348,7 +409,7 @@ t_NSmooth_80 <- ItoT(inds = NSmoothsamples,
                      qs = 95,
                      sp = sp,
                      type = "Long-term")
-TRENDSout <- bind_rows(TRENDSout,t_NSmooth_80)
+#TRENDSout <- bind_rows(TRENDSout,t_NSmooth_80)
 
 t_NSmooth_04 <- ItoT(inds = NSmoothsamples,
                      start = 2004,
@@ -357,7 +418,7 @@ t_NSmooth_04 <- ItoT(inds = NSmoothsamples,
                      qs = 95,
                      sp = sp,
                      type = "15-year")
-TRENDSout <- bind_rows(TRENDSout,t_NSmooth_04)
+#TRENDSout <- bind_rows(TRENDSout,t_NSmooth_04)
 
 t_NSmooth_3g <- ItoT(inds = NSmoothsamples,
                      start = y3g,
@@ -366,7 +427,7 @@ t_NSmooth_3g <- ItoT(inds = NSmoothsamples,
                      qs = 95,
                      sp = sp,
                      type = "Recent-three-generation")
-TRENDSout <- bind_rows(TRENDSout,t_NSmooth_3g)
+#TRENDSout <- bind_rows(TRENDSout,t_NSmooth_3g)
 
 
 syL3g = y3g-(2019-y3g)
@@ -379,7 +440,7 @@ t_NSmooth_L3g <- ItoT(inds = NSmoothsamples,
                       sp = sp,
                       type = "Previous-three-generation")
 
-TRENDSout <- bind_rows(TRENDSout,t_NSmooth_L3g)
+#TRENDSout <- bind_rows(TRENDSout,t_NSmooth_L3g)
 
 anot_funct <- function(x){
    ant = paste(signif(x$percent_change,3),
@@ -445,7 +506,7 @@ pdf(paste0("figures/",sp,FYYYY,"_GAMYE_survey_wide_trajectory_simple",grid_spaci
 print(N_gg)
 dev.off()
 
-sp_ind_plots_diagnostic[[sp]] <- N_gg
+#sp_ind_plots_diagnostic[[sp]] <- N_gg
 
 
 
@@ -463,7 +524,7 @@ N_gg_simple = ggplot(data = indices,aes(x = year, y = PI50,fill = parm))+
 
 #print(N_gg_simple)
 
-sp_ind_plots[[sp]] <- N_gg_simple
+#sp_ind_plots[[sp]] <- N_gg_simple
 
 
 # Continental Smooth spaghetti plot ---------------------------------------
@@ -568,7 +629,7 @@ for(jj in 1:ceiling(nstrata/ppag)){
       theme(legend.position = "none")+
       labs(title = sp)+
       facet_wrap_paginate(facets = ~stratn,page = jj,nrow = nrr, ncol = ncl,scales = "free")
-   tmp_sp_ind_plots[[jj]] <- n_gg_simple
+   #tmp_sp_ind_plots[[jj]] <- n_gg_simple
    
    
    n_gg = ggplot(data = indices_strat,aes(x = year, y = PI50,fill = parm))+
@@ -580,7 +641,7 @@ for(jj in 1:ceiling(nstrata/ppag)){
       labs(title = sp)+
       facet_wrap_paginate(facets = ~stratn,page = jj,nrow = nrr, ncol = ncl,scales = "free")+
       scale_size_area()
-   tmp_sp_ind_plots_diagnostic[[jj]] <- n_gg
+   #tmp_sp_ind_plots_diagnostic[[jj]] <- n_gg
    
    
    
@@ -589,8 +650,8 @@ for(jj in 1:ceiling(nstrata/ppag)){
 print(n_gg_spag)
 dev.off()
 
-sp_ind_plots_strat[[sp]] <- tmp_sp_ind_plots
-sp_ind_plots_strat_diagnostic[[sp]] <- tmp_sp_ind_plots_diagnostic
+# sp_ind_plots_strat[[sp]] <- tmp_sp_ind_plots
+# sp_ind_plots_strat_diagnostic[[sp]] <- tmp_sp_ind_plots_diagnostic
 
 
 # Trajectory Overplot log-scale -------------------------------------------
@@ -609,7 +670,7 @@ n_gg_over = ggplot(data = indices_strat_smooth,aes(x = year, y = PI50,colour = h
    theme(legend.position = "none")+
    scale_y_log10()
 
-traj_overplots[[jj]] <- n_gg_over
+#traj_overplots[[jj]] <- n_gg_over
 
 
 
@@ -650,7 +711,7 @@ b_plot <- ggplot(data = b,aes(x = k,y = mean,colour = hex_name))+
 print(b_plot)
 
 
-beta_overplots[[jj]] <- b_plot
+#beta_overplots[[jj]] <- b_plot
 
 # combine the trajectories within the original regional strata ------------
 
@@ -683,8 +744,8 @@ t_nsmooth_strat_04 <- ItoT(inds = nsmoothsamples,
                            sp = sp,
                            type = "15-year")
 
-trendsout <- bind_rows(trendsout,
-                       t_nsmooth_strat_04)
+#trendsout <- bind_rows(trendsout,
+#                       t_nsmooth_strat_04)
 
 
 t_nsmooth_strat_80 <- ItoT(inds = nsmoothsamples,
@@ -694,8 +755,8 @@ t_nsmooth_strat_80 <- ItoT(inds = nsmoothsamples,
                            qs = 95,
                            sp = sp,
                            type = "Long-term")
-trendsout <- bind_rows(trendsout,
-                       t_nsmooth_strat_80)
+#trendsout <- bind_rows(trendsout,
+#                       t_nsmooth_strat_80)
 
 
 
@@ -706,8 +767,8 @@ t_nsmooth_strat_3g <- ItoT(inds = nsmoothsamples,
                            qs = 95,
                            sp = sp,
                            type = "Recent-three-generation")
-trendsout <- bind_rows(trendsout,
-                       t_nsmooth_strat_3g)
+# trendsout <- bind_rows(trendsout,
+#                       t_nsmooth_strat_3g)
 
 t_nsmooth_strat_L3g <- ItoT(inds = nsmoothsamples,
                             start = syL3g,
@@ -716,8 +777,8 @@ t_nsmooth_strat_L3g <- ItoT(inds = nsmoothsamples,
                             qs = 95,
                             sp = sp,
                             type = "Previous-three-generation")
-trendsout <- bind_rows(trendsout,
-                       t_nsmooth_strat_L3g)
+#trendsout <- bind_rows(trendsout,
+#                       t_nsmooth_strat_L3g)
 
 
 
@@ -729,8 +790,8 @@ t_nsmooth_reg_04 <- ItoT(inds = nsmoothsamples,
                          qs = 95,
                          sp = sp,
                          type = "15-year")
-trendsout <- bind_rows(trendsout,
-                       t_nsmooth_reg_04)
+#trendsout <- bind_rows(trendsout,
+#                       t_nsmooth_reg_04)
 
 t_nsmooth_reg_80 <- ItoT(inds = nsmoothsamples,
                          start = 1980,
@@ -739,8 +800,8 @@ t_nsmooth_reg_80 <- ItoT(inds = nsmoothsamples,
                          qs = 95,
                          sp = sp,
                          type = "Long-term")
-trendsout <- bind_rows(trendsout,
-                       t_nsmooth_reg_80)
+#trendsout <- bind_rows(trendsout,
+#                       t_nsmooth_reg_80)
 
 t_nsmooth_reg_3g <- ItoT(inds = nsmoothsamples,
                          start = y3g,
@@ -749,8 +810,8 @@ t_nsmooth_reg_3g <- ItoT(inds = nsmoothsamples,
                          qs = 95,
                          sp = sp,
                          type = "Recent-three-generation")
-trendsout <- bind_rows(trendsout,
-                       t_nsmooth_reg_3g)
+#trendsout <- bind_rows(trendsout,
+#                       t_nsmooth_reg_3g)
 
 t_nsmooth_reg_L3g <- ItoT(inds = nsmoothsamples,
                           start = syL3g,
@@ -759,8 +820,8 @@ t_nsmooth_reg_L3g <- ItoT(inds = nsmoothsamples,
                           qs = 95,
                           sp = sp,
                           type = "Previous-three-generation")
-trendsout <- bind_rows(trendsout,
-                       t_nsmooth_reg_L3g)
+#trendsout <- bind_rows(trendsout,
+#                       t_nsmooth_reg_L3g)
 
 
 
@@ -791,17 +852,37 @@ ind_fc = ggplot(data = indsn_region,aes(x = year,y = median,group = type))+
    theme_classic()+
    labs(title = sp)+
    facet_wrap(~region,scales = "free")
-#print(ind_fc)
+print(ind_fc)
 
-composite_trajectories[[sp]] <- ind_fc  
-
-
+#composite_trajectories[[sp]] <- ind_fc  
 
 
+t_comparison_1 <- inner_join(t_nsmooth_strat_L3g,
+                            strats_xy,
+                            by = c("region" = "hex_name")) %>% 
+   mutate(true_trend = (exp(b1)-1)*100)
+plot(t_comparison_1$trend,t_comparison_1$true_trend)#, xlim = c(-2.5,2),ylim = c(-2.5,2))
+abline(0,1)
+
+t_comparison_2 <- inner_join(t_nsmooth_strat_3g,
+                             strats_xy,
+                             by = c("region" = "hex_name")) %>% 
+   mutate(true_trend = (exp(b2)-1)*100)
+plot(t_comparison_2$trend,t_comparison_2$true_trend)#, xlim = c(-9,-2),ylim = c(-9,-2))
+plot(t_comparison_2$trend,t_comparison_2$true_trend, xlim = rev(-1*c(-9,-2)),ylim = rev(-1*c(-9,-2)))
+abline(0,1)
+
+t_comparison_all <- inner_join(t_nsmooth_strat_80,
+                             strats_xy,
+                             by = c("region" = "hex_name")) %>% 
+   mutate(true_trend = (exp(b1+b2)-1)*100)
+plot(t_comparison_all$trend,t_comparison_all$true_trend, xlim = c(-8.5,-2),ylim = c(-8.5,-2))
+plot(t_comparison_all$trend,t_comparison_all$true_trend, xlim = rev(-1*c(-9,-2)),ylim = rev(-1*c(-9,-2)))
+abline(0,1)
 
 
 # Trend heatmaps ----------------------------------------------------------
-## consider adding site-locations, stratum labels, etc.
+## consider adding stratum labels, etc.
 
 pdf(paste0("Figures/Trend_Heat_maps_",sp,".pdf"),
     width = 11,

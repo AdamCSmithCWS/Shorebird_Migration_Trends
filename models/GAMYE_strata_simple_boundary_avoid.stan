@@ -34,7 +34,7 @@ data {
   int<lower=0> count[ncounts];              // count observations
   int<lower=1> strat[ncounts];              // strata indicators
   int<lower=1> site[ncounts];              // site indicators
- // real year[ncounts];              // remove this
+  real year[ncounts];              // centered years
   int<lower=1> year_raw[ncounts]; // year index
   int<lower=1> date[ncounts];  // day indicator in the season
   //vector[nsites] site_size; //log-scale size predictor for site level abundance
@@ -105,11 +105,13 @@ transformed parameters {
   
   
 model { 
-  sdnoise ~ std_normal(); //prior on scale of extra Poisson log-normal variance
+  sdnoise ~ gamma(2,0.1);//boundary avoiding prior on sdnoise
+  //std_normal(); //prior on scale of extra Poisson log-normal variance
   sdyear ~ normal(0,0.2); //prior on scale of annual fluctuations - 
   // above is informative so that 95% of the prior includes yearly fluctuations fall
   // between 33% decrease and a 50% increase
-  sdalpha ~ std_normal(); //prior on scale of site level variation
+  sdalpha ~ gamma(2,0.1);//boundary avoiding prior on sdalpha
+  // ~ std_normal(); //prior on scale of site level variation
   sdyear_gam ~ normal(0,0.5); //prior on sd of gam hyperparameters
   sdyear_gam_strat ~ normal(0,0.05); // regularizing prior on variance of stratum level gam
  //nu ~ gamma(2,0.1); // prior on df for t-distribution of heavy tailed site-effects from https://github.com/stan-dev/stan/wiki/Prior-Choice-Recommendations#prior-for-degrees-of-freedom-in-students-t-distribution
@@ -121,7 +123,7 @@ model {
 
   count ~ poisson_log(E); //vectorized count likelihood
   alpha_raw ~ std_normal(); // fixed site-effects
-  noise_raw ~ std_normal(); //student_t(nu,0,1);// extra Poisson log-normal variance
+  noise_raw ~ std_normal(); // student_t(4,0,sdnoise);//extra Poisson log-normal variance
   B_raw ~ std_normal();// prior on GAM hyperparameters
   year_effect_raw ~ std_normal(); //prior on ▲annual fluctuations
   sum(year_effect_raw) ~ normal(0,0.0001*nyears);//sum to zero constraint on year-effects

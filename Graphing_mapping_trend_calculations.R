@@ -34,7 +34,9 @@ loo_ic <- blank_list
 sp_spag_plots_diagnostic <- blank_list
 beta_overplots <- blank_list
 traj_overplots <- blank_list
-
+alternate_traj_overplots <- blank_list
+out_simple_season_graphs <- blank_list
+out_alphas_by_yr <- blank_list
 
 trendsout <- NULL
 TRENDSout <- NULL
@@ -68,7 +70,10 @@ t1 = Sys.time()
 
 w_cosewic = sps[c(2:4,7,10,12:20,22,11,25)]
 
-for(sp in w_cosewic){
+# Species loop ------------------------------------------------------------
+
+
+for(sp in sps){
   if(sp == "Semipalmated Sandpiper"){next}
   if(file.exists(paste0("output/",sp,"_GAMYE_strat_simple",grid_spacing/1000,".RData"))){
     load(paste0("output/",sp,"_GAMYE_strat_simple",grid_spacing/1000,".RData"))
@@ -83,11 +88,12 @@ for(sp in w_cosewic){
     
     ## add some variation to the plotting of the observed means (box and whisker info)
     
+    #################################
     ## plot the changing mean alpha through time - are smaller sites being surveyed
     ## more in recent years?
+    #################################
     
-    ## add the mean trajectory to the composite trajectory plot for comparison
-    
+
     ## generate some fake data to ensure there isn't a negative bias
     
     
@@ -185,10 +191,17 @@ for(sp in w_cosewic){
     print(obs_by_alpha)
     dev.off()
     
+    
+ 
+
     # visualize the seasonal corrections --------------------------------------
     
+    
+ 
     # # extracting the seasonal smooth ------------------------------------------
     # 
+    
+    
     
     scale_adj_means <- summary(slope_icar_stanfit,pars = c("sdnoise","ALPHA1"))$summary[,1]
     
@@ -207,7 +220,7 @@ for(sp in w_cosewic){
     n_countsby_site <- dts %>% group_by(site) %>% 
       summarise(n_c = n()) 
 
-    if(mod.file == "models/GAMYE_strata_two_season_simple.stan"){
+    if(grepl(x = mod.file,pattern = "two_season")){
       
       strat_season_strat <- dts %>% distinct(seas_strat,strat,hex_name)
       
@@ -217,6 +230,8 @@ for(sp in w_cosewic){
       strat_offs <- alphas %>% left_join(.,n_countsby_site,by = "site") %>% 
         group_by(strat,seas_strat) %>% 
         summarise(adjs = mean(mean))
+      
+
       
     season_samples <- slope_icar_stanfit %>% gather_draws(season_pred[d,s])
     seasonEffectT = season_samples %>% group_by(d,s) %>% 
@@ -250,6 +265,32 @@ for(sp in w_cosewic){
              lci = lci*adjs,
              uci = uci*adjs)
     
+    
+    seas_strat_offs <- alphas %>% left_join(.,n_countsby_site,by = "site") %>% 
+      group_by(seas_strat) %>% 
+      summarise(adjs = mean(mean),
+                adjs2 = median(mean))
+    
+    seasonEffect_plot <- left_join(seasonEffectT,seas_strat_offs,by = "seas_strat") %>% 
+      mutate(mean = mean*adjs + 1,
+             lci = lci*adjs + 1,
+             uci = uci*adjs + 1)
+    
+    
+    pp_simple <- ggplot()+
+      geom_point(data = dts,aes(x = date,y = count+1,colour = year),alpha = 0.5,size = 1,position = position_jitter(width = 0.7,height = 0))+
+      #geom_smooth(data = dts,aes(x = date,y = count+1))+
+      scale_colour_viridis_c()+
+      geom_line(data = seasonEffect_plot,aes(x = day,y = mean),inherit.aes = FALSE)+
+      #coord_cartesian(ylim = c(0,yup))+
+      geom_ribbon(data = seasonEffect_plot,aes(x = day,y = mean,ymax = uci,ymin = lci),alpha = 0.2,inherit.aes = FALSE)+
+      ylab("")+
+      xlab("Days since July 1")+
+      scale_y_log10()+
+      facet_wrap(facets = ~seas_strat,nrow = 2, ncol = 1,scales = "free")+
+      labs(title = sp)
+    #print(pp_simple)
+    out_simple_season_graphs[[sp]] <- pp_simple
     
     
     ncl = 3
@@ -317,7 +358,7 @@ for(sp in w_cosewic){
         summarise(adjs = mean(mean))
       
       season_samples <- slope_icar_stanfit %>% gather_draws(season_pred[d])
-      seasonEffect = season_samples %>% group_by(d) %>% 
+      seasonEffectT = season_samples %>% group_by(d) %>% 
         summarise(mean = mean(exp(.value+scale_adj)),
                   lci = quantile(exp(.value+scale_adj),0.025),
                   uci = quantile(exp(.value+scale_adj),0.975)) %>% 
@@ -330,11 +371,39 @@ for(sp in w_cosewic){
                   uqrt = quantile(count,0.95)) %>% 
         mutate(day = date)
       
-      seasonEffect <- expand_grid(seasonEffect,strat = c(1:nstrata))
+      seasonEffect <- expand_grid(seasonEffectT,strat = c(1:nstrata))
       seasonEffect <- left_join(seasonEffect,strat_offs) %>% 
         mutate(mean = mean*adjs,
                lci = lci*adjs,
                uci = uci*adjs)
+      
+      
+      
+      # seas_strat_offs <- alphas %>% left_join(.,n_countsby_site,by = "site") %>% 
+      #   group_by(seas_strat) %>% 
+      #   summarise(adjs = mean(mean),
+      #             adjs2 = median(mean))
+      
+      seasonEffect_plot <- seasonEffectT %>% 
+        mutate(mean = mean*mean(alphas$mean)+1,
+               lci = lci*mean(alphas$mean)+1,
+               uci = uci*mean(alphas$mean)+1)
+      
+      
+      pp_simple <- ggplot()+
+        geom_point(data = dts,aes(x = date,y = count+1,colour = year),alpha = 0.5,size = 1,position = position_jitter(width = 0.7,height = 0))+
+        #geom_smooth(data = dts,aes(x = date,y = count+1))+
+        scale_colour_viridis_c()+
+        geom_line(data = seasonEffect_plot,aes(x = day,y = mean),inherit.aes = FALSE)+
+        #coord_cartesian(ylim = c(0,yup))+
+        geom_ribbon(data = seasonEffect_plot,aes(x = day,y = mean,ymax = uci,ymin = lci),alpha = 0.2,inherit.aes = FALSE)+
+        ylab("")+
+        xlab("Days since July 1")+
+        scale_y_log10()+
+        labs(title = sp)
+      #print(pp_simple)
+      out_simple_season_graphs[[sp]] <- pp_simple
+      
       
       
       ncl = 3
@@ -389,9 +458,63 @@ for(sp in w_cosewic){
     
     
 
-
-   
     
+    # plot the changing mean site-effect over years ---------------------------
+    
+    
+    # overall -----------------------------------------------------------------
+    
+    alphasE = alpha_samples %>% group_by(s) %>% 
+      summarise(mean = mean((.value)),
+                lci = quantile((.value),0.025),
+                uci = quantile((.value),0.975)) %>% 
+      mutate(site = s) %>% left_join(.,sitesbystrat)
+    
+    dts_alpha <- left_join(dts,alphasE,by = c("site","strat"))
+    
+    alphas_yr <- dts_alpha %>% group_by(YearCollected,site,strat) %>% 
+      summarise(mean_alpha = mean(mean)) %>% ungroup() %>% 
+      group_by(YearCollected) %>% 
+      summarise(mean_alpha = mean(mean_alpha))
+    
+    AA_y_p <- ggplot(data = alphas_yr,aes(x = YearCollected,y = mean_alpha))+
+      geom_point()+
+      geom_smooth()+
+      geom_abline(slope = 0,intercept = 0,colour = grey(0.3))+
+      xlab("")+
+      labs(title = paste(sp,"mean site-effect of included sites by year"))
+    
+    pdf(file = paste0("Figures/",sp,"alphas_by_yr.pdf"),
+        width = 8.5,
+        height = 8.5)
+    print(AA_y_p)
+    
+    tmp_out_alphas_by_yr <- vector(mode = "list",length = 1+(ceiling(nstrata/ppag)))
+    tmp_out_alphas_by_yr[[1]] <- AA_y_p
+    # by strata ---------------------------------------------------------------
+    
+    alphas_yr_s <- dts_alpha %>% group_by(YearCollected,site,strat) %>% 
+      summarise(mean_alpha = mean(mean)) %>% ungroup() %>% 
+      group_by(YearCollected,strat) %>% 
+      summarise(mean_alpha = mean(mean_alpha))
+    
+    for(jj in 1:ceiling(nstrata/ppag)){
+      
+      a_y_p <- ggplot(data = alphas_yr_s,aes(x = YearCollected,y = mean_alpha))+
+        geom_point()+
+        geom_smooth()+
+        geom_abline(slope = 0,intercept = 0,colour = grey(0.3))+
+        xlab("")+
+        labs(title = paste(sp,"mean site-effect of included sites by year"))+
+        facet_wrap_paginate(facets = ~strat,page = jj,nrow = nrr, ncol = ncl,scales = "free")
+      
+      print(a_y_p)
+      tmp_out_alphas_by_yr[[jj+1]] <- a_y_p
+    }
+    
+   dev.off()
+    
+   out_alphas_by_yr[[sp]] <- tmp_out_alphas_by_yr
     
 
     # calculate trends continent --------------------------------------------------------
@@ -492,6 +615,7 @@ for(sp in w_cosewic){
       coord_cartesian(ylim = c(0,yup))+
       geom_point(aes(y = obsmean,size = mean_counts_incl_strata),colour = grey(0.5),alpha = 0.3)+
       theme_classic()+
+      scale_y_continuous(limits = c(0,NA))+
       theme(legend.position = "none")#+
       #scale_size_area()
     
@@ -513,6 +637,7 @@ for(sp in w_cosewic){
       xlab("")+
       ylab("Modeled mean count")+
       theme_classic()+
+      scale_y_continuous(limits = c(0,NA))+
       theme(legend.position = "none")#+
     #scale_size_area()
     
@@ -525,7 +650,7 @@ for(sp in w_cosewic){
     indicesNSmooth$year = indicesNSmooth$year + (syear-1)
     
     set.seed(2019)
-    r_draws <- sample(size = 50,x = 1:max(NSmoothsamples$.draw))
+    r_draws <- sample(size = 100,x = 1:max(NSmoothsamples$.draw))
     spg_trajs <- NSmoothsamples %>% filter(.draw %in% r_draws) %>% 
       mutate(draw_f = factor(.draw))
     
@@ -542,8 +667,8 @@ for(sp in w_cosewic){
     n_gg_spag = ggplot(data = indicesNSmooth,aes(x = year, y = PI50))+
       geom_ribbon(aes(ymin = PI2_5,ymax = PI97_5),alpha = 0.25)+
       geom_line(size =2)+
-      labs(title = paste(sp,"Random selection of posterior draws of survey-wide trajectories"),
-           subtitle = "Colour of each posterior draw reflects the value in 1980, demonstrating similar smooths across draws")+
+      labs(title = paste(sp,"Random selection of 100 posterior draws of survey-wide trajectories"),
+           subtitle = "Colour of each posterior draw reflects the value in 2019, demonstrating similar smooths across draws")+
       xlab("")+
       ylab("Modeled mean count")+
       theme_classic()+
@@ -779,7 +904,8 @@ for(sp in w_cosewic){
                                regions = "hex_name",
                                qs = 95,
                                sp = sp,
-                               type = "15-year")
+                               type = "15-year",
+                               centered_trends = TRUE)
     
     trendsout <- bind_rows(trendsout,
                            t_nsmooth_strat_04)
@@ -791,7 +917,8 @@ for(sp in w_cosewic){
                                regions = "hex_name",
                                qs = 95,
                                sp = sp,
-                               type = "Long-term")
+                               type = "Long-term",
+                               centered_trends = TRUE)
     trendsout <- bind_rows(trendsout,
                            t_nsmooth_strat_80)
     
@@ -803,7 +930,8 @@ for(sp in w_cosewic){
                                regions = "hex_name",
                                qs = 95,
                                sp = sp,
-                               type = "Recent-three-generation")
+                               type = "Recent-three-generation",
+                               centered_trends = TRUE)
     trendsout <- bind_rows(trendsout,
                            t_nsmooth_strat_3g)
     
@@ -813,7 +941,8 @@ for(sp in w_cosewic){
                                 regions = "hex_name",
                                 qs = 95,
                                 sp = sp,
-                                type = "Previous-three-generation")
+                                type = "Previous-three-generation",
+                                centered_trends = TRUE)
     trendsout <- bind_rows(trendsout,
                            t_nsmooth_strat_L3g)
     
@@ -826,7 +955,8 @@ for(sp in w_cosewic){
                              regions = "Region",
                              qs = 95,
                              sp = sp,
-                             type = "15-year")
+                             type = "15-year",
+                             centered_trends = TRUE)
     trendsout <- bind_rows(trendsout,
                            t_nsmooth_reg_04)
     
@@ -836,7 +966,8 @@ for(sp in w_cosewic){
                              regions = "Region",
                              qs = 95,
                              sp = sp,
-                             type = "Long-term")
+                             type = "Long-term",
+                             centered_trends = TRUE)
     trendsout <- bind_rows(trendsout,
                            t_nsmooth_reg_80)
     
@@ -846,7 +977,8 @@ for(sp in w_cosewic){
                                regions = "Region",
                                qs = 95,
                                sp = sp,
-                               type = "Recent-three-generation")
+                               type = "Recent-three-generation",
+                             centered_trends = TRUE)
     trendsout <- bind_rows(trendsout,
                            t_nsmooth_reg_3g)
     
@@ -856,7 +988,8 @@ for(sp in w_cosewic){
                                 regions = "Region",
                                 qs = 95,
                                 sp = sp,
-                                type = "Previous-three-generation")
+                                type = "Previous-three-generation",
+                              centered_trends = TRUE)
     trendsout <- bind_rows(trendsout,
                            t_nsmooth_reg_L3g)
     
@@ -999,6 +1132,18 @@ for(sp in sps){
 dev.off()
 
 
+# Simple Season Graphs --------------------------------------------------------------
+pdf(file = "Figures/All_Simple_Season_graphs.pdf",
+    width = 9, height = 6.5)
+for(sp in sps){
+  if(!is.null(out_simple_season_graphs[[sp]])){
+    print(out_simple_season_graphs[[sp]])
+    
+  }
+}
+dev.off()
+
+
 # Continental Trajectories ------------------------------------------------
 
 pdf(file = "Figures/All_Continental_Trajectories.pdf",
@@ -1065,6 +1210,18 @@ for(sp in sps){
 }
 dev.off()
 
+# alphas by year ------------------------------------------------
+
+pdf(file = "Figures/All_alphas_by_yr.pdf",
+    width = 9, height = 6.5)
+for(sp in sps){
+  if(!is.null(out_alphas_by_yr[[sp]])){
+    tmp = out_alphas_by_yr[[sp]]
+    for(j in 1:length(tmp))
+      print(tmp[[j]])
+  }
+}
+dev.off()
 
 
 # Trend plots -------------------------------------------------------------

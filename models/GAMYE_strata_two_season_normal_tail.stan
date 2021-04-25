@@ -34,7 +34,7 @@ data {
   int<lower=0> count[ncounts];              // count observations
   int<lower=1> strat[ncounts];              // strata indicators
   int<lower=1> site[ncounts];              // site indicators
-  real year[ncounts];              // centered years
+  //real year[ncounts];              // centered years
   int<lower=1> year_raw[ncounts]; // year index
   int<lower=1> date[ncounts];  // day indicator in the season
   int<lower=1> seas_strat[ncounts];
