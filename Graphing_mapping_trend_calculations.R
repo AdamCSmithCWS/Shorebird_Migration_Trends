@@ -74,7 +74,7 @@ w_cosewic = sps[c(2:4,7,10,12:20,22,11,25)]
 
 
 for(sp in sps){
-  if(sp == "Semipalmated Sandpiper"){next}
+  #if(sp == "Semipalmated Sandpiper"){next}
   if(file.exists(paste0("output/",sp,"_GAMYE_strat_simple",grid_spacing/1000,".RData"))){
     load(paste0("output/",sp,"_GAMYE_strat_simple",grid_spacing/1000,".RData"))
     

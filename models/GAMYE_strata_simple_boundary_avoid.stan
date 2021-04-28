@@ -117,13 +117,13 @@ model {
  //nu ~ gamma(2,0.1); // prior on df for t-distribution of heavy tailed site-effects from https://github.com/stan-dev/stan/wiki/Prior-Choice-Recommendations#prior-for-degrees-of-freedom-in-students-t-distribution
   sdseason ~ std_normal();//variance of GAM parameters
   B_season_raw ~ std_normal();//GAM parameters
-  ALPHA1 ~ std_normal();// overall species intercept 
+  ALPHA1 ~ normal(2,0.2);// overall species intercept 
  
    // beta_size ~ normal(0,1);// effect of site-size predictor
 
   count ~ poisson_log(E); //vectorized count likelihood
   alpha_raw ~ std_normal(); // fixed site-effects
-  noise_raw ~ std_normal(); // student_t(4,0,sdnoise);//extra Poisson log-normal variance
+  noise_raw ~ student_t(3,0,1);//extra Poisson log-normal variance
   B_raw ~ std_normal();// prior on GAM hyperparameters
   year_effect_raw ~ std_normal(); //prior on ▲annual fluctuations
   sum(year_effect_raw) ~ normal(0,0.0001*nyears);//sum to zero constraint on year-effects
