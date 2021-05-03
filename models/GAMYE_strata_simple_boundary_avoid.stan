@@ -1,6 +1,6 @@
 // This is a full hierarchical GAM time-series, with spatial gam parameters 
 // as well as a gam-based Seasonal adjustment and sruvey-wide random year-effects
-// same as GAMYE_strata_simple but with a centered noise parameter
+// same as GAMYE_strata but without the site-size predictor
 
 
 functions {
@@ -50,9 +50,9 @@ data {
 }
 
 parameters {
-  vector[nsites] alpha;             // intercepts
+  vector[nsites] alpha_raw;             // intercepts
   vector[nyears] year_effect_raw;             // continental year-effects
-  vector[ncounts] noise; //_raw;             // over-dispersion
+  vector[ncounts] noise_raw;             // over-dispersion
   matrix[nstrata,nknots_year] b_raw;         // spatial effect slopes (0-centered deviation from continental mean slope B)
   vector[nknots_year] B_raw;             // GAM coefficients year
   
@@ -60,7 +60,7 @@ parameters {
   //real beta_size; //effect of site level predictor
   
  real<lower=0> sdnoise;    // sd of over-dispersion
- real<lower=2.1> nu; 
+ //real<lower=2.1> nu; 
   real<lower=0> sdalpha;    // sd of site effects
   real<lower=0> sdyear;    // sd of year effects
   real<lower=0> sdseason;    // sd of year effects
@@ -74,15 +74,15 @@ transformed parameters {
   vector[ndays] season_pred = season_basispred*(sdseason*B_season_raw);
     matrix[nyears,nstrata] year_pred;
   vector[nyears] Y_pred; 
-  //vector[nsites] alpha;
+  vector[nsites] alpha;
   vector[nknots_year] B;
    matrix[nstrata,nknots_year] b;
- // vector[ncounts] noise;             // over-dispersion
+  vector[ncounts] noise;             // over-dispersion
    vector[nyears] year_effect;             // continental year-effects
  
-  //alpha = sdalpha*alpha_raw;// + beta_size*site_size;
+  alpha = sdalpha*alpha_raw;// + beta_size*site_size;
   B = sdyear_gam*B_raw;
-  // noise = sdnoise*noise_raw;
+  noise = sdnoise*noise_raw;
   year_effect = sdyear*year_effect_raw;
   
  
@@ -105,27 +105,29 @@ transformed parameters {
   
   
 model { 
-  sdnoise ~ std_normal(); //prior on scale of extra Poisson log-normal variance
+  sdnoise ~ gamma(2,0.1);//boundary avoiding prior on sdnoise
+  //std_normal(); //prior on scale of extra Poisson log-normal variance
   sdyear ~ normal(0,0.2); //prior on scale of annual fluctuations - 
   // above is informative so that 95% of the prior includes yearly fluctuations fall
   // between 33% decrease and a 50% increase
-  sdalpha ~ std_normal(); //prior on scale of site level variation
+  sdalpha ~ gamma(2,0.1);//boundary avoiding prior on sdalpha
+  // ~ std_normal(); //prior on scale of site level variation
   sdyear_gam ~ normal(0,0.5); //prior on sd of gam hyperparameters
   sdyear_gam_strat ~ normal(0,0.05); // regularizing prior on variance of stratum level gam
- nu ~ gamma(2,0.1); // prior on df for t-distribution of heavy tailed site-effects from https://github.com/stan-dev/stan/wiki/Prior-Choice-Recommendations#prior-for-degrees-of-freedom-in-students-t-distribution
+ //nu ~ gamma(2,0.1); // prior on df for t-distribution of heavy tailed site-effects from https://github.com/stan-dev/stan/wiki/Prior-Choice-Recommendations#prior-for-degrees-of-freedom-in-students-t-distribution
   sdseason ~ std_normal();//variance of GAM parameters
   B_season_raw ~ std_normal();//GAM parameters
-  ALPHA1 ~ std_normal();// overall species intercept 
+  ALPHA1 ~ normal(2,0.2);// overall species intercept 
  
    // beta_size ~ normal(0,1);// effect of site-size predictor
 
   count ~ poisson_log(E); //vectorized count likelihood
-  alpha ~ normal(0,sdalpha); // site-effects
-  noise ~ student_t(nu,0,sdnoise);//std_normal(); // extra Poisson log-normal variance
+  alpha_raw ~ std_normal(); // fixed site-effects
+  noise_raw ~ student_t(3,0,1);//extra Poisson log-normal variance
   B_raw ~ std_normal();// prior on GAM hyperparameters
   year_effect_raw ~ std_normal(); //prior on ▲annual fluctuations
   sum(year_effect_raw) ~ normal(0,0.0001*nyears);//sum to zero constraint on year-effects
-  sum(alpha) ~ normal(0,0.0001*nsites);//sum to zero constraint on site-effects
+  sum(alpha_raw) ~ normal(0,0.0001*nsites);//sum to zero constraint on site-effects
   sum(B_raw) ~ normal(0,0.001*nknots_year);//sum to zero constraint on GAM hyperparameters
   
     for(k in 1:nknots_year){

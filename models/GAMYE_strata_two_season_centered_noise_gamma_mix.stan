@@ -106,7 +106,7 @@ transformed parameters {
   Y_pred = year_basispred * B; 
   
       for(s in 1:nstrata){
-     year_pred[,s] = Y_pred + (year_basispred * transpose(b[s,]));
+     year_pred[,s] = (year_basispred * transpose(b[s,]));
 }
 
   for(i in 1:ncounts){

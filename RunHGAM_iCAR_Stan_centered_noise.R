@@ -39,7 +39,7 @@ sps_remain = sps[-which(sps %in% w_cosewic)]
     load(paste0("data/data",sp,"_GAMYE_strat_simple",grid_spacing/1000,".RData"))
 
 mod.file <- "models/GAMYE_strata_two_season_centered_noise.stan"
-
+mod.file <- "models/GAMYE_strata_two_season_centered_noise_alpha.stan"
 ## compile model
 slope_icar_model = stan_model(file=mod.file)
 
