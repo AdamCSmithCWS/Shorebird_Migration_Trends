@@ -72,7 +72,49 @@ st_geometry(strats) <- NULL
 ssData <- left_join(ssData,strats,by = "SurveyAreaIdentifier")
 ### hex_name is now the new stratification
 
+nyrs_by_site <- ssData %>% distinct(SurveyAreaIdentifier,YearCollected) %>% 
+  group_by(SurveyAreaIdentifier) %>% 
+  summarise(fyr = min(YearCollected),
+            lyr = max(YearCollected),
+            span = lyr-fyr,
+            nyrs = n())
+ sites_gt_10 <- filter(nyrs_by_site,span > 20) 
+  sites_w_10 <- as.character(sites_gt_10$SurveyAreaIdentifier)
+nsites_by_yr <- ssData %>% distinct(SurveyAreaIdentifier,YearCollected,Region) %>% 
+  group_by(SurveyAreaIdentifier,Region,YearCollected) %>% 
+  summarise(nobs = n()) %>% 
+  ungroup() %>% 
+  group_by(Region,YearCollected) %>% 
+  summarise(nsites = n()) %>% 
+  rename(Year = YearCollected) %>% 
+  mutate(which_sites = "All")
 
+
+nsites_by_yr_gt_10 <- ssData %>% filter(SurveyAreaIdentifier %in% sites_w_10) %>% 
+  distinct(SurveyAreaIdentifier,YearCollected,Region) %>% 
+  group_by(SurveyAreaIdentifier,Region,YearCollected) %>% 
+  summarise(nobs = n()) %>% 
+  ungroup() %>% 
+  group_by(Region,YearCollected) %>% 
+  summarise(nsites = n()) %>% 
+  rename(Year = YearCollected) %>% 
+  mutate(which_sites = "GT_10_yrs")
+
+nsites_comparison = bind_rows(nsites_by_yr,nsites_by_yr_gt_10)
+
+nsites_yr_plot = ggplot(data = nsites_comparison,aes(x = Year,y = nsites,colour = which_sites))+
+  geom_point()+
+  geom_smooth()+
+  labs(title = "Number of ISS, ACSS, and OSS sites surveyed over time (Fall migration)")+
+  scale_y_continuous(trans = "log",
+                     breaks = c(1,3,5,10,20,30,50,100,200))+
+  scale_colour_discrete(name = "Long-term vs All Sites", labels = c("All Sites","Long-term (+10-years)"))+
+  facet_wrap(~Region,nrow = 3,ncol = 3,scales = "free")
+ 
+pdf(file = "Figures/Number of sites surveyed by year and region.pdf",
+    width = 11,height = 8.5) 
+print(nsites_yr_plot)
+dev.off()
 
 # animated gif ------------------------------------------------------------
 
@@ -84,6 +126,8 @@ nevents_by_site_yr <- ssData %>% distinct(SurveyAreaIdentifier,YearCollected,doy
   group_by(SurveyAreaIdentifier,YearCollected) %>% 
   summarise(nobs = n(),
             log_nobs = log(n(),10))
+
+
 
 map_events <- inner_join(iss_sites_lcc,nevents_by_site_yr,by = c("SurveyAreaIdentifier"))
 map_events$YearCollected <- as.integer(map_events$YearCollected)
