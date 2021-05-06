@@ -98,7 +98,12 @@ full_sum <- summary(slope_icar_stanfit)$summary
  sdalpha <- full_sum["sdalpha","mean"]
  alphas <- full_sum[paste0("alpha[",1:stan_data$nsites,"]"),"mean"]
  
- set_seed(2019)
+ 
+ alphas <- (alphas/2)
+ 
+ 
+ 
+ set.seed(2019)
  year_effect <- rep(c(-1,1),length = stan_data$nyears)*abs(rnorm(stan_data$nyears,0,full_sum[paste0("sdyear"),"mean"]))
  year_effect[c(1,stan_data$nyears)] <- 0
  ## year-effects are 0 in first and last years, and alternate positive-negative for all other years
@@ -115,20 +120,20 @@ full_sum <- summary(slope_icar_stanfit)$summary
  
  year_pred <- matrix(NA,nrow = stan_data$nyears,ncol = stan_data$nstrata)
  
- B1 = 0 #initial stable linear trend
- BC = -0.03 #change in trend in year 20
+ B1 = -0.02 #initial stable linear trend
+ BC = 0 #change in trend in year 20
  sdBC = 0.005 #sd on change in trend
  BCs = rnorm(stan_data$nstrata,BC,sdBC)
- bx = 0.01 #implies a 2%/year range in trends by longitude
- by = 0.01 #implies a 2%/year range in trends by latitude
+ bx = -0.005 #implies a 1-2%/year range in trends by longitude
+ by = -0.02 #implies a 2-4%/year range in trends by latitude
  
  strats_xy <- strats_dts %>% 
    mutate(x = as.numeric(str_split(hex_name,pattern = "_",simplify = TRUE)[,1]),
           y = as.numeric(str_split(hex_name,pattern = "_",simplify = TRUE)[,2]),
           x_scale = (x-mean(x))/(0.5*diff(range(x))),#scaled x coordinate to create a longitudinal gradient in trends
           y_scale = (y-mean(y))/(0.5*diff(range(y))),#scaled y coordinate to create a latitudinal gradient in trends
-          b1 = x_scale*(bx+B1) + y_scale*(by+B1), #initial log-linear slopes for each stratum with spatial gradients
-          b2 = b1+BCs) #final log-linear slope with spatial gradients
+          b1 = (x_scale*bx+B1) + (y_scale*by+B1), #initial log-linear slopes for each stratum with spatial gradients
+          b2 = b1) #final log-linear slope with spatial gradients
  
 midyear = 20
 b1 = strats_xy$b1 #initial slopes for each stratum
@@ -179,10 +184,76 @@ save(list = c("stan_data",
               "year_pred",
               "year_effect",
               "noise"),
-          file = paste0("data/data_simulated_stable_downturn_GAMYE_strat_simple.RData"))
+          file = paste0("data/data_simulated_stable_decline2_GAMYE_strat_simple.RData"))
 
  
- 
+
+
+
+
+# Balanced simulated dataset ----------------------------------------------
+
+sdnoise <- 1.970721
+
+stan_data_bal <- stan_data
+
+sites_strats <- unique(data.frame(strat = stan_data$strat,
+                                  site = stan_data$site,
+                                  seas_strat = stan_data$seas_strat))
+
+sample_days = floor(seq(6,stan_data$ndays-6,length = 12))
+
+bal_days <- NULL
+for(j in 1:nrow(sites_strats)){
+   tmp = sites_strats[j,]
+   tmp2 = sample_days + round(runif(length(sample_days),-5,5))
+   tmp = expand_grid(tmp,date = as.integer(tmp2))
+   
+   bal_days <- bind_rows(bal_days,tmp)
+}
+
+bal_dat <- expand_grid(bal_days,year_raw = c(1:stan_data$nyears))
+
+
+stan_data_bal$ncounts <- nrow(bal_dat)
+stan_data_bal$year_raw <- bal_dat$year_raw
+stan_data_bal$site <- bal_dat$site
+stan_data_bal$strat <- bal_dat$strat
+stan_data_bal$date <- bal_dat$date
+stan_data_bal$seas_strat <- bal_dat$seas_strat
+noise = rnorm(stan_data_bal$ncounts,0,sdnoise)
+
+stan_data_bal$count <- vector(mode = "integer",length = stan_data_bal$ncounts)
+for(i in 1:stan_data_bal$ncounts){
+   t1 = rpois(n = 1,exp(ALPHA1 + year_pred[stan_data_bal$year_raw[i],stan_data_bal$strat[i]] + 
+                           alphas[stan_data_bal$site[i]] + year_effect[stan_data_bal$year_raw[i]] + 
+                           season_pred[stan_data_bal$date[i],stan_data_bal$seas_strat[i]] + noise[i]))
+   if(is.na(t1)){break}
+   stan_data_bal$count[i] = t1
+}
+
+stan_data <- stan_data_bal
+
+
+save(list = c("stan_data",
+              "dts",
+              "real_grid",
+              "real_grid_regs",
+              "strats_dts",
+              "strat_regions",
+              "mod.file",
+              "parms",
+              "strats_xy",
+              "season_pred",
+              "alphas",
+              "ALPHA1",
+              "year_pred",
+              "year_effect",
+              "noise",
+              "sdnoise"),
+     file = paste0("data/data_simulated_balanced_stable_decline2_GAMYE_strat_simple.RData"))
+
+
  
  
 

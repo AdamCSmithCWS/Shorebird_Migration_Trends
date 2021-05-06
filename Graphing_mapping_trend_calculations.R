@@ -537,6 +537,15 @@ for(sp in sps){
                          type = "15-year")
     TRENDSout <- bind_rows(TRENDSout,t_NSmooth_04)
     
+    t_NSmooth_F15 <- ItoT(inds = NSmoothsamples,
+                         start = 1980,
+                         end = 1995,
+                         regions = NULL,
+                         qs = 95,
+                         sp = sp,
+                         type = "First-15-year")
+    TRENDSout <- bind_rows(TRENDSout,t_NSmooth_F15)
+    
     t_NSmooth_3g <- ItoT(inds = NSmoothsamples,
                          start = y3g,
                          end = 2019,
@@ -1225,7 +1234,10 @@ dev.off()
 
 
 # Trend plots -------------------------------------------------------------
-TRENDSout$trend_type <- factor(TRENDSout$trend_type,ordered = TRUE,levels = c("Long-term","15-year","Previous-three-generation","Recent-three-generation"))
+TRENDSout$trend_type <- factor(TRENDSout$trend_type,ordered = TRUE,levels = c("Long-term","First-15-year",
+                                                                              "15-year",
+                                                                              "Previous-three-generation",
+                                                                              "Recent-three-generation"))
 
 LT_trends <- TRENDSout %>% filter(trend_type %in% c("Long-term","15-year"))
 
@@ -1244,6 +1256,27 @@ pdf(file = "Figures/All_long_short_term_trends.pdf",
     width = 6.5)
 print(lt_tplot)
 dev.off()
+
+
+FL15_trends <- TRENDSout %>% filter(trend_type %in% c("First-15-year","15-year"))
+
+FL15_tplot <- ggplot(data = FL15_trends,aes(x = species,y = trend,colour = trend_type))+
+  geom_pointrange(aes(ymax = uci,ymin = lci),position = position_dodge(width = 0.2))+
+  geom_abline(slope = 0,intercept = 0,alpha = 0.7)+
+  ylab("Trend (%/year)")+
+  xlab("")+
+  my_col_sim+
+  theme_classic()+
+  theme(legend.position = "bottom")+
+  coord_flip()
+
+pdf(file = "Figures/First_last_15Year_trends.pdf",
+    height = 9,
+    width = 6.5)
+print(FL15_tplot)
+dev.off()
+
+
 
 EL_trends <- TRENDSout %>% filter(trend_type %in% c("Previous-three-generation","Recent-three-generation"))
 
@@ -1264,6 +1297,25 @@ pdf(file = "Figures/All_early_recent_3generation_trends.pdf",
 print(el_tplot)
 dev.off()
 
+
+
+LT3_trends <- TRENDSout %>% filter(trend_type %in% c("Long-term","Recent-three-generation"))
+
+lt3_tplot <- ggplot(data = LT3_trends,aes(x = species,y = trend,colour = trend_type))+
+  geom_pointrange(aes(ymax = uci,ymin = lci),position = position_dodge(width = 0.2))+
+  geom_abline(slope = 0,intercept = 0,alpha = 0.7)+
+  ylab("Trend (%/year)")+
+  xlab("")+
+  my_col_sim+
+  theme_classic()+
+  theme(legend.position = "bottom")+
+  coord_flip()
+
+pdf(file = "Figures/All_long_term_3Gen_trends.pdf",
+    height = 9,
+    width = 6.5)
+print(lt3_tplot)
+dev.off()
 
 
 

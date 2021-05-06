@@ -37,6 +37,9 @@ FYYYY = 1980
 
 #load(paste0("data/data_simulated_stable_downturn2_GAMYE_strat_simple.RData"))
     #load(paste0("data/data_simulated_stable_Balanced_downturn2_GAMYE_strat_simple.RData"))
+    load(paste0("data/data_simulated_stable_decline2_GAMYE_strat_simple.RData"))
+    #load(paste0("data/data_simulated_balanced_stable_decline_GAMYE_strat_simple.RData"))
+    
     
 mod.file = c("models/GAMYE_strata_two_season_normal_tail.stan")
 
@@ -53,6 +56,51 @@ slope_icar_stanfit <- sampling(slope_icar_model,
                                pars = c(parms),
                                control = list(adapt_delta = 0.9,
                                               max_treedepth = 14))
+
+
+
+
+save(list = c("slope_icar_stanfit",
+              "stan_data",
+              "dts",
+              "real_grid",
+              "strats_dts",
+              "strat_regions",
+              "mod.file",
+              "parms"),
+     file = paste0("output/simulated_stable_decline2_GAMYE_strat_simple.RData"))
+
+save(list = c("slope_icar_stanfit",
+              "stan_data",
+              "dts",
+              "real_grid",
+              "strats_dts",
+              "strat_regions",
+              "mod.file",
+              "parms"),
+     file = paste0("output/simulated_stable_decline_alt_spati_prior_GAMYE_strat_simple.RData"))
+
+
+save(list = c("slope_icar_stanfit",
+              "stan_data",
+              "dts",
+              "real_grid",
+              "strats_dts",
+              "strat_regions",
+              "mod.file",
+              "parms"),
+     file = paste0("output/simulated_balanced_stable_decline_upturn_GAMYE_strat_simple.RData"))
+
+
+save(list = c("slope_icar_stanfit",
+              "stan_data",
+              "dts",
+              "real_grid",
+              "strats_dts",
+              "strat_regions",
+              "mod.file",
+              "parms"),
+     file = paste0("output/simulated_stable_decline_upturn_GAMYE_strat_simple.RData"))
 
 
 
@@ -148,7 +196,7 @@ source("functions/utility_functions.R")
 source("functions/palettes.R")
 
 
-sp = "stable_Balanced_upturn"
+sp = "stable_decline"
 three_gen = 20
 y3g <- 2019-three_gen
 
@@ -399,7 +447,7 @@ season_graphs[[sp]] <- tmp_season_graphs
 
 
 
-
+TRENDSout <- NULL
 # calculate trends continent --------------------------------------------------------
 
 t_NSmooth_80 <- ItoT(inds = NSmoothsamples,
@@ -409,7 +457,7 @@ t_NSmooth_80 <- ItoT(inds = NSmoothsamples,
                      qs = 95,
                      sp = sp,
                      type = "Long-term")
-#TRENDSout <- bind_rows(TRENDSout,t_NSmooth_80)
+TRENDSout <- bind_rows(TRENDSout,t_NSmooth_80)
 
 t_NSmooth_04 <- ItoT(inds = NSmoothsamples,
                      start = 2004,
@@ -418,7 +466,7 @@ t_NSmooth_04 <- ItoT(inds = NSmoothsamples,
                      qs = 95,
                      sp = sp,
                      type = "15-year")
-#TRENDSout <- bind_rows(TRENDSout,t_NSmooth_04)
+TRENDSout <- bind_rows(TRENDSout,t_NSmooth_04)
 
 t_NSmooth_3g <- ItoT(inds = NSmoothsamples,
                      start = y3g,
@@ -427,7 +475,7 @@ t_NSmooth_3g <- ItoT(inds = NSmoothsamples,
                      qs = 95,
                      sp = sp,
                      type = "Recent-three-generation")
-#TRENDSout <- bind_rows(TRENDSout,t_NSmooth_3g)
+TRENDSout <- bind_rows(TRENDSout,t_NSmooth_3g)
 
 
 syL3g = y3g-(2019-y3g)
@@ -440,8 +488,10 @@ t_NSmooth_L3g <- ItoT(inds = NSmoothsamples,
                       sp = sp,
                       type = "Previous-three-generation")
 
-#TRENDSout <- bind_rows(TRENDSout,t_NSmooth_L3g)
+TRENDSout <- bind_rows(TRENDSout,t_NSmooth_L3g)
 
+
+ 
 anot_funct <- function(x){
    ant = paste(signif(x$percent_change,3),
                "% ",
@@ -904,11 +954,20 @@ print(t_L3g)
 
 dev.off()
 
-trend_maps_1980[[sp]] <- t_80
-trend_maps_2004[[sp]] <- t_04
-trend_maps_3gen[[sp]] <- t_3g
-trend_maps_L3gen[[sp]] <- t_L3g
+TRENDSout <- TRENDSout %>% 
+   mutate(span = end_year-start_year,
+          yrs = paste(start_year,end_year,sep = "-"))
 
+tplot <- ggplot(data = TRENDSout,aes(x = yrs,y = trend,colour = end_year))+
+   geom_point()+
+   geom_errorbar(aes(ymin = lci,ymax = uci),alpha = 0.3,width = 0)+
+   labs(title = sp)
+print(tplot)
+
+
+pdf(file = paste0("Figures/Trends_",sp,".pdf"),
+    width = 8.5,
+    height = 11)
 
 
 

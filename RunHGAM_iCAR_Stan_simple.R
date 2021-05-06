@@ -100,7 +100,7 @@ sp <- w_cosewic[14]
                                   chains=4, iter=1800,
                                   warmup=1200,
                                   cores = 4,
-                                  pars = c(parms),
+                                  pars = c(parms,"seas_max","seas_max2"),
                                   control = list(adapt_delta = 0.9,
                                                  max_treedepth = 15))
    
