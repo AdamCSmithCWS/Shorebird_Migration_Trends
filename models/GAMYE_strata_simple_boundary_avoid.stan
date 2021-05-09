@@ -128,7 +128,7 @@ model {
   year_effect_raw ~ std_normal(); //prior on ▲annual fluctuations
   sum(year_effect_raw) ~ normal(0,0.0001*nyears);//sum to zero constraint on year-effects
   sum(alpha_raw) ~ normal(0,0.0001*nsites);//sum to zero constraint on site-effects
-  sum(B_raw) ~ normal(0,0.001*nknots_year);//sum to zero constraint on GAM hyperparameters
+  //sum(B_raw) ~ normal(0,0.001*nknots_year);//sum to zero constraint on GAM hyperparameters
   
     for(k in 1:nknots_year){
   b_raw[,k] ~ icar_normal_lpdf(nstrata, node1, node2);

@@ -37,11 +37,11 @@ FYYYY = 1980
 
 #load(paste0("data/data_simulated_stable_downturn2_GAMYE_strat_simple.RData"))
     #load(paste0("data/data_simulated_stable_Balanced_downturn2_GAMYE_strat_simple.RData"))
-    load(paste0("data/data_simulated_stable_decline2_GAMYE_strat_simple.RData"))
+    load(paste0("data/data_simulated_stable_decline_GAMYE_strat_simple.RData"))
     #load(paste0("data/data_simulated_balanced_stable_decline_GAMYE_strat_simple.RData"))
     
     
-mod.file = c("models/GAMYE_strata_two_season_normal_tail.stan")
+mod.file = c("models/GAMYE_strata_two_season_normal_tail_noCon.stan")
 
 ## compile model
 slope_icar_model = stan_model(file=mod.file)
@@ -59,7 +59,6 @@ slope_icar_stanfit <- sampling(slope_icar_model,
 
 
 
-
 save(list = c("slope_icar_stanfit",
               "stan_data",
               "dts",
@@ -68,7 +67,9 @@ save(list = c("slope_icar_stanfit",
               "strat_regions",
               "mod.file",
               "parms"),
-     file = paste0("output/simulated_stable_decline2_GAMYE_strat_simple.RData"))
+     file = paste0("output/simulated_stable_decline_noCon_GAMYE_strat_simple.RData"))
+
+
 
 save(list = c("slope_icar_stanfit",
               "stan_data",
@@ -196,7 +197,7 @@ source("functions/utility_functions.R")
 source("functions/palettes.R")
 
 
-sp = "stable_decline"
+sp = "Balanced stable decline"
 three_gen = 20
 y3g <- 2019-three_gen
 
@@ -491,7 +492,7 @@ t_NSmooth_L3g <- ItoT(inds = NSmoothsamples,
 TRENDSout <- bind_rows(TRENDSout,t_NSmooth_L3g)
 
 
- 
+
 anot_funct <- function(x){
    ant = paste(signif(x$percent_change,3),
                "% ",
@@ -908,8 +909,8 @@ print(ind_fc)
 
 
 t_comparison_1 <- inner_join(t_nsmooth_strat_L3g,
-                            strats_xy,
-                            by = c("region" = "hex_name")) %>% 
+                             strats_xy,
+                             by = c("region" = "hex_name")) %>% 
    mutate(true_trend = (exp(b1)-1)*100)
 plot(t_comparison_1$trend,t_comparison_1$true_trend)#, xlim = c(-2.5,2),ylim = c(-2.5,2))
 abline(0,1)
@@ -919,12 +920,12 @@ t_comparison_2 <- inner_join(t_nsmooth_strat_3g,
                              by = c("region" = "hex_name")) %>% 
    mutate(true_trend = (exp(b2)-1)*100)
 plot(t_comparison_2$trend,t_comparison_2$true_trend)#, xlim = c(-9,-2),ylim = c(-9,-2))
-plot(t_comparison_2$trend,t_comparison_2$true_trend, xlim = rev(-1*c(-9,-2)),ylim = rev(-1*c(-9,-2)))
+#plot(t_comparison_2$trend,t_comparison_2$true_trend, xlim = rev(-1*c(-9,-2)),ylim = rev(-1*c(-9,-2)))
 abline(0,1)
 
 t_comparison_all <- inner_join(t_nsmooth_strat_80,
-                             strats_xy,
-                             by = c("region" = "hex_name")) %>% 
+                               strats_xy,
+                               by = c("region" = "hex_name")) %>% 
    mutate(true_trend = (exp(b1+b2)-1)*100)
 plot(t_comparison_all$trend,t_comparison_all$true_trend, xlim = c(-8.5,-2),ylim = c(-8.5,-2))
 plot(t_comparison_all$trend,t_comparison_all$true_trend, xlim = rev(-1*c(-9,-2)),ylim = rev(-1*c(-9,-2)))
@@ -968,7 +969,8 @@ print(tplot)
 pdf(file = paste0("Figures/Trends_",sp,".pdf"),
     width = 8.5,
     height = 11)
-
+print(tplot)
+dev.off()
 
 
 
