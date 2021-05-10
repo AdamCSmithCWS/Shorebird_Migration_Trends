@@ -143,7 +143,7 @@ source("functions/mungeCARdata4stan.R")
  
  save(list = c("poly_grid"),file = "data/hexagon_grid.RData")
  
- source("functions/GAM_basis_function.R")
+ source("functions/GAM_basis_function_mgcv.R")
 
 # n_cores <- 4
 # cluster <- makeCluster(n_cores, type = "PSOCK")
@@ -532,12 +532,9 @@ midyear = floor(nyears/2)
 # GAM seasonal basis function ---------------------------------------------
 
 nKnots_season = 10
-basis_season <- gam.basis.func(orig.preds = as.integer(unlist(dts[,"date"])),
+basis_season <- gam_basis(orig.preds = as.integer(unlist(dts[,"date"])),
                                nknots = nKnots_season,
-                               standardize = "z",
-                               random = F,
                                npredpoints = max(dts$date),
-                               even_gaps = FALSE,
                                sm_name = "season")
 
 ndays <- basis_season$npredpoints_season
@@ -546,12 +543,9 @@ ndays <- basis_season$npredpoints_season
 # GAM year basis function ---------------------------------------------
 
 nKnots_year = ceiling(nyears/3)
-basis_year <- gam.basis.func(orig.preds = as.integer(unlist(dts[,"yr"])),
+basis_year <- gam_basis(orig.preds = as.integer(unlist(dts[,"yr"])),
                                nknots = nKnots_year,
-                               standardize = "z",
-                               random = F,
                                npredpoints = max(dts$yr),
-                               even_gaps = TRUE,
                                sm_name = "year")
 
 # 
@@ -579,7 +573,7 @@ if(two_seasons){
                     ncounts = ncounts,
                     ndays = ndays,
                     
-                    nsites_strat = nsites_strat,
+                    nsites_strat = as.integer(nsites_strat),
                     max_sites = max_sites,
                     sites = sites,
                     seasons = seasons,
@@ -635,7 +629,7 @@ if(two_seasons){
                     ncounts = ncounts,
                     ndays = ndays,
                     
-                    nsites_strat = nsites_strat,
+                    nsites_strat = as.integer(nsites_strat),
                     max_sites = max_sites,
                     sites = sites,
                     
@@ -699,7 +693,7 @@ save(list = c("stan_data",
               "strat_regions",
               "mod.file",
               "parms"),
-     file = paste0("data/data",sp,"_GAMYE_strat_simple",grid_spacing/1000,".RData"))
+     file = paste0("data/data",sp,"_GAMYE_strat_simple_new.RData"))
 
 
 

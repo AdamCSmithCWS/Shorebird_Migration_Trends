@@ -31,33 +31,39 @@ sps_remain = sps[-which(sps %in% w_cosewic)]
 
  for(sp in sps_remain[4:6]){
   
-   if(file.exists(paste0("output/",sp,"_GAMYE_strat_simple",grid_spacing/1000,".RData"))){next}
+   if(file.exists(paste0("output/",sp,"_GAMYE_fit_new.RData"))){next}
    
    
-    load(paste0("data/data",sp,"_GAMYE_strat_simple",grid_spacing/1000,".RData"))
+    load(paste0("data/data",sp,"_GAMYE_strat_simple_new.RData"))
 
 
 
 ## compile model
-slope_icar_model = stan_model(file=mod.file)
+    modl = cmdstan_model(stan_file=mod.file)
 
 print(sp)
 ## run sampler on model, data
-slope_icar_stanfit <- sampling(slope_icar_model,
-                               data=stan_data,
-                               verbose=TRUE, refresh=100,
-                               chains=4, iter=1800,
-                               warmup=1200,
-                               cores = 4,
-                               pars = c(parms),
-                               control = list(adapt_delta = 0.9,
-                                              max_treedepth = 14))
+# slope_icar_stanfit <- sampling(slope_icar_model,
+#                                data=stan_data,
+#                                verbose=TRUE, refresh=100,
+#                                chains=4, iter=1800,
+#                                warmup=1200,
+#                                cores = 4,
+#                                pars = c(parms),
+#                                control = list(adapt_delta = 0.9,
+#                                               max_treedepth = 14))
+
+cmdstanfit<- modl$sample(data=stan_data,
+               refresh=100,
+               chains=4, iter_sampling =800,
+               iter_warmup=1000,
+               parallel_chains = 4,
+               max_treedepth = 15,
+               adapt_delta = 0.95)
 
 
 
-
-
-save(list = c("slope_icar_stanfit",
+save(list = c("cmdstanfit",
               "stan_data",
               "dts",
               "real_grid",
@@ -65,7 +71,7 @@ save(list = c("slope_icar_stanfit",
               "strat_regions",
               "mod.file",
               "parms"),
-     file = paste0("output/",sp,"_GAMYE_strat_simple",grid_spacing/1000,".RData"))
+     file = paste0("output/",sp,"_GAMYE_fit_new.RData"))
 
 
 }#end modeling loop

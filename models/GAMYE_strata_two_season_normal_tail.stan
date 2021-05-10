@@ -120,8 +120,8 @@ model {
   // above is informative so that 95% of the prior includes yearly fluctuations fall
   // between 33% decrease and a 50% increase
   sdalpha ~ std_normal(); //prior on scale of site level variation
-  sdyear_gam ~ normal(0,0.5); //prior on sd of gam hyperparameters
-  sdyear_gam_strat ~ normal(0,0.05); // regularizing prior on variance of stratum level gam
+  sdyear_gam ~ normal(0,1); //prior on sd of gam hyperparameters
+  sdyear_gam_strat ~ normal(0,0.5); // regularizing prior on variance of stratum level gam
  //nu ~ gamma(2,0.1); // prior on df for t-distribution of heavy tailed site-effects from https://github.com/stan-dev/stan/wiki/Prior-Choice-Recommendations
   sdseason ~ std_normal();//variance of GAM parameters
   B_season_raw1 ~ std_normal();//GAM parameters
@@ -142,7 +142,7 @@ model {
   //sum(B_season_raw1) ~ normal(0,0.001*nknots_season);//sum to zero constraint on site-effects
   
     for(k in 1:nknots_year){
-  b_raw[,k] ~ icar_normal_lpdf(nstrata, node1, node2);
+  b_raw[,k] ~ icar_normal(nstrata, node1, node2);
   }
   
  //  for(s in 1:nstrata){
