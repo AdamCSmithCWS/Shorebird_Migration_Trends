@@ -36,9 +36,27 @@ sps_remain = sps[-which(sps %in% w_cosewic)]
    
     load(paste0("data/data",sp,"_GAMYE_strat_simple_new.RData"))
 
+    mod.file = "models/GAMYE_strata_two_season_gammaprior_beta_normal.stan"
+    prior = "gamma"
 
-
-## compile model
+    mod.file = "models/GAMYE_strata_two_season_tprior_beta_normal.stan"
+    prior = "t"
+    
+    
+    mod.file = "models/GAMYE_strata_tprior_beta_normal.stan"
+    prior = "t"
+    
+    mod.file = "models/GAMYE_strata_tprior_beta.stan"
+    prior = "t"
+    
+    mod.file = "models/GAMYE_strata_gammaprior_beta_normal.stan"
+    prior = "gamma"
+    
+    mod.file = "models/GAMYE_strata_gammaprior_beta.stan"
+    prior = "gamma"
+    
+    
+    ## compile model
     modl = cmdstan_model(stan_file=mod.file)
 
 print(sp)
@@ -61,17 +79,30 @@ cmdstanfit<- modl$sample(data=stan_data,
                max_treedepth = 15,
                adapt_delta = 0.95)
 
+spf = gsub(sp,pattern = " ",replacement = "_")
+
+# cmdstanfit$save_output_files(dir = "output",
+#                              basename = spf,
+#                              timestamp = FALSE,
+#                              random = FALSE)
+# csvfl = paste0(getwd(),"/output/",spf,"-",1:4,".csv")
+# 
+# slope_icar_stanfit <- rstan::read_stan_csv(csvfl)
 
 
-save(list = c("cmdstanfit",
-              "stan_data",
+cmdstanfit$save_object(file = paste0("output/",spf,"_",prior,".RDS"))
+
+
+save(list = c("stan_data",
               "dts",
               "real_grid",
               "strats_dts",
               "strat_regions",
               "mod.file",
-              "parms"),
-     file = paste0("output/",sp,"_GAMYE_fit_new.RData"))
+              "parms",
+              "sp",
+              "spf"),
+     file = paste0("output/",spf,"_",prior,"_GAMYE_fit_new.RData"))
 
 
 }#end modeling loop

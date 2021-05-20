@@ -13,7 +13,7 @@ jags_dim <- function(dim = 1,
     for(j in 1:(dim-1)){
       
       pat2 = paste0(pat,")[:digit:]+")
-      cl2 = str_extract(dat[,cl],pattern = pat2)
+      cl2 = str_extract(unlist(dat[,cl]),pattern = pat2)
       
       d = max(nchar(cl2))
       
@@ -23,7 +23,36 @@ jags_dim <- function(dim = 1,
   
   
   pat = paste0(pat,")[:digit:]+")
-  dds = as.integer(str_extract(dat[,cl],pattern = pat))
+  dds = as.integer(str_extract(unlist(dat[,cl]),pattern = pat))
+  return(dds)
+  
+}
+
+
+dim_ext <- function(dim = 1,
+                    var = "",
+                    cl = "Parameter",
+                    dat = NULL){
+  ##3 function to extract the indicator values from cmdstanr output
+  require(stringr)
+  
+  pat = paste0("(?<=",var,"\\[")
+  
+  if(dim > 1){
+    for(j in 1:(dim-1)){
+      
+      pat2 = paste0(pat,")[:digit:]+")
+      cl2 = str_extract(unlist(dat[,cl]),pattern = pat2)
+      
+      d = max(nchar(cl2))
+      
+      pat = paste0(pat,"[:digit:]{1,",d,"}[:punct:]")
+    }
+  }
+  
+  
+  pat = paste0(pat,")[:digit:]+")
+  dds = as.integer(str_extract(unlist(dat[,cl]),pattern = pat))
   return(dds)
   
 }
@@ -36,9 +65,62 @@ myrename = function(fit){
 
 
 
+cmd_samples <- function(fit = cmdstanfit,
+                        parm = "nsmooth",
+                        dims = NULL){
+  require(posterior)
+  samples <- as_draws_df(fit$draws(variables = c(parm)))
+  if(length(dims) > 0){
+    parm_ex <- paste0(parm,"\\[")
+  }else{
+    parm_ex <- parm
+  }
+  
+  plong <- suppressWarnings(samples %>% pivot_longer(
+    cols = matches(parm_ex,ignore.case = FALSE),
+    names_to = c(".variable"),
+    values_to = ".value",
+    values_drop_na = TRUE
+  )) 
+  
+  for(dn in 1:length(dims)){
+    dd = dims[dn]
+    plong[,dd] = dim_ext(dim = dn,
+                         var = parm,
+                         cl = ".variable",
+                         dat = plong)
+    
+  }
+  
+  plong <- plong %>% mutate(.variable = parm)
+  return(plong)
+  
+}
 
 
-index_summary <- function(fit = slope_icar_stanfit,
+# cmd_summary <- function(samples,
+#                         parm = "nsmooth",
+#                         dims = c("site","year"),
+#                         probs = c(0.025,0.5,0.975),
+#                         outnames = c("lci","median","uci")){
+#                           
+#                           
+#    sums <- summarise_draws(x = samples,~quantile2(.x,probs = probs))
+#   names(sums)[2:4] <- outnames 
+#   for(dn in 1:length(dims)){
+#     dd = dims[dn]
+#   sums[,dd] = jags_dim(dim = dn,
+#                         var = parm,
+#                         cl = "variable",
+#                         dat = sums)
+# 
+#   }
+#   return(sums)
+#   
+#                         }
+
+
+index_summary <- function(fit = drawst,
                           rawdat = dts,
                           parm = "nsmooth",
                           dims = c("site","year"),
@@ -49,13 +131,16 @@ index_summary <- function(fit = slope_icar_stanfit,
                           site_offsets = NULL)
 {
   
-  indsout = as.data.frame(summary(fit,
-                                  pars = parm,
-                                  probs = probs)$summary)
+  indsout = summarise_draws(x = fit,~quantile2(.x,probs = probs))
   
+  # indsout = as.data.frame(summary(fit,
+  #                                 pars = parm,
+  #                                 probs = probs)$summary)
   
-  indsout = myrename(indsout)#removes the special characters in the column names
-  indsout$Parameter = row.names(indsout)
+  # indsout$year = 1980:2019
+  # 
+  #indsout = myrename(indsout)#removes the special characters in the column names
+  indsout$Parameter = indsout$variable
   indsout$parm = parm
   
   for(dn in 1:length(dims)){
@@ -219,7 +304,7 @@ extr_sum <- function(param = "vis.sm_season",
 }
 
 
-ItoT <- function(inds = NSamples,
+ItoT <- function(inds = Nsamples,
                  start = syear,
                  end = 2019,
                  regions = "hex_name",

@@ -111,7 +111,7 @@ model {
   // between 33% decrease and a 50% increase
   sdalpha ~ std_normal(); //prior on scale of site level variation
   sdyear_gam ~ normal(0,1); //prior on sd of gam hyperparameters
-  sdyear_gam_strat ~ student_t(4,0,1); //gamma(2,0.1);//boundary avoiding prior ~ normal(0,0.5); // regularizing prior on variance of stratum level gam
+  sdyear_gam_strat ~ gamma(2,4);//boundary avoiding prior (99% < 1.7) regularizing prior on variance of stratum level gam
  //nu ~ gamma(2,0.1); // prior on df for t-distribution of heavy tailed site-effects from https://github.com/stan-dev/stan/wiki/Prior-Choice-Recommendations#prior-for-degrees-of-freedom-in-students-t-distribution
   sdseason ~ std_normal();//variance of GAM parameters
   B_season_raw ~ std_normal();//GAM parameters
