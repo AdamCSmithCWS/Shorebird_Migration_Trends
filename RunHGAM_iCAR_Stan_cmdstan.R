@@ -108,68 +108,80 @@ save(list = c("stan_data",
 }#end modeling loop
 
 
+# save csv files ----------------------------------------------------------
+
+
+cmdstanfit$save_output_files(dir = "output",
+                                basename = paste0(spf,"_cmdStan_out_",prior))
+csv_files <- dir("output/",pattern = paste0(spf,"_cmdStan_out_",prior),full.names = TRUE)
+
+#sl_rstan <- As.mcmc.list(read_stan_csv(csv_files))
+if(shiny_explore){
+   sl_rstan <- rstan::read_stan_csv(csv_files)
+   launch_shinystan(as.shinystan(sl_rstan))
+}
 
 
 
 
 # Alternate model for SESA ------------------------------------------------
 
-
-
-sp <- w_cosewic[14]
-   
-   #if(file.exists(paste0("output/",sp,"_GAMYE_strat_simple",grid_spacing/1000,".RData"))){next}
-   
-   
-   load(paste0("data/data",sp,"_GAMYE_strat_simple",grid_spacing/1000,".RData"))
-   
-   mod.file <- "models/GAMYE_strata_simple_boundary_avoid.stan"
-   
-   ## compile model
-   slope_icar_model = stan_model(file=mod.file)
-   
-   print(sp)
-   ## run sampler on model, data
-   slope_icar_stanfit <- sampling(slope_icar_model,
-                                  data=stan_data,
-                                  verbose=TRUE, refresh=100,
-                                  chains=4, iter=1800,
-                                  warmup=1200,
-                                  cores = 4,
-                                  pars = c(parms,"seas_max","seas_max2"),
-                                  control = list(adapt_delta = 0.9,
-                                                 max_treedepth = 15))
-   
-   
-   
-   
-   
-   save(list = c("slope_icar_stanfit",
-                 "stan_data",
-                 "dts",
-                 "real_grid",
-                 "strats_dts",
-                 "strat_regions",
-                 "mod.file",
-                 "parms"),
-        file = paste0("output/",sp,"_GAMYE_strat_simple_boundary_avoid",grid_spacing/1000,".RData"))
-   
-
-
-
-
-
-
-
-
-
-loo_out = loo(slope_icar_stanfit)
-
-
-
-launch_shinystan(slope_icar_stanfit) 
-
-
+# 
+# 
+# sp <- w_cosewic[14]
+#    
+#    #if(file.exists(paste0("output/",sp,"_GAMYE_strat_simple",grid_spacing/1000,".RData"))){next}
+#    
+#    
+#    load(paste0("data/data",sp,"_GAMYE_strat_simple",grid_spacing/1000,".RData"))
+#    
+#    mod.file <- "models/GAMYE_strata_simple_boundary_avoid.stan"
+#    
+#    ## compile model
+#    slope_icar_model = stan_model(file=mod.file)
+#    
+#    print(sp)
+#    ## run sampler on model, data
+#    slope_icar_stanfit <- sampling(slope_icar_model,
+#                                   data=stan_data,
+#                                   verbose=TRUE, refresh=100,
+#                                   chains=4, iter=1800,
+#                                   warmup=1200,
+#                                   cores = 4,
+#                                   pars = c(parms,"seas_max","seas_max2"),
+#                                   control = list(adapt_delta = 0.9,
+#                                                  max_treedepth = 15))
+#    
+#    
+#    
+#    
+#    
+#    save(list = c("slope_icar_stanfit",
+#                  "stan_data",
+#                  "dts",
+#                  "real_grid",
+#                  "strats_dts",
+#                  "strat_regions",
+#                  "mod.file",
+#                  "parms"),
+#         file = paste0("output/",sp,"_GAMYE_strat_simple_boundary_avoid",grid_spacing/1000,".RData"))
+#    
+# 
+# 
+# 
+# 
+# 
+# 
+# 
+# 
+# 
+# loo_out = loo(slope_icar_stanfit)
+# 
+# 
+# 
+# launch_shinystan(slope_icar_stanfit) 
+# 
+# 
 
  
 

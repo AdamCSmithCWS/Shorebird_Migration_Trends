@@ -77,8 +77,8 @@ w_cosewic = sps[c(2:4,7,10,12:20,22,11,25)]
 
 for(sp in sps){
   #if(sp == "Semipalmated Sandpiper"){next}
-  if(file.exists(paste0("output/",sp,"cmd__GAMYE_strat_simple",grid_spacing/1000,".RData"))){
-    load(paste0("output/",sp,"cmd__GAMYE_strat_simple",grid_spacing/1000,".RData"))
+  if(file.exists(paste0("output/",sp,prior,"cmd__GAMYE_strat_simple",grid_spacing/1000,".RData"))){
+    load(paste0("output/",sp,prior,"cmd__GAMYE_strat_simple",grid_spacing/1000,".RData"))
     
     three_gen <- max(10,ceiling(gens[which(gens$Common_name == sp),"GenLength"]*3))
     #Three generation assessment time in COSEWIC report
@@ -138,45 +138,45 @@ for(sp in sps){
                                   dims = c("y"))
     NSmoothsamples$year <- NSmoothsamples$y + (syear-1)
     
-    
-    
+    loo_ic[[sp]] <- cmdstanfit$loo()
+     
     # # looic -------------------------------------------------------------------
     # 
     # 
     # loo_ic[[sp]] = loo(slope_icar_stanfit)
     # 
     # 
-    # pw_loo <- loo_ic[[sp]]
-    # loopoint = as.data.frame(pw_loo$pointwise)
-    # 
-    # dts_loo <- bind_cols(dts,loopoint) %>% 
-    #   mutate(log_countp1 <- log(count+1))
-    # 
-    # wcl <- which(names(dts_loo) %in% c("stratn","log_countp1","year","date","influence_pareto_k","looic"))
-    # prs_plot <- ggpairs(data = dts_loo,columns = wcl)
-    # 
-    # 
-    # 
-    # 
-    # loo_by_strat <- dts_loo %>% group_by(hex_name) %>% 
-    #   summarise(mean_looic = mean(looic),
-    #             median_looic = median(looic),
-    #             q75_looic = as.numeric(quantile(looic,0.75)),
-    #             mean_k = mean(influence_pareto_k),
-    #             median_k = median(influence_pareto_k),
-    #             q75_k = as.numeric(quantile(influence_pareto_k,0.75)),
-    #             n_counts = n(),
-    #             median_count = median(count),
-    #             mean_count = mean(count))
-    # 
-    # strat_pairs <- ggpairs(data = loo_by_strat,columns = 2:ncol(loo_by_strat))
-    # pdf(paste0("Figures/",sp,"_loo_pairs.pdf"),
-    #     width = 11,
-    #     height = 11)
-    # print(prs_plot)
-    # print(strat_pairs)
-    # dev.off()
-    # 
+    pw_loo <- loo_ic[[sp]]
+    loopoint = as.data.frame(pw_loo$pointwise)
+
+    dts_loo <- bind_cols(dts,loopoint) %>%
+      mutate(log_countp1 <- log(count+1))
+
+    wcl <- which(names(dts_loo) %in% c("stratn","log_countp1","year","date","influence_pareto_k","looic"))
+    prs_plot <- ggpairs(data = dts_loo,columns = wcl)
+
+
+
+
+    loo_by_strat <- dts_loo %>% group_by(hex_name) %>%
+      summarise(mean_looic = mean(looic),
+                median_looic = median(looic),
+                q75_looic = as.numeric(quantile(looic,0.75)),
+                mean_k = mean(influence_pareto_k),
+                median_k = median(influence_pareto_k),
+                q75_k = as.numeric(quantile(influence_pareto_k,0.75)),
+                n_counts = n(),
+                median_count = median(count),
+                mean_count = mean(count))
+
+    strat_pairs <- ggpairs(data = loo_by_strat,columns = 2:ncol(loo_by_strat))
+    pdf(paste0("Figures/",sp,prior,"_loo_pairs.pdf"),
+        width = 11,
+        height = 11)
+    print(prs_plot)
+    print(strat_pairs)
+    dev.off()
+
     # 
     # # Alphas by site ----------------------------------------------------------
      #alpha_samples <- slope_icar_stanfit %>% gather_draws(alpha[s])
@@ -217,7 +217,7 @@ for(sp in sps){
     #   facet_wrap(~strat,nrow = nr,ncol = nr,scales = "free")+
     #   theme_minimal()
     # 
-    # pdf(paste0("Figures/",sp,"_obs_by_alpha.pdf"),
+    # pdf(paste0("Figures/",sp,prior,"_obs_by_alpha.pdf"),
     #     width = 11,
     #     height = 11)
     # print(obs_by_alpha)
@@ -365,7 +365,7 @@ for(sp in sps){
     
     tmp_season_graphs <- vector(mode = "list",length = ceiling(nstrata/ppag))
     
-    pdf(file = paste0("Figures/",sp,"cmd_simple_Season.pdf"),
+    pdf(file = paste0("Figures/",sp,prior,"cmd_simple_Season.pdf"),
         width = 8.5,
         height = 8.5)
     
@@ -483,7 +483,7 @@ for(sp in sps){
       }
       tmp_season_graphs <- vector(mode = "list",length = ceiling(nstrata/ppag))
  
-           pdf(file = paste0("Figures/",sp,"cmd_simple_Season.pdf"),
+           pdf(file = paste0("Figures/",sp,prior,"cmd_simple_Season.pdf"),
           width = 8.5,
           height = 8.5)
       
@@ -536,9 +536,9 @@ for(sp in sps){
       geom_smooth()+
       geom_abline(slope = 0,intercept = 0,colour = grey(0.3))+
       xlab("")+
-      labs(title = paste(sp,"mean site-effect of included sites by year"))
+      labs(title = paste(sp,prior,"mean site-effect of included sites by year"))
     
-    pdf(file = paste0("Figures/",sp,"_cmd_alphas_by_yr.pdf"),
+    pdf(file = paste0("Figures/",sp,prior,"_cmd_alphas_by_yr.pdf"),
         width = 8.5,
         height = 8.5)
     print(AA_y_p)
@@ -559,7 +559,7 @@ for(sp in sps){
         geom_smooth()+
         geom_abline(slope = 0,intercept = 0,colour = grey(0.3))+
         xlab("")+
-        labs(title = paste(sp,"mean site-effect of included sites by year"))+
+        labs(title = paste(sp,prior,"mean site-effect of included sites by year"))+
         facet_wrap_paginate(facets = ~strat,page = jj,nrow = nrr, ncol = ncl,scales = "free")
       
       print(a_y_p)
@@ -682,7 +682,7 @@ for(sp in sps){
     N_gg = ggplot(data = indices,aes(x = year, y = q50,fill = parm))+
       geom_ribbon(aes(ymin = q2.5,ymax = q97.5),alpha = 0.2)+
       geom_line(aes(colour = parm))+
-      labs(title = paste(sp,"Survey-wide trajectory (full and smooth) with obs means"))+
+      labs(title = paste(sp,prior,"Survey-wide trajectory (full and smooth) with obs means"))+
       annotate("text", x = 1997, y = yup*0.9, label = anot_80)+
       annotate("text", x = 1997, y = yup*0.8, label = anot_90)+
       annotate("text", x = 1997, y = yup*0.7, label = anot_07)+
@@ -695,7 +695,7 @@ for(sp in sps){
       #scale_size_area()
     
     
-    pdf(paste0("figures/",sp,FYYYY,"_cmd_GAMYE_survey_wide_trajectory_simple",grid_spacing/1000,".pdf"))
+    pdf(paste0("figures/",sp,prior,FYYYY,"_cmd_GAMYE_survey_wide_trajectory_simple",grid_spacing/1000,".pdf"))
     print(N_gg)
     dev.off()
     
@@ -707,7 +707,7 @@ for(sp in sps){
     N_gg_simple = ggplot(data = indices,aes(x = year, y = q50,fill = parm))+
       geom_ribbon(aes(ymin = q2.5,ymax = q97.5),alpha = 0.2)+
       geom_line(aes(colour = parm))+
-      labs(title = paste(sp,"Survey-wide trajectory (full and smooth)"))+
+      labs(title = paste(sp,prior,"Survey-wide trajectory (full and smooth)"))+
       my_col2_traj+
       xlab("")+
       ylab("Modeled mean count")+
@@ -742,7 +742,7 @@ for(sp in sps){
     n_gg_spag = ggplot(data = indicesNSmooth,aes(x = year, y = q50))+
       geom_ribbon(aes(ymin = q2.5,ymax = q97.5),alpha = 0.25)+
       geom_line(size =2)+
-      labs(title = paste(sp,"Random selection of 100 posterior draws of survey-wide trajectories"),
+      labs(title = paste(sp,prior,"Random selection of 100 posterior draws of survey-wide trajectories"),
            subtitle = "Colour of each posterior draw reflects the value in 2019, demonstrating similar smooths across draws")+
       xlab("")+
       ylab("Modeled mean count")+
@@ -757,7 +757,7 @@ for(sp in sps){
         
     #print(n_gg_spag)
     
-    # pdf(paste0("figures/",sp,FYYYY,"_GAMYE_survey_wide_trajectory_simple",grid_spacing/1000,".pdf"))
+    # pdf(paste0("figures/",sp,prior,FYYYY,"_GAMYE_survey_wide_trajectory_simple",grid_spacing/1000,".pdf"))
     # print(N_gg_simple)
     # dev.off()
     
@@ -792,7 +792,7 @@ for(sp in sps){
     
     
     
-    pdf(file = paste0("figures/", sp,FYYYY,"_cmd_GAMYE_Strata_trajectories_simple",grid_spacing/1000,".pdf"),
+    pdf(file = paste0("figures/", sp,prior,FYYYY,"_cmd_GAMYE_Strata_trajectories_simple",grid_spacing/1000,".pdf"),
         width = 8.5,
         height = 11)
     print(N_gg)
@@ -937,9 +937,11 @@ for(sp in sps){
                  aes(x = k,y = mean,ymin = lci,ymax = uci),width = 0,alpha = 0.5)+
       geom_point()+
       theme_classic()+
+      coord_cartesian(ylim = c(-10,10))+
       labs(title = sp)+
       geom_pointrange(data = sdbeta,inherit.aes = FALSE,aes(x = k,y = mean,ymin = lci,ymax = uci),colour = "red")+
       scale_colour_viridis_d()+
+      geom_hline(yintercept = 0)+
     theme(legend.position = "none")
     print(b_plot)
     
@@ -1156,7 +1158,7 @@ for(sp in sps){
     # Trend heatmaps ----------------------------------------------------------
     ## consider adding site-locations, stratum labels, etc.
     
-    pdf(paste0("Figures/Trend_Heat_maps_",sp,"cmd_.pdf"),
+    pdf(paste0("Figures/Trend_Heat_maps_",sp,prior,"cmd_.pdf"),
         width = 11,
         height = 8.5)
     t_80 = trend_map(t_nsmooth_strat_80,
