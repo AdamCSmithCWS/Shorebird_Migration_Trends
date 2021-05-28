@@ -81,13 +81,17 @@ cmdstanfit<- modl$sample(data=stan_data,
 
 spf = gsub(sp,pattern = " ",replacement = "_")
 
-# cmdstanfit$save_output_files(dir = "output",
-#                              basename = spf,
-#                              timestamp = FALSE,
-#                              random = FALSE)
-# csvfl = paste0(getwd(),"/output/",spf,"-",1:4,".csv")
-# 
-# slope_icar_stanfit <- rstan::read_stan_csv(csvfl)
+cmdstanfit$save_output_files(dir = "output",
+                             basename = paste0(spf,"-",prior),
+                             timestamp = FALSE,
+                             random = FALSE)
+csvfl = paste0(getwd(),"/output/",spf,"-",prior,"-",1:4,".csv")
+
+
+if(shiny_explore){
+  sl_rstan <- rstan::read_stan_csv(csvfl)
+  launch_shinystan(as.shinystan(sl_rstan))
+}
 
 
 cmdstanfit$save_object(file = paste0("output/",spf,"_",prior,".RDS"))
@@ -111,15 +115,6 @@ save(list = c("stan_data",
 # save csv files ----------------------------------------------------------
 
 
-cmdstanfit$save_output_files(dir = "output",
-                                basename = paste0(spf,"_cmdStan_out_",prior))
-csv_files <- dir("output/",pattern = paste0(spf,"_cmdStan_out_",prior),full.names = TRUE)
-
-#sl_rstan <- As.mcmc.list(read_stan_csv(csv_files))
-if(shiny_explore){
-   sl_rstan <- rstan::read_stan_csv(csv_files)
-   launch_shinystan(as.shinystan(sl_rstan))
-}
 
 
 
