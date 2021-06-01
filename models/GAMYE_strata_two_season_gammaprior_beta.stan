@@ -132,7 +132,7 @@ model {
 
   count ~ poisson_log(E); //vectorized count likelihood
   alpha_raw ~ std_normal(); // fixed site-effects
-  noise_raw ~ student_t(3,0,1);//std_normal(); // extra Poisson log-normal variance
+  noise_raw ~ student_t(4,0,1);//std_normal(); // extra Poisson log-normal variance
   B_raw ~ std_normal();// prior on GAM hyperparameters
   year_effect_raw ~ std_normal(); //prior on ▲annual fluctuations
   sum(year_effect_raw) ~ normal(0,0.0001*nyears);//sum to zero constraint on year-effects
@@ -158,8 +158,8 @@ generated quantities {
   real<lower=0> NSmooth[nyears];
   real<lower=0> n[nstrata,nyears];
   real<lower=0> nsmooth[nstrata,nyears];
-    real seas_max1 = mean(season_pred1);
- real seas_max2 = mean(season_pred2);
+    real seas_max1 = max(season_pred1);
+ real seas_max2 = max(season_pred2);
  vector[2] seas_max;
        vector[ncounts] log_lik;
 
@@ -183,7 +183,7 @@ generated quantities {
         //a stratum-scaling component that tracks the alphas for sites in stratum
         for(j in 1:nsites_strat[s]){
           atmp[j] = exp(ALPHA1 + year_pred[y,s] + year_effect[y] + seas_max[seasons[s,2]] + 0.5*(sdnoise^2) + alpha[sites[j,s]]);
-          atmp_smo[j] = exp(ALPHA1 + year_pred[y,s] + seas_max[seasons[s,2]]  + 0.5*(sdnoise^2) + alpha[sites[j,s]]);
+          atmp_smo[j] = exp(ALPHA1 + year_pred[y,s] + seas_max[seasons[s,2]] + 0.5*(sdyear^2)  + 0.5*(sdnoise^2) + alpha[sites[j,s]]);
         }
         n[s,y] = mean(atmp);
         nsmooth[s,y] = mean(atmp_smo);
@@ -193,7 +193,7 @@ generated quantities {
     for(y in 1:nyears){
 
       N[y] = exp(ALPHA1 + Y_pred[y] + year_effect[y] + seas_max[1] + 0.5*(sdalpha^2) + 0.5*(sdnoise^2) );
-      NSmooth[y] = exp(ALPHA1 + Y_pred[y] + seas_max[1] + 0.5*(sdalpha^2) + 0.5*(sdnoise^2) );
+      NSmooth[y] = exp(ALPHA1 + Y_pred[y] + seas_max[1] + 0.5*(sdyear^2) + 0.5*(sdalpha^2) + 0.5*(sdnoise^2) );
       
     }
     

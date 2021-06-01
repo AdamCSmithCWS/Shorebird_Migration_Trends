@@ -38,22 +38,29 @@ sps_remain = sps[-which(sps %in% w_cosewic)]
 
     mod.file = "models/GAMYE_strata_two_season_gammaprior_beta_normal.stan"
     prior = "gamma"
-
-    mod.file = "models/GAMYE_strata_two_season_tprior_beta_normal.stan"
-    prior = "t"
+    noise_dist = "normal"
     
+    mod.file = "models/GAMYE_strata_two_season_gammaprior_beta.stan"
+    prior = "gamma"
+    noise_dist = "t"
     
-    mod.file = "models/GAMYE_strata_tprior_beta_normal.stan"
-    prior = "t"
+    # mod.file = "models/GAMYE_strata_two_season_tprior_beta_normal.stan"
+    # prior = "t"
+    # 
     
-    mod.file = "models/GAMYE_strata_tprior_beta.stan"
-    prior = "t"
+    # mod.file = "models/GAMYE_strata_tprior_beta_normal.stan"
+    # prior = "t"
+    # 
+    # mod.file = "models/GAMYE_strata_tprior_beta.stan"
+    # prior = "t"
     
     mod.file = "models/GAMYE_strata_gammaprior_beta_normal.stan"
     prior = "gamma"
+    noise_dist = "normal"
     
     mod.file = "models/GAMYE_strata_gammaprior_beta.stan"
     prior = "gamma"
+    noise_dist = "t"
     
     
     ## compile model
