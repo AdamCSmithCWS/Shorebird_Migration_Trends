@@ -158,8 +158,8 @@ generated quantities {
   real<lower=0> NSmooth[nyears];
   real<lower=0> n[nstrata,nyears];
   real<lower=0> nsmooth[nstrata,nyears];
-    real seas_max1 = max(season_pred1);
- real seas_max2 = max(season_pred2);
+    real seas_max1 = mean(season_pred1);
+ real seas_max2 = mean(season_pred2);
  vector[2] seas_max;
        vector[ncounts] log_lik;
 

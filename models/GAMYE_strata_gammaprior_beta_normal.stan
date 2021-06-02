@@ -145,7 +145,7 @@ generated quantities {
   real<lower=0> NSmooth[nyears];
   real<lower=0> n[nstrata,nyears];
   real<lower=0> nsmooth[nstrata,nyears];
-    real seas_max = max(season_pred);
+    real seas_max = mean(season_pred);
  
  // log_lik calculation for looic
       vector[ncounts] log_lik;

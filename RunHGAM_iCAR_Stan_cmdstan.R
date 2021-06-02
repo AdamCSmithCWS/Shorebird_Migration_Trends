@@ -26,45 +26,24 @@ w_cosewic = sps[c(2:4,7,10,12:20,22,11,25)]
 # 
 # }
 sps_remain = sps[-which(sps %in% w_cosewic)]
+output_dir <- "g:/Shorebird_Migration_Trends/output"
+#output_dir2 <- "g:/Shorebird_Migration_Trends/output"
 
 
-
- for(sp in sps_remain[4:6]){
-  
-   if(file.exists(paste0("output/",sp,"_GAMYE_fit_new.RData"))){next}
+ for(sp in sps[1:4]){
+   load(paste0("data/data",sp,"_cmdstanr_data.RData"))
+   spf = gsub(sp,pattern = " ",replacement = "_")
+   
+   sp_file_name <- paste0(spf,"-",prior,"-",noise_dist1)
+   
+   if(file.exists(paste0(output_dir,"/",sp_file_name,".RDS"))){next}
    
    
-    load(paste0("data/data",sp,"_GAMYE_strat_simple_new.RData"))
+ 
 
-    mod.file = "models/GAMYE_strata_two_season_gammaprior_beta_normal.stan"
-    prior = "gamma"
-    noise_dist = "normal"
-    
-    mod.file = "models/GAMYE_strata_two_season_gammaprior_beta.stan"
-    prior = "gamma"
-    noise_dist = "t"
-    
-    # mod.file = "models/GAMYE_strata_two_season_tprior_beta_normal.stan"
-    # prior = "t"
-    # 
-    
-    # mod.file = "models/GAMYE_strata_tprior_beta_normal.stan"
-    # prior = "t"
-    # 
-    # mod.file = "models/GAMYE_strata_tprior_beta.stan"
-    # prior = "t"
-    
-    mod.file = "models/GAMYE_strata_gammaprior_beta_normal.stan"
-    prior = "gamma"
-    noise_dist = "normal"
-    
-    mod.file = "models/GAMYE_strata_gammaprior_beta.stan"
-    prior = "gamma"
-    noise_dist = "t"
-    
     
     ## compile model
-    modl = cmdstan_model(stan_file=mod.file)
+    modl = cmdstan_model(stan_file=mod.file1)
 
 print(sp)
 ## run sampler on model, data
@@ -78,42 +57,52 @@ print(sp)
 #                                control = list(adapt_delta = 0.9,
 #                                               max_treedepth = 14))
 
+
+
+
 cmdstanfit<- modl$sample(data=stan_data,
                refresh=100,
                chains=4, iter_sampling =800,
                iter_warmup=1000,
                parallel_chains = 4,
                max_treedepth = 15,
-               adapt_delta = 0.95)
+               adapt_delta = 0.95,
+               init = init_def)
 
-spf = gsub(sp,pattern = " ",replacement = "_")
 
-cmdstanfit$save_output_files(dir = "output",
-                             basename = paste0(spf,"-",prior),
+cmdstanfit$save_output_files(dir = output_dir,
+                             basename = sp_file_name,
                              timestamp = FALSE,
                              random = FALSE)
-csvfl = paste0(getwd(),"/output/",spf,"-",prior,"-",1:4,".csv")
 
+csvfl = paste0(output_dir,"/",sp_file_name,"-",1:4,".csv")
+cmdstanfit$save_object(file = paste0(output_dir,sp_file_name,".RDS"))
 
+shiny_explore <- FALSE
 if(shiny_explore){
   sl_rstan <- rstan::read_stan_csv(csvfl)
   launch_shinystan(as.shinystan(sl_rstan))
 }
 
 
-cmdstanfit$save_object(file = paste0("output/",spf,"_",prior,".RDS"))
 
 
-save(list = c("stan_data",
+save(list = c("cmdstanfit",
+              "stan_data",
               "dts",
               "real_grid",
               "strats_dts",
               "strat_regions",
-              "mod.file",
               "parms",
               "sp",
-              "spf"),
-     file = paste0("output/",spf,"_",prior,"_GAMYE_fit_new.RData"))
+              "spf",
+              "sp_file_name",
+              "output_dir",
+              "prior",
+              "mod.file1",
+              "noise_dist1",
+              "csvfl"),
+     file = paste0(output_dir,"/",sp_file_name,"_fit_add.RData"))
 
 
 }#end modeling loop

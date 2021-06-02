@@ -73,17 +73,23 @@ t1 = Sys.time()
 w_cosewic = sps[c(2:4,7,10,12:20,22,11,25)]
 
 # Species loop ------------------------------------------------------------
+output_dir <- "g:/Shorebird_Migration_Trends/output"
 
 
 for(sp in sps){
   #if(sp == "Semipalmated Sandpiper"){next}
   spf = gsub(sp,pattern = " ",replacement = "_")
+  load(paste0("data/data",sp,"_cmdstanr_data.RData"))
   
-  prior = "gamma"
+  sp_file_name <- paste0(spf,"-",prior,"-",noise_dist1)
   
+ 
+  #paste0(output_dir,"/",sp_file_name,"_fit_add.RData")
+
   if(file.exists(paste0("output/",spf,"_",prior,".RDS"))){
+    load(paste0(output_dir,"/",spf,"_fit_add.RData"))
     cmdstanfit <- readRDS(paste0("output/",spf,"_",prior,".RDS"))
-    load(paste0("output/",spf,"_",prior,"_GAMYE_fit_new.RData"))
+    #load(paste0(output_dir,"/",spf,"_fit_add.RData"))
     three_gen <- max(10,ceiling(gens[which(gens$Common_name == sp),"GenLength"]*3))
     #Three generation assessment time in COSEWIC report
     y3g <- 2019-three_gen
