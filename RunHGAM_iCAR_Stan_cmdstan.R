@@ -30,10 +30,11 @@ output_dir <- "g:/Shorebird_Migration_Trends/output"
 #output_dir2 <- "g:/Shorebird_Migration_Trends/output"
 
 
- for(sp in sps[1:4]){
+ for(sp in sps[15:19]){
    load(paste0("data/data",sp,"_cmdstanr_data.RData"))
    spf = gsub(sp,pattern = " ",replacement = "_")
-   
+   spf = gsub(pattern = "\'",replacement = "",
+              x = spf)
    sp_file_name <- paste0(spf,"-",prior,"-",noise_dist1)
    
    if(file.exists(paste0(output_dir,"/",sp_file_name,".RDS"))){next}
@@ -76,10 +77,11 @@ cmdstanfit$save_output_files(dir = output_dir,
                              random = FALSE)
 
 csvfl = paste0(output_dir,"/",sp_file_name,"-",1:4,".csv")
-cmdstanfit$save_object(file = paste0(output_dir,sp_file_name,".RDS"))
+cmdstanfit$save_object(file = paste0(output_dir,"/",sp_file_name,".RDS"))
 
 shiny_explore <- FALSE
 if(shiny_explore){
+   #load(paste0(output_dir,"/",sp_file_name,"_fit_add.RData"))
   sl_rstan <- rstan::read_stan_csv(csvfl)
   launch_shinystan(as.shinystan(sl_rstan))
 }

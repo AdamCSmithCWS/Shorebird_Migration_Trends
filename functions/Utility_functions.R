@@ -29,34 +29,34 @@ jags_dim <- function(dim = 1,
 }
 
 
-dim_ext <- function(dim = 1,
-                    var = "",
-                    cl = "Parameter",
-                    dat = NULL){
-  ##3 function to extract the indicator values from cmdstanr output
-  require(stringr)
-  
-  pat = paste0("(?<=",var,"\\[")
-  
-  if(dim > 1){
-    for(j in 1:(dim-1)){
-      
-      pat2 = paste0(pat,")[:digit:]+")
-      cl2 = str_extract(unlist(dat[,cl]),pattern = pat2)
-      
-      d = max(nchar(cl2))
-      
-      pat = paste0(pat,"[:digit:]{1,",d,"}[:punct:]")
-    }
-  }
-  
-  
-  pat = paste0(pat,")[:digit:]+")
-  dds = as.integer(str_extract(unlist(dat[,cl]),pattern = pat))
-  return(dds)
-  
-}
-
+# dim_ext <- function(dim = 1,
+#                     var = "",
+#                     cl = "Parameter",
+#                     dat = NULL){
+#   ##3 function to extract the indicator values from cmdstanr output
+#   require(stringr)
+#   
+#   pat = paste0("(?<=",var,"\\[")
+#   
+#   if(dim > 1){
+#     for(j in 1:(dim-1)){
+#       
+#       pat2 = paste0(pat,")[:digit:]+")
+#       cl2 = str_extract(unlist(dat[,cl]),pattern = pat2)
+#       
+#       d = max(nchar(cl2))
+#       
+#       pat = paste0(pat,"[:digit:]{1,",d,"}[:punct:]")
+#     }
+#   }
+#   
+#   
+#   pat = paste0(pat,")[:digit:]+")
+#   dds = as.integer(str_extract(unlist(dat[,cl]),pattern = pat))
+#   return(dds)
+#   
+# }
+# 
 
 myrename = function(fit){
   rename_with(fit,~ paste0("PI",gsub(".","_",gsub("%", "", .x, fixed = TRUE), fixed = TRUE)),ends_with("%"))
@@ -64,38 +64,38 @@ myrename = function(fit){
 }
 
 
-
-cmd_samples <- function(fit = cmdstanfit,
-                        parm = "nsmooth",
-                        dims = NULL){
-  require(posterior)
-  samples <- as_draws_df(fit$draws(variables = c(parm)))
-  if(length(dims) > 0){
-    parm_ex <- paste0(parm,"\\[")
-  }else{
-    parm_ex <- parm
-  }
-  
-  plong <- suppressWarnings(samples %>% pivot_longer(
-    cols = matches(parm_ex,ignore.case = FALSE),
-    names_to = c(".variable"),
-    values_to = ".value",
-    values_drop_na = TRUE
-  )) 
-  
-  for(dn in 1:length(dims)){
-    dd = dims[dn]
-    plong[,dd] = dim_ext(dim = dn,
-                         var = parm,
-                         cl = ".variable",
-                         dat = plong)
-    
-  }
-  
-  plong <- plong %>% mutate(.variable = parm)
-  return(plong)
-  
-}
+# 
+# cmd_samples <- function(fit = cmdstanfit,
+#                         parm = "nsmooth",
+#                         dims = NULL){
+#   require(posterior)
+#   samples <- as_draws_df(fit$draws(variables = c(parm)))
+#   if(length(dims) > 0){
+#     parm_ex <- paste0(parm,"\\[")
+#   }else{
+#     parm_ex <- parm
+#   }
+#   
+#   plong <- suppressWarnings(samples %>% pivot_longer(
+#     cols = matches(parm_ex,ignore.case = FALSE),
+#     names_to = c(".variable"),
+#     values_to = ".value",
+#     values_drop_na = TRUE
+#   )) 
+#   
+#   for(dn in 1:length(dims)){
+#     dd = dims[dn]
+#     plong[,dd] = dim_ext(dim = dn,
+#                          var = parm,
+#                          cl = ".variable",
+#                          dat = plong)
+#     
+#   }
+#   
+#   plong <- plong %>% mutate(.variable = parm)
+#   return(plong)
+#   
+# }
 
 
 # cmd_summary <- function(samples,
@@ -120,18 +120,19 @@ cmd_samples <- function(fit = cmdstanfit,
 #                         }
 
 
-index_summary <- function(fit = drawst,
+index_summary <- function(samples = Nsamples,
                           rawdat = dts,
                           parm = "nsmooth",
                           dims = c("site","year"),
                           probs = c(0.025,0.5,0.975),
-                          season_scale = TRUE,
-                          site_scale = FALSE,
                           strat_offsets = NULL,
                           site_offsets = NULL)
 {
   
-  indsout = summarise_draws(x = fit,~quantile2(.x,probs = probs))
+  
+  indsout = posterior_sums(samples,
+                           dims = dims,
+                           quantiles = probs)
   
   # indsout = as.data.frame(summary(fit,
   #                                 pars = parm,
@@ -140,57 +141,26 @@ index_summary <- function(fit = drawst,
   # indsout$year = 1980:2019
   # 
   #indsout = myrename(indsout)#removes the special characters in the column names
-  indsout$Parameter = indsout$variable
+  #indsout$Parameter = indsout$variable
   indsout$parm = parm
   
-  for(dn in 1:length(dims)){
-    dd = dims[dn]
-    indsout[,dd] = jags_dim(dim = dn,
-                            var = parm,
-                            cl = "Parameter",
-                            dat = indsout)
-    
-  }
+  # for(dn in 1:length(dims)){
+  #   dd = dims[dn]
+  #   indsout[,dd] = jags_dim(dim = dn,
+  #                           var = parm,
+  #                           cl = "Parameter",
+  #                           dat = indsout)
+  #   
+  # }
   
-  if(season_scale){
-    
-    seas = as.data.frame(summary(fit,
-                                    pars = "season_pred",
-                                    probs = probs)$summary)
-    seas_sc = 1/exp(seas$mean)
-    
-    if(site_scale){
-      
-    alphas = as.data.frame(summary(fit,
-                                 pars = "alpha",
-                                 probs = probs)$summary)
-    
-    alphas_sc = exp(alphas$mean)
-    
-    alphas_sc = data.frame(site = 1:length(alphas_sc),
-                           alpha_sc = alphas_sc/sum(alphas_sc))
-    
-    sites_by_yr = unique(rawdat[,c("yr","site")])
-    sites_by_yr = inner_join(sites_by_yr,alphas_sc,by = "site")
-    
-    site_cor = sites_by_yr %>% group_by(yr) %>% 
-      summarise(p_alpha = 1/sum(alpha_sc,na.rm = T)) ## inverse of sum of the proportion of site effects included in that year
-## this should be a multiplicative re-scaling factor
-    ## if sum(alpha_sc) == 0.1 (10% of the site-sizes included in a year, means that years mean counts should be scaled by a factor of 10 (1/0.1))
-    
-    #rawdat$count_scale = rawdat$count * seas_sc[rawdat$date] * alphas_sc[rawdat$site]
-    }
-      rawdat$count_scale = rawdat$count * seas_sc[rawdat$date]
-    
-  }else{
+
     rawdat$count_scale = rawdat$count
-  }
   
   
     if(length(dims) == 1){
       if(!is.null(strat_offsets)){
-        rawdat <- left_join(rawdat,strat_offsets,by = "strat")
-        obs = rawdat %>% group_by(yr) %>% 
+        rawdat <- left_join(rawdat,strat_offsets)
+        obs = rawdat %>% group_by(year) %>% 
           summarise(obsmean = mean(count_scale),
                     obslci = quantile(count_scale,0.05),
                     obsuci = quantile(count_scale,0.95),
@@ -200,7 +170,7 @@ index_summary <- function(fit = drawst,
                     nstrats = length(unique(strat)),
                     mean_counts_incl_strata = mean(adjs))
       }else{
-      obs = rawdat %>% group_by(yr) %>% 
+      obs = rawdat %>% group_by(year) %>% 
         summarise(obsmean = mean(count_scale),
                   obslci = quantile(count_scale,0.05),
                   obsuci = quantile(count_scale,0.95),
@@ -209,17 +179,13 @@ index_summary <- function(fit = drawst,
                   sqrt_n = sqrt(nsurveys),
                   nstrats = length(unique(strat)))
 }
-      indsout <- left_join(indsout,obs,by = c("year" = "yr"))
-      if(site_scale){
-       indsout <- left_join(indsout,site_cor,by = c("year" = "yr"))
-       indsout$obsmean <- indsout$obsmean * indsout$p_alpha
-       indsout$obsmed <- indsout$obsmed * indsout$p_alpha
-      }
+      indsout <- left_join(indsout,obs,by = c("year"))
+      
     }else{
       if(dims[1] == "stratn"){
         if(!is.null(site_offsets)){
-          rawdat <- left_join(rawdat,site_offsets,by = "site")
-        obs = rawdat %>% group_by(stratn,yr) %>% 
+          rawdat <- left_join(rawdat,site_offsets)
+        obs = rawdat %>% group_by(stratn,year) %>% 
           summarise(obsmean = mean(count_scale),
                     obslci = quantile(count_scale,0.05),
                     obsuci = quantile(count_scale,0.95),
@@ -228,10 +194,10 @@ index_summary <- function(fit = drawst,
                     sqrt_n = sqrt(nsurveys),
                     nsites = length(unique(site)),
                     mean_counts_incl_sites = mean(adjs))
-        indsout <- left_join(indsout,obs,by = c("stratn" = "stratn",
-                                                "year" = "yr"))
+        indsout <- left_join(indsout,obs,by = c("stratn",
+                                                "year" ))
         }else{
-          obs = rawdat %>% group_by(stratn,yr) %>% 
+          obs = rawdat %>% group_by(stratn,year) %>% 
             summarise(obsmean = mean(count_scale),
                       obslci = quantile(count_scale,0.05),
                       obsuci = quantile(count_scale,0.95),
@@ -241,15 +207,15 @@ index_summary <- function(fit = drawst,
                       nsites = length(unique(site)))
         } 
       }else{
-        obs = rawdat %>% group_by(site,yr) %>% 
+        obs = rawdat %>% group_by(site,year) %>% 
           summarise(obsmean = mean(count_scale),
                     obslci = quantile(count_scale,0.05),
                     obsuci = quantile(count_scale,0.95),
                     obsmed = median(count_scale),
                     nsurveys = n(),
                     sqrt_n = sqrt(nsurveys))
-        indsout <- left_join(indsout,obs,by = c("site" = "site",
-                                                "year" = "yr"))
+        indsout <- left_join(indsout,obs,by = c("site",
+                                                "year"))
       }
     }
     
@@ -368,7 +334,7 @@ ItoT <- function(inds = Nsamples,
     inds[,"region"] = inds[,regions]
     indt <- inds %>% filter(year %in% c(start,end)) %>% 
       ungroup %>% 
-      select(-y,-s) %>% 
+      select(-y,-stratn) %>% 
       group_by(region) %>% 
       pivot_wider(names_from = year,
                   values_from = .value)

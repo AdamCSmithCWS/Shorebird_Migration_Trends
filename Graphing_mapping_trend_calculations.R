@@ -7,6 +7,7 @@ library(GGally)
 library(posterior)
 library(cmdstanr)
 source("functions/utility_functions.R")
+source("functions/posterior_summary_functions.R")
 
 library(loo)
 load("data/allShorebirdPrismFallCounts.RData")
@@ -79,16 +80,20 @@ output_dir <- "g:/Shorebird_Migration_Trends/output"
 for(sp in sps){
   #if(sp == "Semipalmated Sandpiper"){next}
   spf = gsub(sp,pattern = " ",replacement = "_")
+  spf = gsub(pattern = "\'",replacement = "",
+             x = spf)
+  
   load(paste0("data/data",sp,"_cmdstanr_data.RData"))
   
   sp_file_name <- paste0(spf,"-",prior,"-",noise_dist1)
-  
- 
+  # paste0(output_dir,"/",sp_file_name,".RDS")
+  # 
   #paste0(output_dir,"/",sp_file_name,"_fit_add.RData")
 
-  if(file.exists(paste0("output/",spf,"_",prior,".RDS"))){
-    load(paste0(output_dir,"/",spf,"_fit_add.RData"))
-    cmdstanfit <- readRDS(paste0("output/",spf,"_",prior,".RDS"))
+  if(file.exists(paste0(output_dir,"/",sp_file_name,"_fit_add.RData"))){
+    load(paste0(output_dir,"/",sp_file_name,"_fit_add.RData"))
+    cmdstanfit <- rstan::read_stan_csv(csvfl) 
+    #<- readRDS(paste0(output_dir,"/",sp_file_name,".RDS"))
     #load(paste0(output_dir,"/",spf,"_fit_add.RData"))
     three_gen <- max(10,ceiling(gens[which(gens$Common_name == sp),"GenLength"]*3))
     #Three generation assessment time in COSEWIC report
@@ -135,7 +140,7 @@ for(sp in sps){
     
 
 
-    Nsamples <- cmd_samples(fit = cmdstanfit,
+    Nsamples <- posterior_samples(fit = cmdstanfit,
                  parm = "N",
                  dims = c("y"))
       
@@ -143,12 +148,12 @@ for(sp in sps){
    
     Nsamples$year <- Nsamples$y + (syear-1)
     
-    NSmoothsamples <- cmd_samples(fit = cmdstanfit,
+    NSmoothsamples <- posterior_samples(fit = cmdstanfit,
                                   parm = "NSmooth",
                                   dims = c("y"))
     NSmoothsamples$year <- NSmoothsamples$y + (syear-1)
     
-    loo_ic[[sp]] <- cmdstanfit$loo()
+    loo_ic[[sp]] <- loo(cmdstanfit)
      
     # # looic -------------------------------------------------------------------
     # 
@@ -191,11 +196,11 @@ for(sp in sps){
     # # Alphas by site ----------------------------------------------------------
      #alpha_samples <- slope_icar_stanfit %>% gather_draws(alpha[s])
     
-    alpha_samples <- cmd_samples(fit = cmdstanfit,
+    alpha_samples <- posterior_samples(fit = cmdstanfit,
                              parm = "alpha",
                              dims = c("s"))
     
-    sdalpha_samples <- cmd_samples(fit = cmdstanfit,
+    sdalpha_samples <- posterior_samples(fit = cmdstanfit,
                                  parm = "sdalpha") 
     sdalpha = sdalpha_samples %>% 
       summarise(mean = mean((.value)),
@@ -251,14 +256,14 @@ for(sp in sps){
     # 
     # 
     
-    ALm <- cmd_samples(fit = cmdstanfit,
+    ALm <- posterior_samples(fit = cmdstanfit,
                 parm = "ALPHA1",
                 dims = NULL) %>% 
       summarise(mean = mean(.value)) %>% 
       as.numeric()
     
     
-    sdnm <- cmd_samples(fit = cmdstanfit,
+    sdnm <- posterior_samples(fit = cmdstanfit,
                         parm = "sdnoise",
                         dims = NULL) %>% 
       summarise(mean = mean(.value)) %>% 
@@ -279,7 +284,7 @@ for(sp in sps){
     n_countsby_site <- dts %>% group_by(site) %>% 
       summarise(n_c = n()) 
 
-    if(grepl(x = mod.file,pattern = "two_season")){
+    if(grepl(x = mod.file1,pattern = "two_season")){
       
       strat_season_strat <- dts %>% distinct(seas_strat,strat,hex_name)
       
@@ -293,7 +298,7 @@ for(sp in sps){
 
       
     
-    season_samples <- cmd_samples(fit = cmdstanfit,
+    season_samples <- posterior_samples(fit = cmdstanfit,
                                   parm = "season_pred",
                                   dims = c("d","s"))
     
@@ -422,7 +427,7 @@ for(sp in sps){
         summarise(adjs = mean(mean))
       
       
-      season_samples <- cmd_samples(fit = cmdstanfit,
+      season_samples <- posterior_samples(fit = cmdstanfit,
                                     parm = "season_pred",
                                     dims = c("d"))
       
@@ -664,28 +669,23 @@ for(sp in sps){
     
     
     
-    season_samples <- cmd_samples(fit = cmdstanfit,
+    season_samples <- posterior_samples(fit = cmdstanfit,
                                   parm = "season_pred",
                                   dims = c("d","s")) 
     
     
-    drawst = as_draws_df(cmdstanfit$draws(variables = c("N")))
+    #drawst = as_draws_df(cmdstanfit$draws(variables = c("N")))
     
     
-    indicesN <- index_summary(fit = drawst,
+    indicesN <- index_summary(samples = Nsamples,
                               parm = "N",
                               dims = "year",
-                              site_scale = FALSE,
-                              season_scale = FALSE,
                               strat_offsets = strat_offs)
     
-    drawst = as_draws_df(cmdstanfit$draws(variables = c("NSmooth")))
     
-    indicesNSmooth <- index_summary(fit = drawst,
+    indicesNSmooth <- index_summary(samples = NSmoothsamples,
                                     parm = "NSmooth",
                                     dims = "year",
-                                    site_scale = FALSE,
-                                    season_scale = FALSE,
                                     strat_offsets = strat_offs)
     
     
@@ -694,13 +694,13 @@ for(sp in sps){
     
     
     indices = bind_rows(indicesN,indicesNSmooth)
-    indices$year = indices$year + (syear-1)
-    yup = max(max(indices$q97.5)*1.5,quantile(indices$obsmean,0.7))
+    #indices$year = indices$year + (syear-1)
+    yup = max(max(indices$uci),quantile(indices$obsmean,0.7))
     
     indices$parm <- factor(indices$parm,ordered = T,levels = c("NSmooth","N"))
     
-    N_gg = ggplot(data = indices,aes(x = year, y = q50,fill = parm))+
-      geom_ribbon(aes(ymin = q2.5,ymax = q97.5),alpha = 0.2)+
+    N_gg = ggplot(data = indices,aes(x = year, y = median,fill = parm))+
+      geom_ribbon(aes(ymin = lci,ymax = uci),alpha = 0.2)+
       geom_line(aes(colour = parm))+
       labs(title = paste(sp,prior,"Survey-wide trajectory (full and smooth) with obs means"))+
       annotate("text", x = 1997, y = yup*0.9, label = anot_80)+
@@ -724,8 +724,8 @@ for(sp in sps){
     
     
     
-    N_gg_simple = ggplot(data = indices,aes(x = year, y = q50,fill = parm))+
-      geom_ribbon(aes(ymin = q2.5,ymax = q97.5),alpha = 0.2)+
+    N_gg_simple = ggplot(data = indices,aes(x = year, y = median,fill = parm))+
+      geom_ribbon(aes(ymin = lci,ymax = uci),alpha = 0.2)+
       geom_line(aes(colour = parm))+
       labs(title = paste(sp,prior,"Survey-wide trajectory (full and smooth)"))+
       my_col2_traj+
@@ -742,7 +742,7 @@ for(sp in sps){
     
 
 # Continental Smooth spaghetti plot ---------------------------------------
-    indicesNSmooth$year = indicesNSmooth$year + (syear-1)
+  #  indicesNSmooth$year = indicesNSmooth$year + (syear-1)
     
     set.seed(2019)
     r_draws <- sample(size = 100,x = 1:max(NSmoothsamples$.draw))
@@ -759,8 +759,8 @@ for(sp in sps){
     spg_trajs <- left_join(spg_trajs,lev,by = "draw_f")
     
     
-    n_gg_spag = ggplot(data = indicesNSmooth,aes(x = year, y = q50))+
-      geom_ribbon(aes(ymin = q2.5,ymax = q97.5),alpha = 0.25)+
+    n_gg_spag = ggplot(data = indicesNSmooth,aes(x = year, y = median))+
+      geom_ribbon(aes(ymin = lci,ymax = uci),alpha = 0.25)+
       geom_line(size =2)+
       labs(title = paste(sp,prior,"Random selection of 100 posterior draws of survey-wide trajectories"),
            subtitle = "Colour of each posterior draw reflects the value in 2019, demonstrating similar smooths across draws")+
@@ -781,32 +781,56 @@ for(sp in sps){
     # print(N_gg_simple)
     # dev.off()
     
-
+    
+    # combine the trajectories within the original regional strata ------------
+    
+    
+    
+    strats_dts <- left_join(strats_dts,strat_regions,by = c("stratn" = "strat"))
+    
+    
     alpha_adjs <- alphas %>% mutate(adjs = mean) %>% select(site,adjs)
       
     
     nstrata = stan_data$nstrata
-    drawst = as_draws_df(cmdstanfit$draws(variables = c("nsmooth")))
     
-    indicesnsmooth <- index_summary(fit = drawst,
+    nsmoothsamples <- posterior_samples(fit = cmdstanfit,
+                                        parm = "nsmooth",
+                                        dims = c("stratn","y")) 
+    
+    
+    nsmoothsamples$year <- nsmoothsamples$y + (syear-1)
+    nsmoothsamples <- left_join(nsmoothsamples,strats_dts,by = c("stratn"))
+    
+    
+    indicesnsmooth <- index_summary(samples = nsmoothsamples,
                                     parm = "nsmooth",
                                     dims = c("stratn","year"),
-                                    season_scale = FALSE,
-                                    site_scale = FALSE,
                                     site_offsets = alpha_adjs)
     
     
-    drawst = as_draws_df(cmdstanfit$draws(variables = c("n")))
     
-    indicesn <- index_summary(fit = drawst,
-                              parm = "n",
-                              dims = c("stratn","year"),
-                              season_scale = FALSE,
-                              site_scale = FALSE,
-                              site_offsets = alpha_adjs)
+    
+    nsamples <- posterior_samples(fit = cmdstanfit,
+                                        parm = "n",
+                                        dims = c("stratn","y")) 
+    
+    
+    nsamples$year <- nsamples$y + (syear-1)
+    nsamples <- left_join(nsamples,strats_dts,by = c("stratn"))
+    
+    
+    indicesn <- index_summary(samples = nsamples,
+                                    parm = "n",
+                                    dims = c("stratn","year"),
+                                    site_offsets = alpha_adjs)
+    
+    
+    
+ 
     
     indices_strat = bind_rows(indicesn,indicesnsmooth)
-    indices_strat$year = indices_strat$year + (syear-1)
+    #indices_strat$year = indices_strat$year + (syear-1)
     indices_strat <- left_join(indices_strat,strats_dts, by = "stratn")
     indices_strat$parm <- factor(indices_strat$parm,ordered = T,levels = c("nsmooth","n"))
     
@@ -840,8 +864,8 @@ for(sp in sps){
     tmp_sp_ind_plots <- vector(mode = "list",length = ceiling(nstrata/ppag))
     tmp_sp_ind_plots_diagnostic <- tmp_sp_ind_plots
     for(jj in 1:ceiling(nstrata/ppag)){
-      n_gg_simple = ggplot(data = indices_strat,aes(x = year, y = q50,fill = parm))+
-        geom_ribbon(aes(ymin = q2.5,ymax = q97.5),alpha = 0.2)+
+      n_gg_simple = ggplot(data = indices_strat,aes(x = year, y = median,fill = parm))+
+        geom_ribbon(aes(ymin = lci,ymax = uci),alpha = 0.2)+
         geom_line(aes(colour = parm))+
         my_col2_traj+
         xlab("")+
@@ -854,8 +878,8 @@ for(sp in sps){
       
       print(n_gg_simple)
       
-      n_gg = ggplot(data = indices_strat,aes(x = year, y = q50,fill = parm))+
-        geom_ribbon(aes(ymin = q2.5,ymax = q97.5),alpha = 0.2)+
+      n_gg = ggplot(data = indices_strat,aes(x = year, y = median,fill = parm))+
+        geom_ribbon(aes(ymin = lci,ymax = uci),alpha = 0.2)+
         geom_line(aes(colour = parm))+
         my_col2_traj+
         geom_point(aes(y = obsmean,size = mean_counts_incl_sites),colour = grey(0.5),alpha = 0.3)+
@@ -882,11 +906,11 @@ for(sp in sps){
       
       
     
-    n_gg_over = ggplot(data = indices_strat_smooth,aes(x = year, y = q50,colour = hex_name))+
+    n_gg_over = ggplot(data = indices_strat_smooth,aes(x = year, y = median,colour = hex_name))+
       #geom_ribbon(aes(ymin = q2.5,ymax = q97.5),alpha = 0.2)+
       geom_line(alpha = 0.8)+
         scale_colour_viridis_d()+
-      geom_line(data = indicesNSmooth,aes(x = year,y = q50),inherit.aes = FALSE)+
+      geom_line(data = indicesNSmooth,aes(x = year,y = median),inherit.aes = FALSE)+
       theme_classic()+
       labs(title = sp)+
         theme(legend.position = "none")+
@@ -912,19 +936,19 @@ for(sp in sps){
     #                           cl = "variable",
     #                           dat = B)
       
-    B_samples <- cmd_samples(fit = cmdstanfit,
+    B_samples <- posterior_samples(fit = cmdstanfit,
                             parm = "B",
                             dims = c("k"))
-    b_samples <- cmd_samples(fit = cmdstanfit,
+    b_samples <- posterior_samples(fit = cmdstanfit,
                      parm = "b",
                      dims = c("s","k")) %>% 
       left_join(.,strats_dts,by = c("s" = "stratn"))
     
-    sdbeta_samples <- cmd_samples(fit = cmdstanfit,
+    sdbeta_samples <- posterior_samples(fit = cmdstanfit,
                                  parm = "sdyear_gam_strat",
                                  dims = c("k")) 
     
-    sdB_samples <- cmd_samples(fit = cmdstanfit,
+    sdB_samples <- posterior_samples(fit = cmdstanfit,
                                   parm = "sdyear_gam",
                                   dims = NULL) 
     
@@ -1032,21 +1056,7 @@ for(sp in sps){
     
         
     
-    # combine the trajectories within the original regional strata ------------
-    
-    
-
-    strats_dts <- left_join(strats_dts,strat_regions,by = c("stratn" = "strat"))
-    
-    
-    nsmoothsamples <- cmd_samples(fit = cmdstanfit,
-                                  parm = "nsmooth",
-                                  dims = c("s","y")) 
-    
-    
-    nsmoothsamples$year <- nsmoothsamples$y + (syear-1)
-    nsmoothsamples <- left_join(nsmoothsamples,strats_dts,by = c("s" = "stratn"))
-    # st_drop <- "2305040_1068494"
+  # st_drop <- "2305040_1068494"
     #nsmoothsamples <- nsmoothsamples %>% filter(hex_name != st_drop)
     
     
@@ -1147,14 +1157,7 @@ for(sp in sps){
     
     
     
-    nsamples <- cmd_samples(fit = cmdstanfit,
-                            parm = "n",
-                            dims = c("s","y"))
-      
-      
-    nsamples$year <- nsamples$y + (syear-1)
-    nsamples <- left_join(nsamples,strats_dts,by = c("s" = "stratn"))
-    
+
     
     # st_drop <- "2305040_1068494"
     # nsamples <- nsamples %>% filter(hex_name != st_drop)
@@ -1223,7 +1226,7 @@ for(sp in sps){
 t2 = Sys.time()
 t2-t1
 
-write.csv(trendsout,"trends/All_region_strata_composite_trends.csv",row.names = FALSE)
+write.csv(trendsout,paste0("trends/All_region_strata_",prior,"_composite_trends.csv"),row.names = FALSE)
 
 TRENDSout <- TRENDSout %>% relocate(species,start_year,end_year,trend_type) %>% 
   select(-parameter)
@@ -1261,7 +1264,7 @@ save(list = c("trend_maps_1980",
 
 
 # Trend maps --------------------------------------------------------------
-pdf(file = "Figures/All_trend_maps.pdf",
+pdf(file = paste0("Figures/All_",prior,"_trend_maps.pdf"),
     width = 9, height = 6.5)
 for(sp in sps){
   if(!is.null(trend_maps_1980[[sp]])){
@@ -1277,7 +1280,7 @@ dev.off()
 
 
 # Season Graphs --------------------------------------------------------------
-pdf(file = "Figures/All_Season_graphs.pdf",
+pdf(file = paste0("Figures/All_",prior,"_Season_graphs.pdf"),
     width = 9, height = 6.5)
 for(sp in sps){
   if(!is.null(season_graphs[[sp]])){
@@ -1289,7 +1292,7 @@ dev.off()
 
 
 # Simple Season Graphs --------------------------------------------------------------
-pdf(file = "Figures/All_Simple_Season_graphs.pdf",
+pdf(file = paste0("Figures/All_",prior,"_Simple_Season_graphs.pdf"),
     width = 9, height = 6.5)
 for(sp in sps){
   if(!is.null(out_simple_season_graphs[[sp]])){
@@ -1302,7 +1305,7 @@ dev.off()
 
 # Continental Trajectories ------------------------------------------------
 
-pdf(file = "Figures/All_Continental_Trajectories.pdf",
+pdf(file = paste0("Figures/All_",prior,"_Continental_Trajectories.pdf"),
     width = 9, height = 6.5)
 for(sp in sps){
   if(!is.null(sp_ind_plots[[sp]])){
@@ -1315,7 +1318,7 @@ dev.off()
 
 # Stratum-level Trajectories ------------------------------------------------
 
-pdf(file = "Figures/All_Strata_Trajectories.pdf",
+pdf(file = paste0("Figures/All_",prior,"_Strata_Trajectories.pdf"),
     width = 9, height = 6.5)
 for(sp in sps){
   if(!is.null(sp_ind_plots_strat[[sp]])){
@@ -1329,7 +1332,7 @@ dev.off()
 
 
 # Composite Regional Trajectories --------------------------------------------------------------
-pdf(file = "Figures/All_Composite_Trajectories.pdf",
+pdf(file = paste0("Figures/All_",prior,"_Composite_Trajectories.pdf"),
     width = 9, height = 6.5)
 for(sp in sps){
   if(!is.null(composite_trajectories[[sp]])){
@@ -1342,7 +1345,7 @@ dev.off()
 
 # Continental Diagnostic Trajectories ------------------------------------------------
 
-pdf(file = "Figures/All_Diagnostic_Continental_Trajectories.pdf",
+pdf(file = paste0("Figures/All_",prior,"_Diagnostic_Continental_Trajectories.pdf"),
     width = 9, height = 6.5)
 for(sp in sps){
   if(!is.null(sp_ind_plots_diagnostic[[sp]])){
@@ -1355,7 +1358,7 @@ dev.off()
 
 # Stratum-level Diagnostic Trajectories ------------------------------------------------
 
-pdf(file = "Figures/All_Diagnostic_Strata_Trajectories.pdf",
+pdf(file = paste0("Figures/All_",prior,"_Diagnostic_Strata_Trajectories.pdf"),
     width = 9, height = 6.5)
 for(sp in sps){
   if(!is.null(sp_ind_plots_strat_diagnostic[[sp]])){
@@ -1368,7 +1371,7 @@ dev.off()
 
 # alphas by year ------------------------------------------------
 
-pdf(file = "Figures/All_alphas_by_yr.pdf",
+pdf(file = paset0("Figures/All_",prior,"_alphas_by_yr.pdf"),
     width = 9, height = 6.5)
 for(sp in sps){
   if(!is.null(out_alphas_by_yr[[sp]])){
