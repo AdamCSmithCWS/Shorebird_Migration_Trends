@@ -30,12 +30,12 @@ output_dir <- "g:/Shorebird_Migration_Trends/output"
 #output_dir2 <- "g:/Shorebird_Migration_Trends/output"
 
 
- for(sp in sps[15:19]){
+ for(sp in sps[c(1,16,20)]){
    load(paste0("data/data",sp,"_cmdstanr_data.RData"))
    spf = gsub(sp,pattern = " ",replacement = "_")
    spf = gsub(pattern = "\'",replacement = "",
               x = spf)
-   sp_file_name <- paste0(spf,"-",prior,"-",noise_dist1)
+   sp_file_name <- paste0(spf,"-",prior,"-",noise_dist2)
    
    if(file.exists(paste0(output_dir,"/",sp_file_name,".RDS"))){next}
    
@@ -44,7 +44,7 @@ output_dir <- "g:/Shorebird_Migration_Trends/output"
 
     
     ## compile model
-    modl = cmdstan_model(stan_file=mod.file1)
+    modl = cmdstan_model(stan_file=mod.file2)
 
 print(sp)
 ## run sampler on model, data

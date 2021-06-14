@@ -92,6 +92,7 @@ for(sp in sps){
 
   if(file.exists(paste0(output_dir,"/",sp_file_name,"_fit_add.RData"))){
     load(paste0(output_dir,"/",sp_file_name,"_fit_add.RData"))
+    if(length(csvfl) > 4){csvfl <- csvfl[1:4]}
     cmdstanfit <- rstan::read_stan_csv(csvfl) 
     #<- readRDS(paste0(output_dir,"/",sp_file_name,".RDS"))
     #load(paste0(output_dir,"/",spf,"_fit_add.RData"))
