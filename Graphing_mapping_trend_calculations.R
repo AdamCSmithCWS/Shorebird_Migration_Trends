@@ -1239,10 +1239,10 @@ trendsoutsplit <- trendsout %>% relocate(species,start_year,end_year,trend_type,
            group_split()
 
 
-write.csv(trendsoutsplit[[1]],"trends/All_strata_level_trends.csv",row.names = FALSE)
-write.csv(trendsoutsplit[[2]],"trends/All_region_level_trends.csv",row.names = FALSE)
+write.csv(trendsoutsplit[[1]],paste0("trends/All_strata_",prior,"_level_trends.csv"),row.names = FALSE)
+write.csv(trendsoutsplit[[2]],paste0("trends/All_region_",prior,"_level_trends.csv"),row.names = FALSE)
 
-write.csv(TRENDSout,"trends/All_survey_wide_trends.csv",row.names = FALSE)
+write.csv(TRENDSout,paste0("trends/All_",prior,"_survey_wide_trends.csv"),row.names = FALSE)
 
 save(list = c("trend_maps_1980",
               "trend_maps_2004",
@@ -1257,7 +1257,7 @@ save(list = c("trend_maps_1980",
               "sp_ind_plots_diagnostic",              
               "season_graphs",
               "loo_ic"),
-     file = "Figures/All_stored_maps.RData")
+     file = paste0("Figures/All_",prior,"_stored_maps.RData"))
 
 
 
@@ -1402,7 +1402,7 @@ lt_tplot <- ggplot(data = LT_trends,aes(x = species,y = trend,colour = trend_typ
   theme(legend.position = "bottom")+
   coord_flip()
 
-pdf(file = "Figures/All_long_short_term_trends.pdf",
+pdf(file = paste0("Figures/All_",prior,"_long_short_term_trends.pdf"),
     height = 9,
     width = 6.5)
 print(lt_tplot)
@@ -1421,7 +1421,7 @@ FL15_tplot <- ggplot(data = FL15_trends,aes(x = species,y = trend,colour = trend
   theme(legend.position = "bottom")+
   coord_flip()
 
-pdf(file = "Figures/First_last_15Year_trends.pdf",
+pdf(file = paste0("Figures/First_",prior,"_last_15Year_trends.pdf"),
     height = 9,
     width = 6.5)
 print(FL15_tplot)
@@ -1442,7 +1442,7 @@ el_tplot <- ggplot(data = EL_trends,aes(x = species,y = trend,colour = trend_typ
   coord_flip()
 
 
-pdf(file = "Figures/All_early_recent_3generation_trends.pdf",
+pdf(file = paste0("Figures/All_",prior,"_early_recent_3generation_trends.pdf"),
     height = 9,
     width = 6.5)
 print(el_tplot)
@@ -1462,7 +1462,7 @@ lt3_tplot <- ggplot(data = LT3_trends,aes(x = species,y = trend,colour = trend_t
   theme(legend.position = "bottom")+
   coord_flip()
 
-pdf(file = "Figures/All_long_term_3Gen_trends.pdf",
+pdf(file = paste0("Figures/All_",prior,"_long_term_3Gen_trends.pdf"),
     height = 9,
     width = 6.5)
 print(lt3_tplot)
@@ -1470,7 +1470,7 @@ dev.off()
 
 
 
-pdf(file = "Figures/All_beta_plots.pdf",
+pdf(file = paste0("Figures/All_",prior,"_beta_plots.pdf"),
     width = 9, height = 6.5)
 for(sp in sps){
   if(!is.null(sp_ind_plots_strat_diagnostic[[sp]])){
@@ -1480,7 +1480,7 @@ for(sp in sps){
 dev.off()
 
 
-pdf(file = "Figures/All_trajectory_plots.pdf",
+pdf(file = paste0("Figures/All_",prior,"_trajectory_plots.pdf"),
     width = 9, height = 6.5)
 for(sp in sps){
   if(!is.null(sp_ind_plots_strat_diagnostic[[sp]])){

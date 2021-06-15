@@ -77,7 +77,7 @@ cmdstanfit$save_output_files(dir = output_dir,
                              random = FALSE)
 
 csvfl = paste0(output_dir,"/",sp_file_name,"-",1:4,".csv")
-cmdstanfit$save_object(file = paste0(output_dir,"/",sp_file_name,".RDS"))
+#cmdstanfit$save_object(file = paste0(output_dir,"/",sp_file_name,".RDS"))
 
 shiny_explore <- FALSE
 if(shiny_explore){
