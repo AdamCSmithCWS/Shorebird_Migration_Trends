@@ -75,8 +75,8 @@ w_cosewic = sps[c(2:4,7,10,12:20,22,11,25)]
 
 for(sp in sps){
   #if(sp == "Semipalmated Sandpiper"){next}
-  if(file.exists(paste0("output/",sp,"_GAMYE_strat_simple",grid_spacing/1000,".RData"))){
-    load(paste0("output/",sp,"_GAMYE_strat_simple",grid_spacing/1000,".RData"))
+  if(file.exists(paste0("D:/Shorebird_Migration_Trends/output/",sp,"_GAMYE_strat_simple",grid_spacing/1000,".RData"))){
+    load(paste0("D:/Shorebird_Migration_Trends/output/",sp,"_GAMYE_strat_simple",grid_spacing/1000,".RData"))
     
     three_gen <- max(10,ceiling(gens[which(gens$Common_name == sp),"GenLength"]*3))
     #Three generation assessment time in COSEWIC report
