@@ -189,6 +189,10 @@ chng <- function(x){
   (x-1)*100
 }
 
+prob_dec <- function(ch,thresh){
+
+length(which(ch < thresh))/length(ch)
+}
 
 
 
@@ -229,7 +233,9 @@ ItoT <- function(inds = NSamples,
                  raw_data = dts,
                  centered_trends = TRUE){
   
+
   
+
   varbl <- unique(inds$.variable)
   
   lq = (1-(qs/100))/2
@@ -257,7 +263,11 @@ ItoT <- function(inds = NSamples,
               uci = quantile(t,uq,names = FALSE),
               percent_change = median(ch),
               p_ch_lci = quantile(ch,lq,names = FALSE),
-              p_ch_uci = quantile(ch,uq,names = FALSE))
+              p_ch_uci = quantile(ch,uq,names = FALSE),
+              prob_decline = prob_dec(ch,0),
+              prob_decline_GT30 = prob_dec(ch,-30),
+              prob_decline_GT50 = prob_dec(ch,-50),
+              prob_decline_GT70 = prob_dec(ch,-70))
   
   mn <- inds %>% filter(year %in% c(start:end)) %>% 
     ungroup() %>%
@@ -306,6 +316,10 @@ ItoT <- function(inds = NSamples,
                 percent_change = median(ch),
                 p_ch_lci = quantile(ch,lq,names = FALSE),
                 p_ch_uci = quantile(ch,uq,names = FALSE),
+                prob_decline = prob_dec(ch,0),
+                prob_decline_GT30 = prob_dec(ch,-30),
+                prob_decline_GT50 = prob_dec(ch,-50),
+                prob_decline_GT70 = prob_dec(ch,-70),
                 .groups = "keep")
     mn <- inds %>% filter(year %in% c(start:end)) %>% 
       ungroup() %>%
@@ -341,7 +355,11 @@ ItoT <- function(inds = NSamples,
                 uci = quantile(t,uq,names = FALSE),
                 percent_change = median(ch),
                 p_ch_lci = quantile(ch,lq,names = FALSE),
-                p_ch_uci = quantile(ch,uq,names = FALSE))
+                p_ch_uci = quantile(ch,uq,names = FALSE),
+                prob_decline = prob_dec(ch,0),
+                prob_decline_GT30 = prob_dec(ch,-30),
+                prob_decline_GT50 = prob_dec(ch,-50),
+                prob_decline_GT70 = prob_dec(ch,-70))
     
     mn <- inds %>% filter(year %in% c(start:end)) %>% 
       ungroup() %>%
