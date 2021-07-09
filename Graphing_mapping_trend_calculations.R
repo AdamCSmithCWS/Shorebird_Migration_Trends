@@ -8,6 +8,7 @@ library(posterior)
 library(cmdstanr)
 source("functions/utility_functions.R")
 source("functions/posterior_summary_functions.R")
+source("Functions/palettes.R")
 
 library(loo)
 load("data/allShorebirdPrismFallCounts.RData")
@@ -43,7 +44,10 @@ out_alphas_by_yr <- blank_list
 
 trendsout <- NULL
 TRENDSout <- NULL
-
+indices_out <- NULL
+indices_out_strat <- NULL
+indices_out_composite <- NULL
+loo_df <- NULL
 
 # Loading gen times from Bird et al 2020 --------
 gens = read.csv("data/cobi13486-sup-0004-tables4.csv")
@@ -77,6 +81,7 @@ w_cosewic = sps[c(2:4,7,10,12:20,22,11,25)]
 output_dir <- "g:/Shorebird_Migration_Trends/output"
 
 
+
 for(sp in sps){
   #if(sp == "Semipalmated Sandpiper"){next}
   spf = gsub(sp,pattern = " ",replacement = "_")
@@ -85,7 +90,9 @@ for(sp in sps){
   
   load(paste0("data/data",sp,"_cmdstanr_data.RData"))
   
-  sp_file_name <- paste0(spf,"-",prior,"-",noise_dist1)
+  noise_dist_sel <- noise_dist2
+  
+  sp_file_name <- paste0(spf,"-",prior,"-",noise_dist_sel)
   # paste0(output_dir,"/",sp_file_name,".RDS")
   # 
   #paste0(output_dir,"/",sp_file_name,"_fit_add.RData")
@@ -171,7 +178,9 @@ for(sp in sps){
     wcl <- which(names(dts_loo) %in% c("stratn","log_countp1","year","date","influence_pareto_k","looic"))
     prs_plot <- ggpairs(data = dts_loo,columns = wcl)
 
-
+    dts_loo$species <- sp
+    
+    loo_df <- bind_rows(loo_df,dts_loo)
 
 
     loo_by_strat <- dts_loo %>% group_by(hex_name) %>%
@@ -186,7 +195,7 @@ for(sp in sps){
                 mean_count = mean(count))
 
     strat_pairs <- ggpairs(data = loo_by_strat,columns = 2:ncol(loo_by_strat))
-    pdf(paste0("Figures/",sp,prior,"_loo_pairs.pdf"),
+    pdf(paste0("Figures/",sp,prior,"_",noise_dist_sel,"_loo_pairs.pdf"),
         width = 11,
         height = 11)
     print(prs_plot)
@@ -239,7 +248,7 @@ for(sp in sps){
       facet_wrap(~strat,nrow = nr,ncol = nr,scales = "free")+
       theme_minimal()
 
-    pdf(paste0("Figures/",sp,prior,"_obs_by_alpha.pdf"),
+    pdf(paste0("Figures/",sp,prior,"_",noise_dist_sel,"_obs_by_alpha.pdf"),
         width = 11,
         height = 11)
     print(obs_by_alpha)
@@ -387,7 +396,7 @@ for(sp in sps){
     
     tmp_season_graphs <- vector(mode = "list",length = ceiling(nstrata/ppag))
     
-    pdf(file = paste0("Figures/",sp,prior,"cmd_simple_Season.pdf"),
+    pdf(file = paste0("Figures/",sp,prior,"_",noise_dist_sel,"_cmd_simple_Season.pdf"),
         width = 8.5,
         height = 8.5)
     
@@ -480,7 +489,7 @@ for(sp in sps){
       #print(pp_simple)
       out_simple_season_graphs[[sp]] <- pp_simple
       
-      pdf(file = paste0("Figures/",sp,prior,"cmd_simple_Season_simplified.pdf"),
+      pdf(file = paste0("Figures/",sp,prior,"_",noise_dist_sel,"_cmd_simple_Season_simplified.pdf"),
           width = 8.5,
           height = 8.5)
       print(pp_simple)
@@ -509,7 +518,7 @@ for(sp in sps){
       }
       tmp_season_graphs <- vector(mode = "list",length = ceiling(nstrata/ppag))
  
-           pdf(file = paste0("Figures/",sp,prior,"cmd_simple_Season.pdf"),
+           pdf(file = paste0("Figures/",sp,prior,"_",noise_dist_sel,"_cmd_simple_Season.pdf"),
           width = 8.5,
           height = 8.5)
       
@@ -562,9 +571,9 @@ for(sp in sps){
       geom_smooth()+
       geom_abline(slope = 0,intercept = 0,colour = grey(0.3))+
       xlab("")+
-      labs(title = paste(sp,prior,"mean site-effect of included sites by year"))
+      labs(title = paste(sp,prior,"_",noise_dist_sel,"_mean site-effect of included sites by year"))
     
-    pdf(file = paste0("Figures/",sp,prior,"_cmd_alphas_by_yr.pdf"),
+    pdf(file = paste0("Figures/",sp,prior,"_",noise_dist_sel,"_cmd_alphas_by_yr.pdf"),
         width = 8.5,
         height = 8.5)
     print(AA_y_p)
@@ -585,7 +594,7 @@ for(sp in sps){
         geom_smooth()+
         geom_abline(slope = 0,intercept = 0,colour = grey(0.3))+
         xlab("")+
-        labs(title = paste(sp,prior,"mean site-effect of included sites by year"))+
+        labs(title = paste(sp,prior,"_",noise_dist_sel,"_mean site-effect of included sites by year"))+
         facet_wrap_paginate(facets = ~strat,page = jj,nrow = nrr, ncol = ncl,scales = "free")
       
       print(a_y_p)
@@ -695,6 +704,9 @@ for(sp in sps){
     
     
     indices = bind_rows(indicesN,indicesNSmooth)
+    indices$species <- sp
+    
+    indices_out <- bind_rows(indices_out,indices)
     #indices$year = indices$year + (syear-1)
     yup = max(max(indices$uci),quantile(indices$obsmean,0.7))
     
@@ -703,7 +715,7 @@ for(sp in sps){
     N_gg = ggplot(data = indices,aes(x = year, y = median,fill = parm))+
       geom_ribbon(aes(ymin = lci,ymax = uci),alpha = 0.2)+
       geom_line(aes(colour = parm))+
-      labs(title = paste(sp,prior,"Survey-wide trajectory (full and smooth) with obs means"))+
+      labs(title = paste(sp,prior,"_",noise_dist_sel,"_Survey-wide trajectory (full and smooth) with obs means"))+
       annotate("text", x = 1997, y = yup*0.9, label = anot_80)+
       annotate("text", x = 1997, y = yup*0.8, label = anot_90)+
       annotate("text", x = 1997, y = yup*0.7, label = anot_07)+
@@ -728,7 +740,7 @@ for(sp in sps){
     N_gg_simple = ggplot(data = indices,aes(x = year, y = median,fill = parm))+
       geom_ribbon(aes(ymin = lci,ymax = uci),alpha = 0.2)+
       geom_line(aes(colour = parm))+
-      labs(title = paste(sp,prior,"Survey-wide trajectory (full and smooth)"))+
+      labs(title = paste(sp,prior,"_",noise_dist_sel,"_Survey-wide trajectory (full and smooth)"))+
       my_col2_traj+
       xlab("")+
       ylab("Modeled mean count")+
@@ -763,7 +775,7 @@ for(sp in sps){
     n_gg_spag = ggplot(data = indicesNSmooth,aes(x = year, y = median))+
       geom_ribbon(aes(ymin = lci,ymax = uci),alpha = 0.25)+
       geom_line(size =2)+
-      labs(title = paste(sp,prior,"Random selection of 100 posterior draws of survey-wide trajectories"),
+      labs(title = paste(sp,prior,"_",noise_dist_sel,"_Random selection of 100 posterior draws of survey-wide trajectories"),
            subtitle = "Colour of each posterior draw reflects the value in 2019, demonstrating similar smooths across draws")+
       xlab("")+
       ylab("Modeled mean count")+
@@ -833,6 +845,12 @@ for(sp in sps){
     indices_strat = bind_rows(indicesn,indicesnsmooth)
     #indices_strat$year = indices_strat$year + (syear-1)
     indices_strat <- left_join(indices_strat,strats_dts, by = "stratn")
+    indices_strat$species <- sp
+    
+    indices_out_strat <- bind_rows(indices_out_strat,indices_strat)
+    
+    
+    
     indices_strat$parm <- factor(indices_strat$parm,ordered = T,levels = c("nsmooth","n"))
     
     
@@ -916,7 +934,7 @@ for(sp in sps){
       labs(title = sp)+
         theme(legend.position = "none")+
       scale_y_log10()
-    pdf(paste0("Figures/log_scale_trajectories_",sp,prior,"cmd_.pdf"),
+    pdf(paste0("Figures/log_scale_trajectories_",sp,prior,"_",noise_dist_sel,"_cmd_.pdf"),
         width = 11,
         height = 8.5)
     print(n_gg_over)
@@ -995,7 +1013,7 @@ for(sp in sps){
     theme(legend.position = "none")
     
     
-    pdf(paste0("Figures/beta_sdbeta_",sp,prior,"cmd_.pdf"),
+    pdf(paste0("Figures/beta_sdbeta_",sp,prior,"_",noise_dist_sel,"_cmd_.pdf"),
         width = 11,
         height = 8.5)
     print(b_plot)
@@ -1171,6 +1189,7 @@ for(sp in sps){
                         regions = "Region")
     indsn_region$type = "Full"
     indsn_region <- bind_rows(indsnsmooth_region,indsn_region)
+    indsn_region$species <- sp
     
     ind_fc = ggplot(data = indsn_region,aes(x = year,y = median,group = type))+
       geom_ribbon(aes(ymin = lci,ymax = uci,fill = type),alpha = 0.2)+
@@ -1187,6 +1206,8 @@ for(sp in sps){
     composite_trajectories[[sp]] <- ind_fc  
     
     
+    indices_out_composite <- bind_rows(indices_out_composite,indsn_region)
+
     
     
     
@@ -1194,7 +1215,7 @@ for(sp in sps){
     # Trend heatmaps ----------------------------------------------------------
     ## consider adding site-locations, stratum labels, etc.
     
-    pdf(paste0("Figures/Trend_Heat_maps_",sp,prior,"cmd_.pdf"),
+    pdf(paste0("Figures/Trend_Heat_maps_",sp,prior,"_",noise_dist_sel,"_cmd_.pdf"),
         width = 11,
         height = 8.5)
     t_80 = trend_map(t_nsmooth_strat_80,
@@ -1227,7 +1248,7 @@ for(sp in sps){
 t2 = Sys.time()
 t2-t1
 
-write.csv(trendsout,paste0("trends/All_region_strata_",prior,"_composite_trends.csv"),row.names = FALSE)
+write.csv(trendsout,paste0("trends/All_region_strata_",prior,"_",noise_dist_sel,"_composite_trends.csv"),row.names = FALSE)
 
 TRENDSout <- TRENDSout %>% relocate(species,start_year,end_year,trend_type) %>% 
   select(-parameter)
@@ -1239,10 +1260,10 @@ trendsoutsplit <- trendsout %>% relocate(species,start_year,end_year,trend_type,
            group_split()
 
 
-write.csv(trendsoutsplit[[1]],paste0("trends/All_strata_",prior,"_level_trends.csv"),row.names = FALSE)
-write.csv(trendsoutsplit[[2]],paste0("trends/All_region_",prior,"_level_trends.csv"),row.names = FALSE)
+write.csv(trendsoutsplit[[1]],paste0("trends/All_strata_",prior,"_",noise_dist_sel,"_level_trends.csv"),row.names = FALSE)
+write.csv(trendsoutsplit[[2]],paste0("trends/All_region_",prior,"_",noise_dist_sel,"_level_trends.csv"),row.names = FALSE)
 
-write.csv(TRENDSout,paste0("trends/All_",prior,"_survey_wide_trends.csv"),row.names = FALSE)
+write.csv(TRENDSout,paste0("trends/All_",prior,"_",noise_dist_sel,"_survey_wide_trends.csv"),row.names = FALSE)
 
 save(list = c("trend_maps_1980",
               "trend_maps_2004",
@@ -1257,7 +1278,7 @@ save(list = c("trend_maps_1980",
               "sp_ind_plots_diagnostic",              
               "season_graphs",
               "loo_ic"),
-     file = paste0("Figures/All_",prior,"_stored_maps.RData"))
+     file = paste0("Figures/All_",prior,"_",noise_dist_sel,"_stored_maps.RData"))
 
 
 
@@ -1265,7 +1286,7 @@ save(list = c("trend_maps_1980",
 
 
 # Trend maps --------------------------------------------------------------
-pdf(file = paste0("Figures/All_",prior,"_trend_maps.pdf"),
+pdf(file = paste0("Figures/All_",prior,"_",noise_dist_sel,"_trend_maps.pdf"),
     width = 9, height = 6.5)
 for(sp in sps){
   if(!is.null(trend_maps_1980[[sp]])){
@@ -1281,7 +1302,7 @@ dev.off()
 
 
 # Season Graphs --------------------------------------------------------------
-pdf(file = paste0("Figures/All_",prior,"_Season_graphs.pdf"),
+pdf(file = paste0("Figures/All_",prior,"_",noise_dist_sel,"_Season_graphs.pdf"),
     width = 9, height = 6.5)
 for(sp in sps){
   if(!is.null(season_graphs[[sp]])){
@@ -1293,7 +1314,7 @@ dev.off()
 
 
 # Simple Season Graphs --------------------------------------------------------------
-pdf(file = paste0("Figures/All_",prior,"_Simple_Season_graphs.pdf"),
+pdf(file = paste0("Figures/All_",prior,"_",noise_dist_sel,"_Simple_Season_graphs.pdf"),
     width = 9, height = 6.5)
 for(sp in sps){
   if(!is.null(out_simple_season_graphs[[sp]])){
@@ -1306,7 +1327,7 @@ dev.off()
 
 # Continental Trajectories ------------------------------------------------
 
-pdf(file = paste0("Figures/All_",prior,"_Continental_Trajectories.pdf"),
+pdf(file = paste0("Figures/All_",prior,"_",noise_dist_sel,"_Continental_Trajectories.pdf"),
     width = 9, height = 6.5)
 for(sp in sps){
   if(!is.null(sp_ind_plots[[sp]])){
@@ -1319,7 +1340,7 @@ dev.off()
 
 # Stratum-level Trajectories ------------------------------------------------
 
-pdf(file = paste0("Figures/All_",prior,"_Strata_Trajectories.pdf"),
+pdf(file = paste0("Figures/All_",prior,"_",noise_dist_sel,"_Strata_Trajectories.pdf"),
     width = 9, height = 6.5)
 for(sp in sps){
   if(!is.null(sp_ind_plots_strat[[sp]])){
@@ -1333,7 +1354,7 @@ dev.off()
 
 
 # Composite Regional Trajectories --------------------------------------------------------------
-pdf(file = paste0("Figures/All_",prior,"_Composite_Trajectories.pdf"),
+pdf(file = paste0("Figures/All_",prior,"_",noise_dist_sel,"_Composite_Trajectories.pdf"),
     width = 9, height = 6.5)
 for(sp in sps){
   if(!is.null(composite_trajectories[[sp]])){
@@ -1346,7 +1367,7 @@ dev.off()
 
 # Continental Diagnostic Trajectories ------------------------------------------------
 
-pdf(file = paste0("Figures/All_",prior,"_Diagnostic_Continental_Trajectories.pdf"),
+pdf(file = paste0("Figures/All_",prior,"_",noise_dist_sel,"_Diagnostic_Continental_Trajectories.pdf"),
     width = 9, height = 6.5)
 for(sp in sps){
   if(!is.null(sp_ind_plots_diagnostic[[sp]])){
@@ -1359,7 +1380,7 @@ dev.off()
 
 # Stratum-level Diagnostic Trajectories ------------------------------------------------
 
-pdf(file = paste0("Figures/All_",prior,"_Diagnostic_Strata_Trajectories.pdf"),
+pdf(file = paste0("Figures/All_",prior,"_",noise_dist_sel,"_Diagnostic_Strata_Trajectories.pdf"),
     width = 9, height = 6.5)
 for(sp in sps){
   if(!is.null(sp_ind_plots_strat_diagnostic[[sp]])){
@@ -1372,7 +1393,7 @@ dev.off()
 
 # alphas by year ------------------------------------------------
 
-pdf(file = paset0("Figures/All_",prior,"_alphas_by_yr.pdf"),
+pdf(file = paste0("Figures/All_",prior,"_",noise_dist_sel,"_alphas_by_yr.pdf"),
     width = 9, height = 6.5)
 for(sp in sps){
   if(!is.null(out_alphas_by_yr[[sp]])){
@@ -1402,7 +1423,7 @@ lt_tplot <- ggplot(data = LT_trends,aes(x = species,y = trend,colour = trend_typ
   theme(legend.position = "bottom")+
   coord_flip()
 
-pdf(file = paste0("Figures/All_",prior,"_long_short_term_trends.pdf"),
+pdf(file = paste0("Figures/All_",prior,"_",noise_dist_sel,"_long_short_term_trends.pdf"),
     height = 9,
     width = 6.5)
 print(lt_tplot)
@@ -1421,7 +1442,7 @@ FL15_tplot <- ggplot(data = FL15_trends,aes(x = species,y = trend,colour = trend
   theme(legend.position = "bottom")+
   coord_flip()
 
-pdf(file = paste0("Figures/First_",prior,"_last_15Year_trends.pdf"),
+pdf(file = paste0("Figures/First_",prior,"_",noise_dist_sel,"_last_15Year_trends.pdf"),
     height = 9,
     width = 6.5)
 print(FL15_tplot)
@@ -1442,7 +1463,7 @@ el_tplot <- ggplot(data = EL_trends,aes(x = species,y = trend,colour = trend_typ
   coord_flip()
 
 
-pdf(file = paste0("Figures/All_",prior,"_early_recent_3generation_trends.pdf"),
+pdf(file = paste0("Figures/All_",prior,"_",noise_dist_sel,"_early_recent_3generation_trends.pdf"),
     height = 9,
     width = 6.5)
 print(el_tplot)
@@ -1462,7 +1483,7 @@ lt3_tplot <- ggplot(data = LT3_trends,aes(x = species,y = trend,colour = trend_t
   theme(legend.position = "bottom")+
   coord_flip()
 
-pdf(file = paste0("Figures/All_",prior,"_long_term_3Gen_trends.pdf"),
+pdf(file = paste0("Figures/All_",prior,"_",noise_dist_sel,"_long_term_3Gen_trends.pdf"),
     height = 9,
     width = 6.5)
 print(lt3_tplot)
@@ -1470,7 +1491,7 @@ dev.off()
 
 
 
-pdf(file = paste0("Figures/All_",prior,"_beta_plots.pdf"),
+pdf(file = paste0("Figures/All_",prior,"_",noise_dist_sel,"_beta_plots.pdf"),
     width = 9, height = 6.5)
 for(sp in sps){
   if(!is.null(sp_ind_plots_strat_diagnostic[[sp]])){
@@ -1480,7 +1501,7 @@ for(sp in sps){
 dev.off()
 
 
-pdf(file = paste0("Figures/All_",prior,"_trajectory_plots.pdf"),
+pdf(file = paste0("Figures/All_",prior,"_",noise_dist_sel,"_trajectory_plots.pdf"),
     width = 9, height = 6.5)
 for(sp in sps){
   if(!is.null(sp_ind_plots_strat_diagnostic[[sp]])){

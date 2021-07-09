@@ -29,15 +29,14 @@ sps_remain = sps[-which(sps %in% w_cosewic)]
 output_dir <- "g:/Shorebird_Migration_Trends/output"
 #output_dir2 <- "g:/Shorebird_Migration_Trends/output"
 
-
- for(sp in sps[c(1,16,20)]){
+ for(sp in sps){
    load(paste0("data/data",sp,"_cmdstanr_data.RData"))
    spf = gsub(sp,pattern = " ",replacement = "_")
    spf = gsub(pattern = "\'",replacement = "",
               x = spf)
    sp_file_name <- paste0(spf,"-",prior,"-",noise_dist2)
    
-   if(file.exists(paste0(output_dir,"/",sp_file_name,".RDS"))){next}
+   if(file.exists(paste0(output_dir,"/",sp_file_name,"-",1,".csv"))){next}
    
    
  
@@ -47,18 +46,6 @@ output_dir <- "g:/Shorebird_Migration_Trends/output"
     modl = cmdstan_model(stan_file=mod.file2)
 
 print(sp)
-## run sampler on model, data
-# slope_icar_stanfit <- sampling(slope_icar_model,
-#                                data=stan_data,
-#                                verbose=TRUE, refresh=100,
-#                                chains=4, iter=1800,
-#                                warmup=1200,
-#                                cores = 4,
-#                                pars = c(parms),
-#                                control = list(adapt_delta = 0.9,
-#                                               max_treedepth = 14))
-
-
 
 
 cmdstanfit<- modl$sample(data=stan_data,
@@ -67,7 +54,7 @@ cmdstanfit<- modl$sample(data=stan_data,
                iter_warmup=1000,
                parallel_chains = 4,
                max_treedepth = 15,
-               adapt_delta = 0.95,
+               adapt_delta = 0.8,
                init = init_def)
 
 
