@@ -16,6 +16,8 @@ source("functions/GAM_basis_function_mgcv.R")
 # library(doParallel)
 # library(foreach)
 
+
+
 #load data
 load("data/allShorebirdPrismFallCounts.RData")
 grid_spacing <- 300000  # size of squares, in units of the CRS (i.e. meters for lae)
@@ -26,13 +28,30 @@ FYYYY = 1980
 output_dir <- "g:/Shorebird_Migration_Trends/output"
 #output_dir2 <- "g:/Shorebird_Migration_Trends/output"
 
+# Loading gen times from Bird et al 2020 --------
+gens = read.csv("data/cobi13486-sup-0004-tables4.csv")
+fullgensnames = read.csv("data/cobi13486-sup-0001-tables1.csv")
+
+fullgensnames <- fullgensnames %>% select(Scientific_name,Common_name)
+gens <- gens %>% select(Scientific_name,
+                        GenLength) %>% 
+   left_join(.,fullgensnames)
+
+gens[which(gens$Common_name == "American Golden Plover"),"Common_name"] <- "American Golden-Plover"
+gens[which(gens$Common_name == "Grey Plover"),"Common_name"] <- "Black-bellied Plover"
+
+sps[-which(sps %in% gens$Common_name)]
+
+gens <- gens %>% filter(Common_name %in% sps)
+
 
 w_cosewic = sps[c(2:4,7,10,12:20,22)]
 
+sp_remain <- sps[-c(2:4,7,10,12:20,22)]
 
 balanced_sim = FALSE
 
- for(sp1 in w_cosewic[c(15,10)]){
+ for(sp1 in sp_remain[c(10:12)]){
 # 
 #   if(file.exists(paste0("output/",sp,"_GAMYE_strat_simple",grid_spacing/1000,".RData"))){w_cosewic <- w_cosewic[-which(w_cosewic == sp)]}
 # 
@@ -50,7 +69,7 @@ balanced_sim = FALSE
     load(paste0(output_dir,"/",sp_file_name1,"_fit_add.RData"))
     
     cmdstanfit <- rstan::read_stan_csv(csvfl) 
-    
+
 
 # Gather estimates from fitted model --------------------------------------
 
@@ -371,7 +390,8 @@ save(list = c("cmdstanfit",
               "prior",
               "mod.file2",
               "noise_dist2",
-              "csvfl"),
+              "csvfl",
+              "strats_xy"),
      file = paste0(output_dir,"/",sp_file_name,"_fit_add.RData"))
 
 
@@ -566,7 +586,8 @@ save(list = c("cmdstanfit",
               "prior",
               "mod.file2",
               "noise_dist2",
-              "csvfl"),
+              "csvfl",
+              "strats_xy"),
      file = paste0(output_dir,"/",sp_file_name,"_fit_add.RData"))
 
 
@@ -758,64 +779,91 @@ save(list = c("cmdstanfit",
    
    
    
+
+# COMPARE FITTED WITH KNOWN ------------------------------------------
+
+
+
+   blank_list <- vector(mode = "list",length = length(sps))
+names(blank_list) <- sps
+
+trend_maps_1980 <- blank_list
+trend_maps_3gen <- blank_list
+trend_maps_L3gen <- blank_list
+
+trend_comparison_1980 <- blank_list
+trend_comparison_3gen <- blank_list
+trend_comparison_L3gen <- blank_list
+
+trendsout <- NULL
+TRENDSout <- NULL
+indices_out <- NULL
+indices_out_strat <- NULL
+
+saved_trends <- read.csv("trends/All_gamma_t_survey_wide_trends.csv")
+saved_trends_normal <- read.csv("trends/All_gamma_normal_survey_wide_trends.csv")
+
+# Comarison Species Loop --------------------------------------------------
+prior = "gamma"
+noise_dist2 = "t"
+
+for(sp1 in sps){
    
+   
+   
+   
+   
+saved_trend <- saved_trends[which(saved_trends$species == sp1 &
+                                     saved_trends$start_year == 1980 &
+                                     saved_trends$end_year == 2019), "trend"]
+   
+    
+   sp = paste("Simulated",sp1,sep = "_")    
+   
+  
+   
+   spf = gsub(sp,pattern = " ",replacement = "_")
+   spf = gsub(pattern = "\'",replacement = "",
+              x = spf)
+   sp_file_name <- paste0(spf,"-",prior,"-",noise_dist2)
    
 
-# compare fitted to known values ------------------------------------------
-   # sp = "Simulated_balanced"    
-   # load(paste0("data/data_simulated_balanced_stable_decline2_GAMYE_strat_simple.RData"))
-   # 
    
    output_dir <- "g:/Shorebird_Migration_Trends/output"
-   
-    #sp = "Simulated"    
-   
-   # prior = "gamma"
-   # noise_dist2 = "t"
-   # 
-   # spf = gsub(sp,pattern = " ",replacement = "_")
-   # spf = gsub(pattern = "\'",replacement = "",
-   #            x = spf)
-   # sp_file_name <- paste0(spf,"-",prior,"-",noise_dist2)
-   # 
-   
 
-      # load(paste0("data/data_simulated_stable_decline2_GAMYE_strat_simple.RData"))
-      # 
+
+
        noise_dist_sel <- noise_dist2
-      # 
-      # paste0(output_dir,"/",sp_file_name,".RDS")
-      # 
-      #paste0(output_dir,"/",sp_file_name,"_fit_add.RData")
+
       
       if(file.exists(paste0(output_dir,"/",sp_file_name,"_fit_add.RData"))){
          load(paste0(output_dir,"/",sp_file_name,"_fit_add.RData"))
+         
+         B1 = 0.5*(saved_trend/100)  #linear trend at center of range = 2*B1
+         bx = -0.005 #implies a 1-2%/year range in trends by longitude
+         by = -0.02 #implies a 2-4%/year range in trends by latitude
+         
+         strats_xy <- strats_dts %>% 
+            mutate(x = as.numeric(str_split(hex_name,pattern = "_",simplify = TRUE)[,1]),
+                   y = as.numeric(str_split(hex_name,pattern = "_",simplify = TRUE)[,2]),
+                   x_scale = (x-mean(x))/(0.5*diff(range(x))),#scaled x coordinate to create a longitudinal gradient in trends
+                   y_scale = (y-mean(y))/(0.5*diff(range(y))),#scaled y coordinate to create a latitudinal gradient in trends
+                   b1 = (x_scale*bx+B1) + (y_scale*by+B1)) #initial log-linear slopes for each stratum with spatial gradients
+         
+         midyear = 20
+         b1 = strats_xy$b1 #initial slopes for each stratum
+         #b2 = strats_xy$b2 #second slopes for each stratum
+         
+         
          if(length(csvfl) > 4){csvfl <- csvfl[1:4]}
          cmdstanfit <- rstan::read_stan_csv(csvfl) 
          #<- readRDS(paste0(output_dir,"/",sp_file_name,".RDS"))
          #load(paste0(output_dir,"/",spf,"_fit_add.RData"))
-         three_gen <- 20#<- max(10,ceiling(gens[which(gens$Common_name == sp),"GenLength"]*3))
+         three_gen <- max(10,ceiling(gens[which(gens$Common_name == sp),"GenLength"]*3)) #20
          #Three generation assessment time in COSEWIC report
          y3g <- 2019-three_gen
          
-         # CONSIDERATIONS ----------------------------------------------------------
-         
-         ## map the looic values to see if some areas are being poorly predicted
-         
-         ## add some variation to the plotting of the observed means (box and whisker info)
-         
-         #################################
-         ## plot the changing mean alpha through time - are smaller sites being surveyed
-         ## more in recent years?
-         #################################
-         
-         
-         ## generate some fake data to ensure there isn't a negative bias
-         
-         
-         ## export a table with an n-surveys by site by year matrix for the data holders to confirm
-         ## send the model summary to Paul - seasonal-split, maps of regions, etc.
-         ## rationalize the 1980 start date (see above table), plot number of surveys and sites by time
+
          
          # Calculate Annual indices using samples ----------------------------------
          
@@ -912,13 +960,13 @@ save(list = c("cmdstanfit",
                       uci = quantile((.value),0.975))
          
          
-         sites_strat = (stan_data$sites)
-         nstrata = stan_data$nstrata
-         nsites_strat = stan_data$nsites_strat
-         # #offsets = stan_data$site_size
+         sites_strat = (stan_data_sim$sites)
+         nstrata = stan_data_sim$nstrata
+         nsites_strat = stan_data_sim$nsites_strat
+         # #offsets = stan_data_sim$site_size
          # 
          sitesbystrat = NULL
-         for(st in 1:stan_data$nstrata){
+         for(st in 1:stan_data_sim$nstrata){
             tmp = data.frame(strat = st,
                              site = sites_strat[1:nsites_strat[st],st])
             sitesbystrat <- bind_rows(sitesbystrat,tmp)
@@ -1309,15 +1357,15 @@ save(list = c("cmdstanfit",
                               qs = 95,
                               sp = sp,
                               type = "Long-term")
-         #TRENDSout <- bind_rows(TRENDSout,t_NSmooth_80)
+         TRENDSout <- bind_rows(TRENDSout,t_NSmooth_80)
          
-         t_NSmooth_04 <- ItoT(inds = NSmoothsamples,
-                              start = 2004,
-                              end = 2019,
-                              regions = NULL,
-                              qs = 95,
-                              sp = sp,
-                              type = "15-year")
+         # t_NSmooth_04 <- ItoT(inds = NSmoothsamples,
+         #                      start = 2004,
+         #                      end = 2019,
+         #                      regions = NULL,
+         #                      qs = 95,
+         #                      sp = sp,
+         #                      type = "15-year")
          #TRENDSout <- bind_rows(TRENDSout,t_NSmooth_04)
          
          t_NSmooth_F15 <- ItoT(inds = NSmoothsamples,
@@ -1327,7 +1375,7 @@ save(list = c("cmdstanfit",
                                qs = 95,
                                sp = sp,
                                type = "First-15-year")
-         #TRENDSout <- bind_rows(TRENDSout,t_NSmooth_F15)
+         TRENDSout <- bind_rows(TRENDSout,t_NSmooth_F15)
          
          t_NSmooth_3g <- ItoT(inds = NSmoothsamples,
                               start = y3g,
@@ -1336,7 +1384,7 @@ save(list = c("cmdstanfit",
                               qs = 95,
                               sp = sp,
                               type = "Recent-three-generation")
-         #TRENDSout <- bind_rows(TRENDSout,t_NSmooth_3g)
+         TRENDSout <- bind_rows(TRENDSout,t_NSmooth_3g)
          
          
          syL3g = y3g-(2019-y3g)
@@ -1349,7 +1397,7 @@ save(list = c("cmdstanfit",
                                sp = sp,
                                type = "Previous-three-generation")
          
-         #TRENDSout <- bind_rows(TRENDSout,t_NSmooth_L3g)
+         TRENDSout <- bind_rows(TRENDSout,t_NSmooth_L3g)
          
          anot_funct <- function(x){
             ant = paste(signif(x$percent_change,3),
@@ -1400,7 +1448,7 @@ save(list = c("cmdstanfit",
          indices = bind_rows(indicesN,indicesNSmooth)
          indices$species <- sp
          
-         #indices_out <- bind_rows(indices_out,indices)
+         indices_out <- bind_rows(indices_out,indices)
          #indices$year = indices$year + (syear-1)
          yup = max(max(indices$uci),quantile(indices$obsmean,0.7))
          
@@ -1500,7 +1548,7 @@ save(list = c("cmdstanfit",
          alpha_adjs <- alphas %>% mutate(adjs = mean) %>% select(site,adjs)
          
          
-         nstrata = stan_data$nstrata
+         nstrata = stan_data_sim$nstrata
          
          nsmoothsamples <- posterior_samples(fit = cmdstanfit,
                                              parm = "nsmooth",
@@ -1542,7 +1590,7 @@ save(list = c("cmdstanfit",
          indices_strat <- left_join(indices_strat,strats_dts, by = "stratn")
          indices_strat$species <- sp
          
-         #indices_out_strat <- bind_rows(indices_out_strat,indices_strat)
+         indices_out_strat <- bind_rows(indices_out_strat,indices_strat)
          
          
          
@@ -1732,8 +1780,8 @@ save(list = c("cmdstanfit",
          #     }
          # 
          #     btraj <- b_samples %>% group_by(.draw,hex_name) %>% 
-         #       summarise(traj = traj_funct(stan_data$year_basispred,.value),
-         #                 year = yr_funct(stan_data$year_basispred),
+         #       summarise(traj = traj_funct(stan_data_sim$year_basispred,.value),
+         #                 year = yr_funct(stan_data_sim$year_basispred),
          #                 .groups = "drop") %>%
          #       group_by(hex_name,year) %>% 
          #       summarise(mean = mean((traj)),
@@ -1741,8 +1789,8 @@ save(list = c("cmdstanfit",
          #                 uci = quantile((traj),0.975))
          #       
          #     Btraj <- B_samples %>% group_by(.draw) %>% 
-         #       summarise(traj = traj_funct(stan_data$year_basispred,.value),
-         #                 year = yr_funct(stan_data$year_basispred),
+         #       summarise(traj = traj_funct(stan_data_sim$year_basispred,.value),
+         #                 year = yr_funct(stan_data_sim$year_basispred),
          #                 .groups = "drop") %>%
          #       group_by(year) %>% 
          #       summarise(mean = mean((traj)),
@@ -1766,7 +1814,7 @@ save(list = c("cmdstanfit",
          #     alternate_traj_overplots[[sp]] <- b_plot_alt
          #     
          
-         #(stan_data$year_basispred * transpose(b[s,]))
+         #(stan_data_sim$year_basispred * transpose(b[s,]))
          
          
          
@@ -1774,14 +1822,14 @@ save(list = c("cmdstanfit",
          #nsmoothsamples <- nsmoothsamples %>% filter(hex_name != st_drop)
          
          
-         t_nsmooth_strat_04 <- ItoT(inds = nsmoothsamples,
-                                    start = 2004,
-                                    end = 2019,
-                                    regions = "hex_name",
-                                    qs = 95,
-                                    sp = sp,
-                                    type = "15-year",
-                                    centered_trends = TRUE)
+         # t_nsmooth_strat_04 <- ItoT(inds = nsmoothsamples,
+         #                            start = 2004,
+         #                            end = 2019,
+         #                            regions = "hex_name",
+         #                            qs = 95,
+         #                            sp = sp,
+         #                            type = "15-year",
+         #                            centered_trends = TRUE)
          
          #trendsout <- bind_rows(trendsout,t_nsmooth_strat_04)
          
@@ -1794,8 +1842,8 @@ save(list = c("cmdstanfit",
                                     sp = sp,
                                     type = "Long-term",
                                     centered_trends = TRUE)
-         # trendsout <- bind_rows(trendsout,
-         #                        t_nsmooth_strat_80)
+         trendsout <- bind_rows(trendsout,
+                                t_nsmooth_strat_80)
          
          
          
@@ -1807,8 +1855,8 @@ save(list = c("cmdstanfit",
                                     sp = sp,
                                     type = "Recent-three-generation",
                                     centered_trends = TRUE)
-         # trendsout <- bind_rows(trendsout,
-         #                        t_nsmooth_strat_3g)
+         trendsout <- bind_rows(trendsout,
+                                t_nsmooth_strat_3g)
          
          t_nsmooth_strat_L3g <- ItoT(inds = nsmoothsamples,
                                      start = syL3g,
@@ -1820,8 +1868,8 @@ save(list = c("cmdstanfit",
                                      centered_trends = TRUE)
          
    
-         # trendsout <- bind_rows(trendsout,
-         #                        t_nsmooth_strat_L3g)
+         trendsout <- bind_rows(trendsout,
+                                t_nsmooth_strat_L3g)
          
          
          
@@ -1937,7 +1985,7 @@ save(list = c("cmdstanfit",
          
          t_Ncomp_80 <- left_join(t_NSmooth_80,strats_xy,by = c("region" = "hex_name")) 
          
-         tcpl <- ggplot(data = tcomp_80,aes(x = trend_1,y = trend))+
+         tcpl_80 <- ggplot(data = tcomp_80,aes(x = trend_1,y = trend))+
             xlab("True trend")+
             ylab("Estimated Full trend")+
             geom_point(aes(size = prec,colour = North_position))+
@@ -1946,7 +1994,7 @@ save(list = c("cmdstanfit",
             geom_errorbar(data = t_Ncomp_80,aes(x = trend_1,y = trend,ymin = lci,ymax = uci),
                           alpha = 0.7,colour = "red",width = 0,inherit.aes = FALSE)+
             geom_abline(intercept = 0,slope = 1)
-         print(tcpl)
+         print(tcpl_80)
             
 
          t_3g = trend_map(t_nsmooth_strat_3g,
@@ -1959,7 +2007,7 @@ save(list = c("cmdstanfit",
         
          t_Ncomp_3g <- left_join(t_NSmooth_3g,strats_xy,by = c("region" = "hex_name")) 
          
-         tcpl <- ggplot(data = tcomp_3g,aes(x = trend_1,y = trend))+
+         tcpl_3g <- ggplot(data = tcomp_3g,aes(x = trend_1,y = trend))+
             xlab("True trend")+
             ylab("Estimated Recent trend")+
             geom_point(aes(size = prec,colour = North_position))+
@@ -1968,7 +2016,7 @@ save(list = c("cmdstanfit",
             geom_errorbar(data = t_Ncomp_3g,aes(x = trend_1,y = trend,ymin = lci,ymax = uci),
                           alpha = 0.7,colour = "red",width = 0,inherit.aes = FALSE)+
             geom_abline(intercept = 0,slope = 1)
-         print(tcpl)        
+         print(tcpl_3g)        
          
          t_L3g = trend_map(t_nsmooth_strat_L3g,
                            size_value = "Mean Observed Count")
@@ -1980,7 +2028,7 @@ save(list = c("cmdstanfit",
          t_Ncomp_L3g <- left_join(t_NSmooth_L3g,strats_xy,by = c("region" = "hex_name")) 
          
          
-         tcpl <- ggplot(data = tcomp_L3g,aes(x = trend_1,y = trend))+
+         tcpl_L3g <- ggplot(data = tcomp_L3g,aes(x = trend_1,y = trend))+
             xlab("True trend")+
             ylab("Estimated Early trend")+
             geom_point(aes(size = prec,colour = North_position))+
@@ -1989,22 +2037,203 @@ save(list = c("cmdstanfit",
             geom_errorbar(data = t_Ncomp_L3g,aes(x = trend_1,y = trend,ymin = lci,ymax = uci),
                           alpha = 0.7,colour = "red",width = 0,inherit.aes = FALSE)+
             geom_abline(intercept = 0,slope = 1)
-         print(tcpl)  
+         print(tcpl_L3g)  
          
          
          dev.off()
          
-         # trend_maps_1980[[sp]] <- t_80
+         trend_maps_1980[[sp]] <- t_80
          # trend_maps_2004[[sp]] <- t_04
-         # trend_maps_3gen[[sp]] <- t_3g
-         # trend_maps_L3gen[[sp]] <- t_L3g
+         trend_maps_3gen[[sp]] <- t_3g
+         trend_maps_L3gen[[sp]] <- t_L3g
+         trend_comparison_1980[[sp]] <- tcpl_80
+         # trend_maps_2004[[sp]] <- t_04
+         trend_comparison_3gen[[sp]] <- tcpl_3g
+         trend_comparison_L3gen[[sp]] <- tcpl_L3g
          # 
          
+         print(sp)
          
       }# end if species output data exists
-   #end species loop
+}   #end species loop
    
 
 
- 
+
+write.csv(trendsout,paste0("trends/All_region_Simulated_strata_",prior,"_",noise_dist_sel,"_composite_trends.csv"),row.names = FALSE)
+
+TRENDSout <- TRENDSout %>% relocate(species,start_year,end_year,trend_type) %>% 
+   select(-parameter)
+
+trendsoutsplit <- trendsout %>% relocate(species,start_year,end_year,trend_type,region) %>% 
+   select(-c(parameter)) %>% 
+   filter(region != "Composite") %>% 
+   group_by(region_type) %>% 
+   group_split()
+
+
+write.csv(trendsoutsplit[[1]],paste0("trends/All_strata_Simulated_",prior,"_",noise_dist_sel,"_level_trends.csv"),row.names = FALSE)
+#write.csv(trendsoutsplit[[2]],paste0("trends/All_region_Simulated_",prior,"_",noise_dist_sel,"_level_trends.csv"),row.names = FALSE)
+
+write.csv(TRENDSout,paste0("trends/All_Simulated_",prior,"_",noise_dist_sel,"_survey_wide_trends.csv"),row.names = FALSE)
+
+save(list = c("trend_maps_1980",
+              "trend_maps_3gen",
+              "trend_maps_L3gen",
+              "trend_comparison_1980",
+              "trend_comparison_3gen",
+              "trend_comparison_L3gen"),
+              
+              #"composite_trajectories",
+              
+              #"sp_ind_plots_strat",
+              #"sp_ind_plots",
+              #"sp_ind_plots_strat_diagnostic",
+              #"sp_ind_plots_diagnostic",              
+              #"season_graphs",
+              #"loo_ic"),
+     file = paste0("Figures/All_Simulated_",prior,"_",noise_dist_sel,"_stored_maps.RData"))
+
+
+
+
+# Trend maps and comparisons --------------------------------------------------------------
+pdf(file = paste0("Figures/All_Simulated_",prior,"_",noise_dist_sel,"_trend_maps.pdf"),
+    width = 9, height = 6.5)
+for(sp1 in sps){
+   sp = paste0("Simulated_",sp1)
+   if(!is.null(trend_maps_1980[[sp]])){
+      print(trend_maps_1980[[sp]])
+      print(trend_maps_L3gen[[sp]])
+      print(trend_maps_3gen[[sp]])
+      print(trend_comparison_1980[[sp]])
+      print(trend_comparison_3gen[[sp]])
+      print(trend_comparison_L3gen[[sp]])
+   }
+}
+dev.off()
+
+
+
+
+# Survey-wide trend comparison --------------------------------------------
+
+LT3_trends <- TRENDSout %>% filter(trend_type %in% c("Long-term","Recent-three-generation")) %>% 
+   mutate(species = gsub(pattern = "Simulated_",replacement = "",x = species),
+          version = "Simulated constant trend") 
+
+LT3_saved <- saved_trends %>% filter(trend_type %in% c("Long-term","Recent-three-generation")) %>% 
+   select(species,trend_type,trend,lci,uci) %>% 
+   mutate(version = "Estimated") #,species != "Semipalmated Sandpiper"
+
+LT3_comb <- bind_rows(LT3_trends,LT3_saved)
+
+my_col_sim <-  scale_color_viridis_d(aesthetics = c("colour","fill"),
+                                     option = "viridis", begin = 0.2,end = 0.75,direction = -1)
+
+
+lt3_tplot <- ggplot(data = LT3_trends,aes(x = species,y = trend,colour = trend_type))+
+   # geom_point(data = LT3_saved,aes(x = species,y = trend),
+   #            size = 4,shape = 3,colour = "black",show.legend = FALSE, inherit.aes = FALSE)+
+   geom_pointrange(aes(ymax = uci,ymin = lci,x = species,y = trend,colour = trend_type),
+                   inherit.aes = FALSE,position = position_dodge(width = 0.2))+
+   geom_abline(slope = 0,intercept = 0,alpha = 0.7)+
+   ylab("Trend (%/year)")+
+   xlab("")+
+   my_col_sim+
+   theme_classic()+
+   theme(legend.position = "bottom")+
+   coord_flip()
+
+
+lt3_tplot2panel <- ggplot(data = LT3_comb,aes(x = species,y = trend,colour = trend_type))+
+   # geom_point(data = LT3_saved,aes(x = species,y = trend),
+   #            size = 4,shape = 3,colour = "black",show.legend = FALSE, inherit.aes = FALSE)+
+   geom_pointrange(aes(ymax = uci,ymin = lci,x = species,y = trend,colour = trend_type),
+                   inherit.aes = FALSE,position = position_dodge(width = 0.2))+
+   geom_abline(slope = 0,intercept = 0,alpha = 0.7)+
+   ylab("Trend (%/year)")+
+   xlab("")+
+   my_col_sim+
+   theme_classic()+
+   theme(legend.position = "bottom")+
+   facet_wrap(facets = ~version) +
+   coord_flip()
+
+
+
+pdf(file = paste0("Figures/All_simulated",prior,"_",noise_dist_sel,"_long_term_3Gen_trends.pdf"),
+    height = 9,
+    width = 6.5)
+print(lt3_tplot)
+dev.off()
+
+
+pdf(file = paste0("Figures/All_simulated_comparison",prior,"_",noise_dist_sel,"_long_term_3Gen_trends.pdf"),
+    height = 9,
+    width = 13.5)
+print(lt3_tplot2panel)
+dev.off()
+
+
+
+# COSEWIC only ------------------------------------------------------------
+LT3_cosewic <- LT3_comb %>% filter(species %in% c(w_cosewic,"Red Knot","Lesser Yellowlegs"))
+
+lt3_tplot2panel_c <- ggplot(data = LT3_cosewic,aes(x = species,y = trend,colour = trend_type))+
+   # geom_point(data = LT3_saved,aes(x = species,y = trend),
+   #            size = 4,shape = 3,colour = "black",show.legend = FALSE, inherit.aes = FALSE)+
+   geom_pointrange(aes(ymax = uci,ymin = lci,x = species,y = trend,colour = trend_type),
+                   inherit.aes = FALSE,position = position_dodge(width = 0.2))+
+   geom_abline(slope = 0,intercept = 0,alpha = 0.7)+
+   ylab("Trend (%/year)")+
+   xlab("")+
+   my_col_sim+
+   theme_classic()+
+   theme(legend.position = "bottom")+
+   facet_wrap(facets = ~version) +
+   coord_flip()
+
+pdf(file = paste0("Figures/All_simulated_comparison_Cosewic_etc_",prior,"_",noise_dist_sel,"_long_term_3Gen_trends.pdf"),
+    height = 9,
+    width = 13.5)
+print(lt3_tplot2panel_c)
+dev.off()
+
+
+
+
+# Normal vs t over-dispersion ---------------------------------------------
+
+
+LT3_saved_t <- saved_trends %>% filter(trend_type %in% c("Long-term","Recent-three-generation")) %>% 
+   select(species,trend_type,trend,lci,uci) %>% 
+   mutate(version = "t") #,species != "Semipalmated Sandpiper"
+
+LT3_saved_normal <- saved_trends_normal %>% filter(trend_type %in% c("Long-term","Recent-three-generation")) %>% 
+   select(species,trend_type,trend,lci,uci) %>% 
+   mutate(version = "normal") #,species != "Semipalmated Sandpiper"
+
+LT3_comb_overd <- bind_rows(LT3_saved_t,LT3_saved_normal)
+
+lt3_tplot_overd <- ggplot(data = LT3_comb_overd,aes(x = species,y = trend,colour = trend_type))+
+   # geom_point(data = LT3_saved,aes(x = species,y = trend),
+   #            size = 4,shape = 3,colour = "black",show.legend = FALSE, inherit.aes = FALSE)+
+   geom_pointrange(aes(ymax = uci,ymin = lci,x = species,y = trend,colour = trend_type),
+                   inherit.aes = FALSE,position = position_dodge(width = 0.2))+
+   geom_abline(slope = 0,intercept = 0,alpha = 0.7)+
+   ylab("Trend (%/year)")+
+   xlab("")+
+   my_col_sim+
+   theme_classic()+
+   theme(legend.position = "bottom")+
+   facet_wrap(facets = ~version) +
+   coord_flip()
+
+pdf(file = paste0("Figures/All_simulated_comparison_overdispersion_",prior,"_",noise_dist_sel,"_long_term_3Gen_trends.pdf"),
+    height = 9,
+    width = 13.5)
+print(lt3_tplot_overd)
+dev.off()
+
 

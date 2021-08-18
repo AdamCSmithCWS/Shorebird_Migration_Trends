@@ -48,6 +48,7 @@ indices_out <- NULL
 indices_out_strat <- NULL
 indices_out_composite <- NULL
 loo_df <- NULL
+Trend_difout <- NULL
 
 # Loading gen times from Bird et al 2020 --------
 gens = read.csv("data/cobi13486-sup-0004-tables4.csv")
@@ -82,7 +83,7 @@ output_dir <- "g:/Shorebird_Migration_Trends/output"
 
 
 
-for(sp in sps){
+for(sp in sps[-1]){
   #if(sp == "Semipalmated Sandpiper"){next}
   spf = gsub(sp,pattern = " ",replacement = "_")
   spf = gsub(pattern = "\'",replacement = "",
@@ -656,6 +657,48 @@ for(sp in sps){
                           type = "Previous-three-generation")
     
     TRENDSout <- bind_rows(TRENDSout,t_NSmooth_L3g)
+    
+    
+
+# differences in trends ---------------------------------------
+
+    tdif <- ItoTT_comparison(inds = NSmoothsamples,
+                                 starts = c(syear,y3g),
+                                 ends = c(2019,2019),
+                                 regions = NULL,#"hex_name",
+                                 qs = 95,
+                                 sp = sp,
+                                 type = "Three Generation vs Long-term")    
+    
+    
+    Trend_difout <- bind_rows(Trend_difout,tdif)
+    
+    tdif <- ItoTT_comparison(inds = NSmoothsamples,
+                             starts = c(syL3g,y3g),
+                             ends = c(y3g,2019),
+                             regions = NULL,#"hex_name",
+                             qs = 95,
+                             sp = sp,
+                             type = "Three Generation vs Earlier Three Generation")    
+    
+    
+    Trend_difout <- bind_rows(Trend_difout,tdif)
+    
+    tdif <- ItoTT_comparison(inds = NSmoothsamples,
+                             starts = c(syear,y3g),
+                             ends = c(y3g,2019),
+                             regions = NULL,#"hex_name",
+                             qs = 95,
+                             sp = sp,
+                             type = "Three Generation vs All Previous")    
+    
+    
+    Trend_difout <- bind_rows(Trend_difout,tdif)
+    
+    
+    
+    
+    
     
     anot_funct <- function(x){
       ant = paste(signif(x$percent_change,3),
@@ -1265,6 +1308,9 @@ write.csv(trendsoutsplit[[2]],paste0("trends/All_region_",prior,"_",noise_dist_s
 
 write.csv(TRENDSout,paste0("trends/All_",prior,"_",noise_dist_sel,"_survey_wide_trends.csv"),row.names = FALSE)
 
+write.csv(Trend_difout,paste0("trends/All_",prior,"_",noise_dist_sel,"_survey_wide_Differences_in_trends.csv"),row.names = FALSE)
+
+
 save(list = c("trend_maps_1980",
               "trend_maps_2004",
               "trend_maps_3gen",
@@ -1511,4 +1557,77 @@ for(sp in sps){
 dev.off()
 
 
+# differences in trends ---------------------------------------------------
+
+
+prob_3_f <- function(x,thresh){
+  y = rep(paste0("< ",thresh*100,"% probability of change"),length(x))
+  y[which(x > thresh)] <- paste0("> ",thresh*100,"% probability negative")
+  y[which(x < (1-thresh))] <- paste0("> ",thresh*100,"% probability positive")
+  y <- factor(y,levels = c(paste0("> ",thresh*100,"% probability positive"),
+                           paste0("< ",thresh*100,"% probability of change"),
+                           paste0("> ",thresh*100,"% probability negative")),
+              ordered = TRUE)
+  return(y)
+}
+
+trend_difs_plot <- Trend_difout %>% filter(trend_type %in% c("Three Generation vs Long-term")) %>% 
+  mutate(prob_neg = prob_3_f(prob_neg,0.85))
+
+dif_tplot <- ggplot(data = trend_difs_plot,aes(x = species,y = trend_dif))+
+  geom_pointrange(aes(ymax = uci,ymin = lci),position = position_dodge(width = 0.2))+
+  geom_abline(slope = 0,intercept = 0,alpha = 0.7)+
+  ylab("Difference between recent and earlier trends (%/year)")+
+  xlab("")+
+  my_col_3+
+  theme_classic()+
+  theme(legend.position = "bottom")+
+  coord_flip()
+
+pdf(file = paste0("Figures/All_",prior,"_",noise_dist_sel,"_Differences_in_trends_long_term_3Gen_trends.pdf"),
+    height = 9,
+    width = 6.5)
+print(dif_tplot)
+dev.off()
+
+
+
+trend_difs_plot2 <- Trend_difout %>% filter(trend_type %in% c("Three Generation vs All Previous")) %>% 
+  mutate(prob_neg = prob_3_f(prob_neg,0.85))
+
+dif_tplot2 <- ggplot(data = trend_difs_plot2,aes(x = species,y = trend_dif,colour = prob_neg))+
+  geom_pointrange(aes(ymax = uci,ymin = lci),position = position_dodge(width = 0.2))+
+  geom_abline(slope = 0,intercept = 0,alpha = 0.7)+
+  ylab("Difference between recent and earlier trends (%/year)")+
+  xlab("")+
+  my_col_3+
+  theme_classic()+
+  theme(legend.position = "bottom")+
+  coord_flip()
+
+pdf(file = paste0("Figures/All_",prior,"_",noise_dist_sel,"_Differences_in_trends_all_previous_3Gen_trends.pdf"),
+    height = 9,
+    width = 6.5)
+print(dif_tplot2)
+dev.off()
+
+
+trend_difs_plot3 <- Trend_difout %>% filter(trend_type %in% c("Three Generation vs Earlier Three Generation")) %>% 
+  mutate(prob_neg = prob_3_f(prob_neg,0.85))
+
+dif_tplot3 <- ggplot(data = trend_difs_plot3,aes(x = species,y = trend_dif,colour = prob_neg))+
+  geom_pointrange(aes(ymax = uci,ymin = lci),position = position_dodge(width = 0.2))+
+  geom_abline(slope = 0,intercept = 0,alpha = 0.7)+
+  ylab("Difference between recent and earlier trends (%/year)")+
+  xlab("")+
+  my_col_3+
+  theme_classic()+
+  theme(legend.position = "bottom")+
+  coord_flip()
+
+pdf(file = paste0("Figures/All_",prior,"_",noise_dist_sel,"_Differences_in_trends_early_Vs_late_3Gen_trends.pdf"),
+    height = 9,
+    width = 6.5)
+print(dif_tplot3)
+dev.off()
 
