@@ -308,7 +308,11 @@ ItoT <- function(inds = Nsamples,
               uci = quantile(t,uq,names = FALSE),
               percent_change = median(ch),
               p_ch_lci = quantile(ch,lq,names = FALSE),
-              p_ch_uci = quantile(ch,uq,names = FALSE))
+              p_ch_uci = quantile(ch,uq,names = FALSE),
+              p_decline = p_lt(ch,0),
+              p_decline_GT_30 = p_lt(ch,-30),
+              p_decline_GT_50 = p_lt(ch,-50),
+              p_decline_GT_70 = p_lt(ch,-70))
   
   mn <- inds %>% filter(year %in% c(start:end)) %>% 
     ungroup() %>%
@@ -357,6 +361,10 @@ ItoT <- function(inds = Nsamples,
                 percent_change = median(ch),
                 p_ch_lci = quantile(ch,lq,names = FALSE),
                 p_ch_uci = quantile(ch,uq,names = FALSE),
+                p_decline = p_lt(ch,0),
+                p_decline_GT_30 = p_lt(ch,-30),
+                p_decline_GT_50 = p_lt(ch,-50),
+                p_decline_GT_70 = p_lt(ch,-70),
                 .groups = "keep")
     mn <- inds %>% filter(year %in% c(start:end)) %>% 
       ungroup() %>%
@@ -392,7 +400,11 @@ ItoT <- function(inds = Nsamples,
                 uci = quantile(t,uq,names = FALSE),
                 percent_change = median(ch),
                 p_ch_lci = quantile(ch,lq,names = FALSE),
-                p_ch_uci = quantile(ch,uq,names = FALSE))
+                p_ch_uci = quantile(ch,uq,names = FALSE),
+                p_decline = p_lt(ch,0),
+                p_decline_GT_30 = p_lt(ch,-30),
+                p_decline_GT_50 = p_lt(ch,-50),
+                p_decline_GT_70 = p_lt(ch,-70))
     
     mn <- inds %>% filter(year %in% c(start:end)) %>% 
       ungroup() %>%
@@ -450,6 +462,191 @@ ItoT <- function(inds = Nsamples,
   
   return(tt)
 }
+
+p_lt <- function(x,th){
+  length(which(x < th))/length(x)
+}
+
+
+p_neg <- function(x){
+  length(which(x < 0))/length(x)
+}
+
+
+ItoTT_comparison <- function(inds = Nsamples,
+                 starts = c(syear,2000),
+                 ends = c(2019,2019),
+                 regions = NULL,#"hex_name",
+                 qs = 95,
+                 sp = "species",
+                 type = "Three Generation vs Long-term"){
+  
+  
+  varbl <- unique(inds$.variable)
+  
+  lq = (1-(qs/100))/2
+  uq = ((qs/100))+lq
+  nyrs = ends-starts
+
+  if(is.null(regions)){
+
+    indt <- inds %>% filter(year %in% c(starts,ends)) %>% 
+      ungroup() %>% 
+      select(-y) %>% 
+      pivot_wider(names_from = year,
+                  values_from = .value)
+    
+    for(j in 1:2){
+      start <- starts[j]
+      end <- ends[j]
+    indt[,paste0("start",j)] <- indt[,as.character(start)] 
+    indt[,paste0("end",j)] <- indt[,as.character(end)] 
+    
+    }
+    
+    tt <- indt %>% group_by(.draw) %>% 
+      summarise(t1 = texp(end1/start1,ny = nyrs[1]),
+                t2 = texp(end2/start2,ny = nyrs[2]),
+                .groups = "keep")%>%
+      mutate(t_dif = t2-t1) %>% 
+      ungroup() %>% 
+      summarise(trend_dif = mean(t_dif),
+                lci = quantile(t_dif,lq,names = FALSE),
+                uci = quantile(t_dif,uq,names = FALSE),
+                prob_neg = p_neg(t_dif)) 
+    
+    
+ 
+    
+    tt$trend_type <- type
+    tt$species <- sp
+  }
+  
+  if(!is.null(regions)){
+    stop("This function does not yet work for regional estimates")
+    inds[,"region"] = inds[,regions]
+    indt <- inds %>% filter(year %in% c(start,end)) %>% 
+      ungroup %>% 
+      select(-y,-stratn) %>% 
+      group_by(region) %>% 
+      pivot_wider(names_from = year,
+                  values_from = .value)
+    
+    indt[,"start"] <- indt[,as.character(start)] 
+    indt[,"end"] <- indt[,as.character(end)] 
+    
+    
+    tt1 <- indt %>% group_by(.draw,region) %>%
+      summarise(end = sum(end),
+                start = sum(start),.groups = "keep") %>%  
+      summarise(t = texp(end/start,ny = nyrs),
+                ch = chng(end/start),
+                .groups = "keep") %>%
+      ungroup() %>% 
+      group_by(region) %>% 
+      summarise(trend = mean(t),
+                lci = quantile(t,lq,names = FALSE),
+                uci = quantile(t,uq,names = FALSE),
+                percent_change = median(ch),
+                p_ch_lci = quantile(ch,lq,names = FALSE),
+                p_ch_uci = quantile(ch,uq,names = FALSE),
+                .groups = "keep")
+    mn <- inds %>% filter(year %in% c(start:end)) %>% 
+      ungroup() %>%
+      group_by(region,year) %>% 
+      summarise(ym = mean(.value)) %>% 
+      ungroup() %>% 
+      group_by(region) %>% 
+      summarise(mean_abundance = mean(ym))
+    
+    obs <- raw_data %>% mutate(region = hex_name) %>% 
+      filter(year %in% c(start:end)) %>% 
+      group_by(region,year) %>% 
+      summarise(ym = mean(count),
+                n_c = n()) %>% 
+      ungroup() %>% 
+      group_by(region) %>% 
+      summarise(mean_observed = mean(ym),
+                mean_n_surveys = mean(n_c))
+    
+    tt1 <- left_join(tt1,mn,by = "region")
+    tt1 <- left_join(tt1,obs,by = "region")
+    
+    
+    tt2 <- indt %>% group_by(.draw) %>% 
+      summarise(end = sum(end),
+                start = sum(start),.groups = "keep") %>%       
+      summarise(t = texp(end/start,ny = nyrs),
+                ch = chng(end/start),
+                .groups = "keep") %>%
+      ungroup() %>% 
+      summarise(trend = mean(t),
+                lci = quantile(t,lq,names = FALSE),
+                uci = quantile(t,uq,names = FALSE),
+                percent_change = median(ch),
+                p_ch_lci = quantile(ch,lq,names = FALSE),
+                p_ch_uci = quantile(ch,uq,names = FALSE))
+    
+    mn <- inds %>% filter(year %in% c(start:end)) %>% 
+      ungroup() %>%
+      group_by(year) %>% 
+      summarise(ym = mean(.value)) %>% 
+      ungroup() %>% 
+      summarise(mean_abundance = mean(ym))
+    
+    obs <- raw_data %>% filter(year %in% c(start:end)) %>% 
+      group_by(year) %>% 
+      summarise(ym = mean(count),
+                n_c = n()) %>% 
+      ungroup() %>% 
+      summarise(mean_observed = mean(ym),
+                mean_n_surveys = mean(n_c))
+    tt2 <- bind_cols(tt2,mn,obs)
+    tt2$region <- "Composite"  
+    
+    if(centered_trends){
+      ttt1 <- indt %>% group_by(.draw,region) %>%
+        summarise(end = sum(end),
+                  start = sum(start),.groups = "keep") %>%  
+        summarise(t_c = log(end/start),
+                  .groups = "keep")
+      
+      ttt2 <- indt %>% group_by(.draw) %>% 
+        summarise(end = sum(end),
+                  start = sum(start),.groups = "keep") %>%       
+        summarise(t = log(end/start),
+                  .groups = "keep")
+      
+      ttt1 <- left_join(ttt1,ttt2,by = ".draw")
+      ttt1 <- ttt1 %>% 
+        mutate(td = t_c - t) %>% 
+        ungroup() %>% 
+        group_by(region) %>% 
+        summarise(centered_log_trend = mean(td),
+                  centered_log_trend_lci = quantile(td,lq,names = FALSE),
+                  centered_log_trend_uci = quantile(td,uq,names = FALSE))
+      tt1 <- left_join(tt1,ttt1,by = "region")
+      
+    }
+    
+    tt <- bind_rows(tt2,tt1)
+    
+    
+  }
+  tt$start_year1 <- starts[1]
+  tt$end_year1 <- ends[1]
+  tt$start_year2 <- starts[2]
+  tt$end_year2 <- ends[2]
+  # tt$species <- sp
+  # tt$region_type <- regions
+  # tt$trend_type <- type
+  
+  tt$parameter = varbl
+  
+  return(tt)
+}
+
+
 
 
 
