@@ -77,10 +77,12 @@ transformed parameters {
   vector[nsites] alpha;
   vector[nknots_year] B;
    matrix[nstrata,nknots_year] b;
+  vector[ncounts] noise;             // over-dispersion
    vector[nyears] year_effect;             // continental year-effects
  
   alpha = sdalpha*alpha_raw;// + beta_size*site_size;
   B = sdyear_gam*B_raw;
+  noise = sdnoise*noise_raw;
   year_effect = sdyear*year_effect_raw;
   
  
@@ -96,9 +98,7 @@ transformed parameters {
 }
 
   for(i in 1:ncounts){
-      real noise = sdnoise*noise_raw[i];             // over-dispersion
-
-    E[i] = ALPHA1 + year_pred[year_raw[i],strat[i]] + alpha[site[i]] + year_effect[year_raw[i]] + season_pred[date[i]] + noise;
+    E[i] = ALPHA1 + year_pred[year_raw[i],strat[i]] + alpha[site[i]] + year_effect[year_raw[i]] + season_pred[date[i]] + noise[i];
   }
   
   }
@@ -111,7 +111,7 @@ model {
   // between 33% decrease and a 50% increase
   sdalpha ~ std_normal(); //prior on scale of site level variation
   sdyear_gam ~ normal(0,1); //prior on sd of gam hyperparameters
-  sdyear_gam_strat ~ gamma(2,4);//boundary avoiding prior 
+  sdyear_gam_strat ~ gamma(2,0.5);//boundary avoiding prior (99% < 13, and mode = 2) uninformative prior on variance of stratum level gam
  //nu ~ gamma(2,0.1); // prior on df for t-distribution of heavy tailed site-effects from https://github.com/stan-dev/stan/wiki/Prior-Choice-Recommendations#prior-for-degrees-of-freedom-in-students-t-distribution
   sdseason ~ std_normal();//variance of GAM parameters
   B_season_raw ~ std_normal();//GAM parameters
@@ -121,7 +121,7 @@ model {
 
   count ~ poisson_log(E); //vectorized count likelihood
   alpha_raw ~ std_normal(); // fixed site-effects
-  noise_raw ~ student_t(4,0,1);//std_normal(); // extra Poisson log-t variance
+  noise_raw ~ student_t(4,0,1);//std_normal(); // extra Poisson log-normal variance
   B_raw ~ std_normal();// prior on GAM hyperparameters
   year_effect_raw ~ std_normal(); //prior on annual fluctuations
   sum(year_effect_raw) ~ normal(0,0.0001*nyears);//sum to zero constraint on year-effects
@@ -145,7 +145,7 @@ generated quantities {
   real<lower=0> NSmooth[nyears];
   real<lower=0> n[nstrata,nyears];
   real<lower=0> nsmooth[nstrata,nyears];
-    real seas_max = max(season_pred)/2;
+    real seas_max = mean(season_pred);
  
  // log_lik calculation for looic
       vector[ncounts] log_lik;

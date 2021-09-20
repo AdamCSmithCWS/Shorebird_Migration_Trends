@@ -1,4 +1,7 @@
 # SPECIES MCMC data-prep -------------------------------------------------------
+
+# same as main model but with a much more liberal prior on the spatial variation in GAM smooths
+
 library(tidyverse)
 library(cmdstanr)
 library(shinystan)

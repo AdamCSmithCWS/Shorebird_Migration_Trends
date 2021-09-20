@@ -83,12 +83,10 @@ transformed parameters {
   vector[nsites] alpha;
   vector[nknots_year] B;
    matrix[nstrata,nknots_year] b;
-  vector[ncounts] noise;             // over-dispersion
    vector[nyears] year_effect;             // continental year-effects
  
   alpha = sdalpha*alpha_raw;// + beta_size*site_size;
   B = sdyear_gam*B_raw;
-  noise = sdnoise*noise_raw;
   year_effect = sdyear*year_effect_raw;
   
 
@@ -108,7 +106,9 @@ transformed parameters {
 }
 
   for(i in 1:ncounts){
-    E[i] = ALPHA1 + year_pred[year_raw[i],strat[i]] + alpha[site[i]] + year_effect[year_raw[i]] + season_pred[date[i],seas_strat[i]] + noise[i];
+          real noise = sdnoise*noise_raw[i];             // over-dispersion
+
+    E[i] = ALPHA1 + year_pred[year_raw[i],strat[i]] + alpha[site[i]] + year_effect[year_raw[i]] + season_pred[date[i],seas_strat[i]] + noise;
   }
   
   }
@@ -121,7 +121,7 @@ model {
   // between 33% decrease and a 50% increase
   sdalpha ~ std_normal(); //prior on scale of site level variation
   sdyear_gam ~ normal(0,1); //prior on sd of gam hyperparameters
-  sdyear_gam_strat ~ gamma(2,4);//boundary avoiding prior (99% < 1.7) regularizing prior on variance of stratum level gam
+  sdyear_gam_strat ~ gamma(2,4);//boundary avoiding prior 
  //nu ~ gamma(2,0.1); // prior on df for t-distribution of heavy tailed site-effects from https://github.com/stan-dev/stan/wiki/Prior-Choice-Recommendations
   sdseason ~ std_normal();//variance of GAM parameters
   B_season_raw1 ~ std_normal();//GAM parameters
@@ -158,8 +158,8 @@ generated quantities {
   real<lower=0> NSmooth[nyears];
   real<lower=0> n[nstrata,nyears];
   real<lower=0> nsmooth[nstrata,nyears];
-    real seas_max1 = mean(season_pred1);
- real seas_max2 = mean(season_pred2);
+    real seas_max1 = max(season_pred1)/2;
+ real seas_max2 = max(season_pred2)/2;
  vector[2] seas_max;
        vector[ncounts] log_lik;
 
