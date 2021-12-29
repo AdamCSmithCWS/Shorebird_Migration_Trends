@@ -23,7 +23,7 @@ source("Functions/Utility_functions.R")
 # map the mean trend in space
 # plot the mean trends by region
 
-trends_all <- read.csv("trends/All_strata_level_trends.csv")
+trends_all <- read.csv("trends/All_strata_gamma_t_level_trends.csv")
 
 trends_all$centered_log_trend_sd = ((trends_all$centered_log_trend_uci-trends_all$centered_log_trend_lci)/(1.96*2))
 
@@ -90,6 +90,7 @@ save(list = c("stanfit","stan_data","trends"),
 #launch_shinystan(stanfit) 
 
 }
+
 
 
 # loading the base hexagon map
