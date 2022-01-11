@@ -253,7 +253,6 @@ print(ggp)
 dev.off()
 
 
-# combined trajectory map -------------------------------------------------
 
 
 
