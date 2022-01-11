@@ -140,12 +140,26 @@ swp <- function(x){
   nx <- gsub(pattern = "change",
              replacement = "recent",
              x)
-  return(nx)
+  nx2 <- gsub(pattern = "full",
+             replacement = "remainder",
+             nx)
+  return(nx2)
 }
 
-inds_sm <- indices_out2 %>% 
+
+
+
+
+inds_sm1 <- indices_out2 %>% 
   filter(parm == "Smooth") %>% 
   mutate(stage = swp(stage))
+
+inds_sm <- inds_sm1 %>% 
+  filter(stage != "remainder")
+
+inds_smr <- inds_sm1 %>% 
+  filter(stage == "remainder")
+
 
 inds_f <- indices_out2 %>% 
   filter(parm == "Full")
@@ -165,16 +179,24 @@ np <- ggplot(data = inds_f,aes(x = year,y = median))+
   geom_line()+
   geom_line(data = inds_sm, aes(x = year,y = median,
                                 colour = stage))+
+  geom_line(data = inds_smr, aes(x = year,y = median))+
   geom_vline(data = cuts,aes(xintercept = fyr),
              alpha = 0.25)+
-  scale_y_log10()+
+  scale_y_continuous(labels = scales::comma,
+                     trans = "log10")+
   xlab("")+
   ylab("Modeled annual abundance")+
-  my_col2_traj+
-  theme_bw()+
+  my_col2+
+  theme_void()+
+  theme(legend.position = "none")+
   facet_wrap(~species,nrow = 6,ncol = 5,
              scales = "free")
 
+pdf(file = "Figures/multispecies_trajectory_panel.pdf",
+    width = 10,
+    height = 7.5)
 print(np)
+dev.off()
+
 
 
