@@ -1,8 +1,5 @@
 # SPECIES MCMC data-prep -------------------------------------------------------
 library(tidyverse)
-library(rstan)
-rstan_options(auto_write = TRUE, javascript = FALSE)
-library(shinystan)
 library(sf)
 library(spdep)
 library(ggforce)
@@ -143,7 +140,7 @@ source("functions/mungeCARdata4stan.R")
  
  save(list = c("poly_grid"),file = "data/hexagon_grid.RData")
  
- source("functions/GAM_basis_function.R")
+ source("functions/GAM_basis_function_mgcv.R")
 
 # n_cores <- 4
 # cluster <- makeCluster(n_cores, type = "PSOCK")
@@ -227,16 +224,19 @@ nyrs_site <- dts %>%
             fyear = min(YearCollected),
             lyear = max(YearCollected))
 
-# #number of sites with > 5 year span by region
-# nsites_w5 <- nyrs_site %>% 
-#   filter(span_years > 5) %>%  
-#   group_by(Region) %>% 
-#   summarise(nobs = n()) 
+#number of sites with > 5 year span by region
+nsites_w5 <- nyrs_site %>% 
+  filter(span_years > 5) %>%  
+  group_by(Region) %>% 
+  summarise(nobs = n()) 
 
+min_nyears <- 2
+minspan <- 10
+#sites with > 5 years of non-zero, observations
+sites_keep <- nyrs_site[which(nyrs_site$span_years >= minspan,
+                              nyrs_site$nyears >= min_nyears),"SurveyAreaIdentifier"]
 
 # drop sites with <10 year span of data ------------------------------------
-sites_keep <- nyrs_site[which(nyrs_site$span_years >= 10),"SurveyAreaIdentifier"]
-
 
 
 dts <- filter(dts,SurveyAreaIdentifier %in% sites_keep$SurveyAreaIdentifier) 
@@ -362,7 +362,7 @@ for(j in 1:nstrata){
 # Voronoi polygons from strata-centroids -----------------------------------
 # voronoi polygons ensures all strata have neighbours
 reg_bounds <- st_union(orig_ss_regions)
-reg_bounds_buf = st_buffer(reg_bounds,dist = grid_spacing)
+reg_bounds_buf = st_buffer(reg_bounds,dist = 1000)#grid_spacing)
 
 centres = st_centroid(real_grid)
 #centres_buf <- st_buffer(centres, dist=100)
@@ -442,9 +442,6 @@ vintj = arrange(vintj,stratn)
 nb_db = poly2nb(vintj,row.names = vintj$stratn,queen = FALSE)
 
 
-### currently using 2 nearest neighbours to define the spatial relationships
-## many regions may  have > 2 neighbours because of the symmetry condition
-# nb_db <- spdep::knn2nb(spdep::knearneigh(coords,k = 4),row.names = route_map$route,sym = TRUE)
 cc = st_coordinates(st_centroid(vintj))
 #
 
@@ -453,7 +450,7 @@ ggp = ggplot(data = real_grid_regs)+
   geom_sf(aes(col = Region))+
   geom_sf_text(aes(label = stratn),size = 3,alpha = 0.3)+
   labs(title = sp)
-pdf(file = paste0("Figures/",sp,"strata_connections ",grid_spacing/1000,".pdf"))
+pdf(file = paste0("Figures/",sp,"strata_connections_",p_time_series,"_",minspan,"_",min_nyears,".pdf"))
 plot(nb_db,cc,col = "pink")
 text(labels = rownames(cc),cc ,pos = 2)
 print(ggp)
@@ -465,15 +462,6 @@ ggp_out[[sp]] <- ggp
 # wak = which(grepl(route_map$strat,pattern = "-AK-",fixed = T))
 # 
 # nb2[[wak]]
-
-
-nb_info = spdep::nb2WB(nb_db)
-
-
-
-### re-arrange GEOBUGS formated nb_info into appropriate format for Stan model
-car_stan_dat <- mungeCARdata4stan(adjBUGS = nb_info$adj,
-                                  numBUGS = nb_info$num)
 
 
 
@@ -490,6 +478,15 @@ mean_counbts_doy = ggplot(data = dts,aes(x = doy,y = count+1,colour = Region))+
 # dev.off()
 mean_counbts_doy_out[[sp]] <- mean_counbts_doy
 
+
+
+nb_info = spdep::nb2WB(nb_db)
+
+
+
+### re-arrange GEOBUGS formated nb_info into appropriate format for Stan model
+car_stan_dat <- mungeCARdata4stan(adjBUGS = nb_info$adj,
+                                  numBUGS = nb_info$num)
 
 
 
@@ -531,12 +528,9 @@ midyear = floor(nyears/2)
 # GAM seasonal basis function ---------------------------------------------
 
 nKnots_season = 10
-basis_season <- gam.basis.func(orig.preds = as.integer(unlist(dts[,"date"])),
+basis_season <- gam_basis(orig.preds = as.integer(unlist(dts[,"date"])),
                                nknots = nKnots_season,
-                               standardize = "z",
-                               random = F,
                                npredpoints = max(dts$date),
-                               even_gaps = FALSE,
                                sm_name = "season")
 
 ndays <- basis_season$npredpoints_season
@@ -544,13 +538,10 @@ ndays <- basis_season$npredpoints_season
 
 # GAM year basis function ---------------------------------------------
 
-nKnots_year = ceiling(nyears/3)
-basis_year <- gam.basis.func(orig.preds = as.integer(unlist(dts[,"yr"])),
+nKnots_year = ceiling(nyears/4)
+basis_year <- gam_basis(orig.preds = as.integer(unlist(dts[,"yr"])),
                                nknots = nKnots_year,
-                               standardize = "z",
-                               random = F,
                                npredpoints = max(dts$yr),
-                               even_gaps = TRUE,
                                sm_name = "year")
 
 # 
@@ -578,7 +569,7 @@ if(two_seasons){
                     ncounts = ncounts,
                     ndays = ndays,
                     
-                    nsites_strat = nsites_strat,
+                    nsites_strat = as.integer(nsites_strat),
                     max_sites = max_sites,
                     sites = sites,
                     seasons = seasons,
@@ -597,8 +588,35 @@ if(two_seasons){
                     N_edges = car_stan_dat$N_edges,
                     node1 = car_stan_dat$node1,
                     node2 = car_stan_dat$node2)
-  mod.file = "models/GAMYE_strata_two_season_normal_tail.stan"
   
+  mod.file1 = "models/GAMYE_strata_two_season_gammaprior_beta_normal.stan"
+  prior = "gamma"
+  noise_dist1 = "normal"
+  
+  mod.file2 = "models/GAMYE_strata_two_season_gammaprior_beta.stan"
+  prior = "gamma"
+  noise_dist2 = "t"
+  
+
+  init_def <- function(){ list(noise_raw = rnorm(stan_data$ncounts,0,0.1),
+                               alpha_raw = rnorm(stan_data$nsites,0,0.1),
+                               ALPHA1 = 0,
+                               year_effect_raw = rnorm(stan_data$nyears,0,0.1),
+                               B_season_raw1 = rnorm(stan_data$ndays,0,0.1),
+                               B_season_raw2 = rnorm(stan_data$ndays,0,0.1),
+                               sdnoise = 0.2,
+                               sdalpha = 0.1,
+                               sdyear_gam = 1,
+                               sdyear_gam_strat = runif(stan_data$nknots_year,0.1,0.2),
+                               sdseason = c(0.1,0.1),
+                               sdyear = 0.1,
+                               B_raw = rnorm(stan_data$nknots_year,0,0.1),
+                               b_raw = matrix(rnorm(stan_data$nknots_year*stan_data$nstrata,0,0.01),
+                                              nrow = stan_data$nstrata,ncol = stan_data$nknots_year))}
+  
+  
+  
+
   parms = c("sdnoise",
             #"nu", #
             "sdalpha",
@@ -634,7 +652,7 @@ if(two_seasons){
                     ncounts = ncounts,
                     ndays = ndays,
                     
-                    nsites_strat = nsites_strat,
+                    nsites_strat = as.integer(nsites_strat),
                     max_sites = max_sites,
                     sites = sites,
                     
@@ -653,7 +671,30 @@ if(two_seasons){
                     node1 = car_stan_dat$node1,
                     node2 = car_stan_dat$node2)
   
-  mod.file = "models/GAMYE_strata_normal_tail.stan"
+  mod.file1 = "models/GAMYE_strata_gammaprior_beta_normal.stan"
+  prior = "gamma"
+  noise_dist1 = "normal"
+  
+  mod.file2 = "models/GAMYE_strata_gammaprior_beta.stan"
+  prior = "gamma"
+  noise_dist2 = "t"
+  
+  init_def <- function(){ list(noise_raw = rnorm(stan_data$ncounts,0,0.1),
+                               alpha_raw = rnorm(stan_data$nsites,0,0.1),
+                               ALPHA1 = 0,
+                               year_effect_raw = rnorm(stan_data$nyears,0,0.1),
+                               B_season_raw = rnorm(stan_data$ndays,0,0.1),
+                               sdnoise = 0.2,
+                               sdalpha = 0.1,
+                               sdyear_gam = 1,
+                               sdyear_gam_strat = runif(stan_data$nknots_year,0.1,0.2),
+                               sdseason = 0.1,
+                               sdyear = 0.1,
+                               B_raw = rnorm(stan_data$nknots_year,0,0.1),
+                               b_raw = matrix(rnorm(stan_data$nknots_year*stan_data$nstrata,0,0.01),
+                                              nrow = stan_data$nstrata,ncol = stan_data$nknots_year))}
+  
+  
   
   parms = c("sdnoise",
             #"nu", #
@@ -690,18 +731,24 @@ if(two_seasons){
 
 # prepare stan data -------------------------------------------------------
 
+
 save(list = c("stan_data",
               "dts",
               "real_grid",
               "real_grid_regs",
               "strats_dts",
               "strat_regions",
-              "mod.file",
+              "mod.file1",
+              "prior",
+              "noise_dist1",
+              "mod.file2",
+              "noise_dist2",
               "parms",
+              "init_def",
               "vintj",
               "nb_db",
               "cc"),
-     file = paste0("data/data",sp,"_GAMYE_strat_simple",grid_spacing/1000,".RData"))
+     file = paste0("data/data",sp,"_cmdstanr_data",p_time_series,"_",minspan,"_",min_nyears,".RData"))
 
 
 

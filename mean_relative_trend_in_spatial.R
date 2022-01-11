@@ -46,6 +46,7 @@ t_hat = trends$centered_log_trend
 sd_hat = trends$centered_log_trend_sd
 N = nrow(trends)
 
+n_species <- length(unique(trends$species))
 # generate stan data ------------------------------------------------------
 
 stan_data <- list(nstrata = nstrata,
@@ -84,7 +85,10 @@ stanfit <- sampling(model,
 
 
 
-save(list = c("stanfit","stan_data","trends"),
+save(list = c("stanfit",
+              "stan_data",
+              "trends",
+              "n_species"),
      file = paste0("output/Strata_comparison",time,"_all_species.RData"))
 
 #launch_shinystan(stanfit) 
@@ -152,7 +156,8 @@ mp <- trend_map_composite(trends = strat_sums,
                             map.file = "BBS_ProvState_strata",
                             hex_map = poly_grid,
                             #size_value = "Species Count",
-                          size_value = "Probability > or < zero")
+                          size_value = "Probability > or < zero",
+                          tlab = paste(time,n_species,"species"))
 
 
 mp_out[[time]] <- mp
@@ -176,6 +181,81 @@ for(jj in 1:length(t_types)){
   print(mp_out[[jj]])
 }
 dev.off()
+
+
+
+
+
+# demo hexagon map with sites, hexagons, and political jurisdictio --------
+
+species <- "Least Sandpiper"
+
+map.file = "BBS_ProvState_strata"
+hex_map = poly_grid
+tlab = time
+
+laea = st_crs("+proj=laea +lat_0=40 +lon_0=-95") # Lambert equal area coord reference system
+
+locat = system.file("maps",
+                    package = "bbsBayes")
+
+strata_map = read_sf(dsn = locat,
+                     layer = map.file)
+strata_map = st_transform(strata_map,crs = laea)
+
+load(paste0("data/data",species,"_cmdstanr_data0.5_10_2.RData"))
+
+
+centres = suppressWarnings(st_centroid(real_grid_regs))
+
+coords = st_coordinates(centres)
+
+nb_l <- spdep::nb2listw(nb_db)
+nt = length(attributes(nb_l$neighbours)$region.id)
+DA = data.frame(
+  from = rep(1:nt,sapply(nb_l$neighbours,length)),
+  to = unlist(nb_l$neighbours)
+)
+DA = cbind(DA,coords[DA$from,c("X","Y")],coords[DA$to,c("X","Y")])
+colnames(DA)[3:6] = c("long","lat","long_to","lat_to")
+
+
+box <- st_as_sfc(st_bbox(vintj))
+xb = range(st_coordinates(box)[,"X"])
+yb = range(st_coordinates(box)[,"Y"])
+
+
+
+ggp <- ggplot(data = centres) + 
+  geom_sf(data = strata_map,#alpha = 0,
+          fill = grey(0.95),
+          colour = "white",
+          inherit.aes = FALSE)+ 
+  geom_sf(data = vintj,alpha = 0,colour = grey(0.9),inherit.aes = FALSE)+ 
+  geom_sf(data = real_grid_regs,alpha = 0,colour = grey(0.85),inherit.aes = FALSE)+
+  geom_segment(data=DA,aes(x = long, y = lat,xend=long_to,yend=lat_to),inherit.aes = FALSE,
+               colour = "black",size=0.3,alpha=0.1) +
+  xlab("")+
+  ylab("")+
+  geom_sf()+
+  theme_bw() +
+   theme(rect = element_blank(),
+         panel.grid.major = element_line(color = "white"))+
+  coord_sf(xlim = xb,ylim = yb)+
+  theme(legend.position = "none")
+
+print(ggp)
+
+pdf("Figures/Demo_strata_figure.pdf",
+    width = 6,
+    height = 4.5)
+print(ggp)
+dev.off()
+
+
+# combined trajectory map -------------------------------------------------
+
+
 
 
 
