@@ -123,9 +123,9 @@ for(sp in sps[-1]){
   }
   
 }
+indices_out2 <- indices_out
 
-
-save(list = "indices_out",
+save(list = "indices_out2",
      file = "Trends/all_survey_wide_indices.RData")
 
 
@@ -136,10 +136,45 @@ save(list = "indices_out",
 
 load("Trends/all_survey_wide_indices.RData")
 
-inds_sm <- indices_out %>% 
-  filter(parm = "Smooth")
+swp <- function(x){
+  nx <- gsub(pattern = "change",
+             replacement = "recent",
+             x)
+  return(nx)
+}
+
+inds_sm <- indices_out2 %>% 
+  filter(parm == "Smooth") %>% 
+  mutate(stage = swp(stage))
+
+inds_f <- indices_out2 %>% 
+  filter(parm == "Full")
+
+
+cuts <- indices_out2 %>% 
+  mutate(stage = swp(stage)) %>% 
+  group_by(species,stage) %>% 
+  summarise(fyr = min(year)) %>% 
+  filter(stage != "full")
 
 
 
+np <- ggplot(data = inds_f,aes(x = year,y = median))+
+  geom_ribbon(aes(ymin = lci,ymax = uci),
+              alpha = 0.1)+
+  geom_line()+
+  geom_line(data = inds_sm, aes(x = year,y = median,
+                                colour = stage))+
+  geom_vline(data = cuts,aes(xintercept = fyr),
+             alpha = 0.25)+
+  scale_y_log10()+
+  xlab("")+
+  ylab("Modeled annual abundance")+
+  my_col2_traj+
+  theme_bw()+
+  facet_wrap(~species,nrow = 6,ncol = 5,
+             scales = "free")
+
+print(np)
 
 
