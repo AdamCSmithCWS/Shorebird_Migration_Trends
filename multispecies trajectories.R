@@ -42,7 +42,7 @@ output_dir <- "g:/Shorebird_Migration_Trends/output"
 
 
 
-for(sp in sps[-1]){
+for(sp in sps){
   #if(sp == "Semipalmated Sandpiper"){next}
   spf = gsub(sp,pattern = " ",replacement = "_")
   spf = gsub(pattern = "\'",replacement = "",
@@ -173,24 +173,29 @@ cuts <- indices_out2 %>%
 
 
 
-np <- ggplot(data = inds_f,aes(x = year,y = median))+
+
+np <- ggplot(data = inds_f,
+             aes(x = year,y = median))+
   geom_ribbon(aes(ymin = lci,ymax = uci),
               alpha = 0.1)+
   geom_line()+
   geom_line(data = inds_sm, aes(x = year,y = median,
                                 colour = stage))+
-  geom_line(data = inds_smr, aes(x = year,y = median))+
+  geom_line(data = inds_smr, aes(x = year,y = median),
+            alpha = 0.6)+
   geom_vline(data = cuts,aes(xintercept = fyr),
-             alpha = 0.25)+
+             colour = grey(0.3))+
   scale_y_continuous(labels = scales::comma,
                      trans = "log10")+
   xlab("")+
-  ylab("Modeled annual abundance")+
-  my_col2+
-  theme_void()+
-  theme(legend.position = "none")+
+  ylab("Modeled annual abundance (mean count/survey)")+
+  my_col2_traj+
+  theme_bw()+
+  theme(legend.position = "none",
+        strip.background = element_blank(),
+        strip.text = element_text(size = 8))+
   facet_wrap(~species,nrow = 6,ncol = 5,
-             scales = "free")
+             scales = "free_y")
 
 pdf(file = "Figures/multispecies_trajectory_panel.pdf",
     width = 10,
