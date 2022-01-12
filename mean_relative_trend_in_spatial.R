@@ -400,11 +400,54 @@ load("Data/site_map.RData")
 load("Data/full_observation_dataset.Rdata")
 
 sample_sum <- ssData %>% 
+  filter(YearCollected >= 1980) %>% 
+  group_by(SamplingEventIdentifier,
+           YearCollected,
+           SiteName,
+           hex_name,
+           SurveyAreaIdentifier) %>% 
+  summarise(n = n())
+
+nsurveys_y <- sample_sum %>% 
+  group_by(SurveyAreaIdentifier,
+           YearCollected,
+           hex_name) %>% 
+  summarise(nsurveys = n())
+
+nyrs_span <- nsurveys_y %>% 
+  group_by(SurveyAreaIdentifier,
+           hex_name) %>% 
+  summarise(nyears = n(),
+            fyr = min(YearCollected),
+            lyr = max(YearCollected),
+            span = 1+lyr - fyr)
+
+iss_sites_lcc_map <- iss_sites_lcc %>% 
+  left_join(.,nyrs_span,by = "SurveyAreaIdentifier")
+
+
+box <- st_as_sfc(st_bbox(iss_sites_lcc_map))
+xb = range(st_coordinates(box)[,"X"])
+yb = range(st_coordinates(box)[,"Y"])
+
+ 
   
+sites_map <- ggplot(data = iss_sites_lcc_map)+
+  geom_sf(data = strata_map,#alpha = 0,
+          fill = grey(0.95),
+          colour = "white",
+          inherit.aes = FALSE)+ 
+  geom_sf(aes(size = span),
+          alpha = 0.1)+
+  scale_radius(
+    #max_size = 3,
+                  range = c(0,3),
+                  trans = "identity")+
+  theme_bw() +
+  coord_sf(xlim = xb,ylim = yb)+
+  theme(rect = element_blank(),
+        panel.grid.major = element_line(color = "white"),
+        axis.text = element_text(size = rel(0.8)))
 
-
-
-
-
-
+print(sites_map)
 
