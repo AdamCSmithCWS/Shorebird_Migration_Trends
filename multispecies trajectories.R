@@ -89,8 +89,7 @@ for(sp in sps){
     Nsamples <- posterior_samples(fit = cmdstanfit,
                                   parm = "N",
                                   dims = c("y")) %>% 
-      mutate(year = y + (syear-1),
-             parm = "Full")
+      mutate(year = y + (syear-1))
     
     
     
