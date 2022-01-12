@@ -187,7 +187,7 @@ dev.off()
 # publication maps --------------------------------------------------------
 
 
-library(gridExtra)
+# library(gridExtra)
 
 
   time = "Recent-three-generation"
@@ -234,12 +234,12 @@ strat_sums <- trends %>%
                             add_legend = TRUE)
   
   
-  print(mp1)
-  leg <- get_legend(mp1)
-
-  mp1 <- mp1 +
-    theme(legend.position = "none")
-  
+  # print(mp1)
+  # leg <- get_legend(mp1)
+  # 
+  # mp1 <- mp1 +
+  #   theme(legend.position = "none")
+  # 
   
   
   time = "Previous-three-generation"
@@ -286,22 +286,22 @@ strat_sums <- trends %>%
                                     add_legend = FALSE)
   
   
-
-  layt = "
-  AAAC
-  AAAC
-  BBBC
-  BBBC
-  "
- mpboth <- mp1 + mp2 + leg +
-   plot_layout(design = layt)
+  
+  # layt = "
+  # AAAC
+  # AAAC
+  # BBBC
+  # BBBC
+  # "
+ mpboth <- mp1 / mp2 + 
+   plot_layout(guides = "collect")
   
   print(mpboth)
   
   
   pdf(file = "Figures/trend_maps_combined.pdf",
-      width = 4,
-      height = 5.5)
+      width = 6,
+      height = 6)
   print(mpboth)
   dev.off()
   
@@ -356,22 +356,51 @@ ggp <- ggplot(data = centres) +
                colour = "black",size=0.3,alpha=0.1) +
   xlab("")+
   ylab("")+
-  geom_sf()+
+  geom_sf(size = 0.9)+
   theme_bw() +
    theme(rect = element_blank(),
-         panel.grid.major = element_line(color = "white"))+
+         panel.grid.major = element_line(color = "white"),
+         axis.text = element_text(size = rel(0.8)))+
   coord_sf(xlim = xb,ylim = yb)+
   theme(legend.position = "none")
 
 print(ggp)
 
 pdf("Figures/Demo_strata_figure.pdf",
-    width = 6,
-    height = 4.5)
+    width = 3,
+    height = 2.5)
 print(ggp)
 dev.off()
 
 
+
+
+
+
+# map of site locations by span -------------------------------------------
+
+
+
+map.file = "BBS_ProvState_strata"
+hex_map = poly_grid
+tlab = time
+
+laea = st_crs("+proj=laea +lat_0=40 +lon_0=-95") # Lambert equal area coord reference system
+
+locat = system.file("maps",
+                    package = "bbsBayes")
+
+strata_map = read_sf(dsn = locat,
+                     layer = map.file)
+strata_map = st_transform(strata_map,crs = laea)
+
+## read in the map of all sites
+
+load("Data/site_map.RData")
+load("Data/full_observation_dataset.Rdata")
+
+sample_sum <- ssData %>% 
+  
 
 
 

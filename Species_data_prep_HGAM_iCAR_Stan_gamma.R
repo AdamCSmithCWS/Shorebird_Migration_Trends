@@ -121,6 +121,8 @@ source("functions/mungeCARdata4stan.R")
  
  iss_sites = st_as_sf(all_sites,coords = c("DecimalLongitude","DecimalLatitude"), crs = 4326)
  iss_sites_lcc <- st_transform(iss_sites, laea)
+ save(list = "iss_sites_lcc",
+      file = "Data/site_map.RData")
  bb = st_bbox(iss_sites_lcc) %>% 
    st_as_sfc()
 
@@ -139,24 +141,14 @@ source("functions/mungeCARdata4stan.R")
  ### hex_name is now the new stratification
  
  save(list = c("poly_grid"),file = "data/hexagon_grid.RData")
+ save(list = c("ssData"),
+      file = "Data/full_observation_dataset.Rdata")
+ 
  
  source("functions/GAM_basis_function_mgcv.R")
 
-# n_cores <- 4
-# cluster <- makeCluster(n_cores, type = "PSOCK")
-# registerDoParallel(cluster)
-# 
-# 
-# 
-# fullrun <- foreach(sp = sps[c(11,25,3,8)],
-#                    .packages = c("jagsUI","tidyverse","ggmcmc"),
-#                    .inorder = FALSE,
-#                    .errorhandling = "pass") %dopar%
-#   {
- # sp = sps[25]  
-    #load("data/allShorebirdPrismFallCounts.RData")
-    
-  #  source("functions/GAM_basis_function.R")
+
+ # blank holder objects to fill in species loop
  mean_counbts_doy_out <- vector(mode = "list",length = length(sps))
  names(mean_counbts_doy_out) <- sps
  ggp_out <- vector(mode = "list",length = length(sps))

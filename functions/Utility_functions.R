@@ -945,7 +945,7 @@ trend_map_composite_simple = function(
   #breaks <- c(-7, -4, -2, -1, -0.5, 0.5, 1, 2, 4, 7)
   breaks <- c(-2.5,-1.5, -1, -0.5,-0.25, 0.25, 0.5, 1, 1.5, 2.5)
   
-  labls = c(paste0("< ",breaks[1]),paste0(breaks[-c(length(breaks))],":", breaks[-c(1)]),paste0("> ",breaks[length(breaks)]))
+  labls = c(paste0("< ",breaks[1]),paste0(breaks[-c(length(breaks))]," : ", breaks[-c(1)]),paste0("> ",breaks[length(breaks)]))
   labls = paste0(labls, " %")
   map_palette <- c("#a50026", "#d73027", "#f46d43", "#fdae61", "#fee090", "#ffffbf",
                    "#e0f3f8", "#abd9e9", "#74add1", "#4575b4", "#313695")
@@ -984,11 +984,12 @@ trend_map_composite_simple = function(
     scale_colour_manual(values = map_palette, aesthetics = c("colour"),
                         guide = ggplot2::guide_legend(reverse=TRUE),
                         name = paste0("Mean Difference\n","Trend"))+
-    scale_size(name = size_value,range = c(1,6))+
-    theme(legend.key.width = unit(0.75,"null"),
-          legend.key.height = unit(0.75,"null"),
-          legend.title = element_text(size = rel(0.75)),
-          legend.text = element_text(size = rel(0.75)))
+    scale_size(name = size_value,
+               range = c(0.5,4))+
+    theme(legend.key.width = unit(0.85,"null"),
+          legend.key.height = unit(0.85,"null"),
+          legend.title = element_text(size = rel(0.85)),
+          legend.text = element_text(size = rel(1)))
   
   if(!add_legend){
     tmap <- tmap+

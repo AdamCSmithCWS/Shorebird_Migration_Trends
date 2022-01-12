@@ -13,7 +13,6 @@
 
 # updated map of survey site locations to match formatting and 1980 -------
 
-# faceted version of the spatial trend variation maps
 
 # State of birds line?
 
