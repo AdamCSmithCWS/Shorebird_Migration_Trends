@@ -106,10 +106,7 @@ mp_out <- tp_out
 
 for(time in t_types){
   
-  nyrs <- 15
-  if(time == "Long-term"){
-    nyrs <- (2019-1980)
-  }
+
 load(paste0("output/Strata_comparison",time,"_all_species.RData"))
 mu_strata <- gather_draws(stanfit,mu_strata[strat]) %>% 
   mutate(pos = ifelse(.value > 0,TRUE,FALSE)) %>% 
@@ -123,11 +120,11 @@ mu_strata <- gather_draws(stanfit,mu_strata[strat]) %>%
             p_neg = 1-(sum(pos)/n())) %>% 
   mutate(sig = ifelse(lci > 0 | uci < 0,TRUE,FALSE),
          sigq = ifelse(lqrt > 0 | uqrt < 0,TRUE,FALSE),
-         trend = texp(exp(mean),ny = nyrs),
-         trend_lci = texp(exp(lci),ny = nyrs),
-         trend_uci = texp(exp(uci),ny = nyrs),
-         trend_lqrt = texp(exp(lqrt),ny = nyrs),
-         trend_uqrt = texp(exp(uqrt),ny = nyrs),
+         trend = (exp(mean)-1)*100,
+         trend_lci = (exp(lci)-1)*100,
+         trend_uci = (exp(uci)-1)*100,
+         trend_lqrt = (exp(lqrt)-1)*100,
+         trend_uqrt = (exp(uqrt)-1)*100,
          p_not_zero = ifelse(p_pos > 0.5,p_pos,p_neg))
 
 strat_sums <- trends %>% 
@@ -185,6 +182,69 @@ dev.off()
 
 
 
+# publication maps --------------------------------------------------------
+
+
+
+
+  time = "Recent-three-generation"
+  # nyrs <- 15
+  # if(time == "Long-term"){
+  #   nyrs <- (2019-1980)
+  # }
+  load(paste0("output/Strata_comparison",time,"_all_species.RData"))
+  mu_strata <- gather_draws(stanfit,mu_strata[strat]) %>% 
+    mutate(pos = ifelse(.value > 0,TRUE,FALSE)) %>% 
+    group_by(strat) %>% 
+    summarise(mean = mean(.value),
+              lci = quantile(.value,0.05),
+              uci = quantile(.value,0.95),
+              lqrt = quantile(.value,0.25),
+              uqrt = quantile(.value,0.75),
+              p_pos = sum(pos)/n(),
+              p_neg = 1-(sum(pos)/n())) #%>% 
+    mutate(sig = ifelse(lci > 0 | uci < 0,TRUE,FALSE),
+           sigq = ifelse(lqrt > 0 | uqrt < 0,TRUE,FALSE),
+           trend = texp(exp(mean),ny = nyrs),
+           trend_lci = texp(exp(lci),ny = nyrs),
+           trend_uci = texp(exp(uci),ny = nyrs),
+           trend_lqrt = texp(exp(lqrt),ny = nyrs),
+           trend_uqrt = texp(exp(uqrt),ny = nyrs),
+           p_not_zero = ifelse(p_pos > 0.5,p_pos,p_neg))
+  
+  strat_sums <- trends %>% 
+    select(strat,region,species) %>% 
+    distinct() %>% 
+    group_by(strat,region) %>% 
+    summarise(nspecies = n()) %>% 
+    left_join(.,mu_strata,by = "strat")
+  
+  
+  tp <- ggplot(data = strat_sums)+
+    geom_point(aes(x = strat,y = trend,size = p_not_zero,colour = sig))+
+    geom_errorbar(aes(x = strat,y = trend,ymin = trend_lci,ymax = trend_uci),
+                  alpha = 0.2,width = 0)+
+    geom_errorbar(aes(x = strat,y = trend,ymin = trend_lqrt,ymax = trend_uqrt),
+                  alpha = 0.2,width = 0,size = 1.3)+
+    geom_abline(slope = 0,intercept = 0)+
+    labs(title = time)
+  
+  tp_out[[time]] <- tp
+  
+  
+  # Mapping mean trends -----------------------------------------------------
+  
+  mp <- trend_map_composite(trends = strat_sums,
+                            map.file = "BBS_ProvState_strata",
+                            hex_map = poly_grid,
+                            #size_value = "Species Count",
+                            size_value = "Probability > or < zero",
+                            tlab = paste(time,n_species,"species"))
+  
+  
+  mp_out[[time]] <- mp
+  
+  
 
 # demo hexagon map with sites, hexagons, and political jurisdictio --------
 

@@ -1340,7 +1340,7 @@ for(sp in sps){
     trend_maps_3gen[[sp]] <- t_3g
     trend_maps_L3gen[[sp]] <- t_L3g
     
-    
+    print(paste(sp,"finished"))
     
   }# end if species output data exists
 }#end species loop
