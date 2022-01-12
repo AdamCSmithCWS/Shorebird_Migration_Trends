@@ -423,26 +423,29 @@ nyrs_span <- nsurveys_y %>%
             span = 1+lyr - fyr)
 
 iss_sites_lcc_map <- iss_sites_lcc %>% 
-  left_join(.,nyrs_span,by = "SurveyAreaIdentifier")
+  inner_join(.,nyrs_span,by = "SurveyAreaIdentifier")
 
-
+iss_sites_lcc_map3 <- iss_sites_lcc_map %>% 
+  filter(span <10)
 box <- st_as_sfc(st_bbox(iss_sites_lcc_map))
 xb = range(st_coordinates(box)[,"X"])
 yb = range(st_coordinates(box)[,"Y"])
 
  
   
-sites_map <- ggplot(data = iss_sites_lcc_map)+
+sites_map <- ggplot(data = iss_sites_lcc_map3)+
   geom_sf(data = strata_map,#
           alpha = 0,
           #fill = grey(0.95),
           colour = grey(0.85),#= "white",
           inherit.aes = FALSE)+ 
   geom_sf(aes(size = span),
-          alpha = 0.1)+
+          alpha = 0.2)+
+  labs(title = "A")+
   scale_radius(
     #max_size = 3,
-                  range = c(0,3),
+                  range = c(0,0.5),
+                  breaks = c(2,5,8,10),
                   trans = "identity",
                   guide = guide_legend(title = "Years"))+
   # scale_colour_viridis_c(aesthetics = c("colour"),
@@ -457,8 +460,57 @@ sites_map <- ggplot(data = iss_sites_lcc_map)+
         panel.grid.major = element_line(color = "white"),
         axis.text = element_text(size = rel(0.8)))
 
+
+
+# same but with only sites > 10 year span ---------------------------------
+
+
+
+nyrs_span2 <- nsurveys_y %>% 
+  group_by(SurveyAreaIdentifier,
+           hex_name) %>% 
+  summarise(nyears = n(),
+            fyr = min(YearCollected),
+            lyr = max(YearCollected),
+            span = 1+lyr - fyr) %>% 
+  filter(span >= 10)
+
+iss_sites_lcc_map2 <- iss_sites_lcc %>% 
+  inner_join(.,nyrs_span2,by = "SurveyAreaIdentifier")
+
+
+
+
+
+sites_map2 <- ggplot(data = iss_sites_lcc_map2)+
+  geom_sf(data = strata_map,#
+          alpha = 0,
+          #fill = grey(0.95),
+          colour = grey(0.85),#= "white",
+          inherit.aes = FALSE)+ 
+  geom_sf(aes(size = span),
+          alpha = 0.1)+
+  labs(title = "B")+
+  scale_radius(
+    #max_size = 3,
+    range = c(0.5,3),
+    trans = "identity",
+    guide = guide_legend(title = "Years"))+
+  # scale_colour_viridis_c(aesthetics = c("colour"),
+  #                        begin = 0.25,
+  #                        end = 0.9,
+  #                        guide = guide_legend(title = "Years"),
+  #                        #guide = "none",
+  #                        direction = 1)+
+  theme_bw() +
+  coord_sf(xlim = xb,ylim = yb)+
+  theme(rect = element_blank(),
+        panel.grid.major = element_line(color = "white"),
+        axis.text = element_text(size = rel(0.8)))
+
 pdf("Figures/Sites_figure.pdf",
     width = 3.5,
-    height = 2.5)
-print(sites_map)
+    height = 5)
+print(sites_map/sites_map2)
 dev.off()
+

@@ -224,7 +224,7 @@ nsites_w5 <- nyrs_site %>%
 
 min_nyears <- 2
 minspan <- 10
-#sites with > 5 years of non-zero, observations
+#sites with > 10 years of non-zero, observations
 sites_keep <- nyrs_site[which(nyrs_site$span_years >= minspan,
                               nyrs_site$nyears >= min_nyears),"SurveyAreaIdentifier"]
 
@@ -245,7 +245,7 @@ nyrs_region <- dts %>%
             fyear = min(YearCollected),
             lyear = max(YearCollected))
 
-#strats with 7 or more years of non-zero, observations - 
+#strats with 20 or more year span of non-zero, observations - 
 p_time_series = 0.5 #strata are required to have data that span 50% of the time-series in a region.
 regions_keep <- nyrs_region[which(nyrs_region$span_years >= nyrs_study*p_time_series),"hex_name"]
 
