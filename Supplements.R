@@ -11,8 +11,5 @@
 
 
 
-# updated map of survey site locations to match formatting and 1980 -------
-
-
 # State of birds line?
 
