@@ -17,6 +17,8 @@ library(patchwork)
 
 
 source("Functions/Utility_functions.R")
+# loading the base hexagon map
+load("data/hexagon_grid.RData")
 
 # DATA LOAD --------------------------------------------------
 
@@ -99,8 +101,6 @@ save(list = c("stanfit",
 
 
 
-# loading the base hexagon map
-load("data/hexagon_grid.RData")
 tp_out <- vector(mode = "list",length = length(t_types))
 names(tp_out) <- t_types
 mp_out <- tp_out
@@ -441,7 +441,7 @@ sites_map <- ggplot(data = iss_sites_lcc_map3)+
           inherit.aes = FALSE)+ 
   geom_sf(aes(size = span),
           alpha = 0.2)+
-  labs(title = "A")+
+  labs(title = "B")+
   scale_radius(
     #max_size = 3,
                   range = c(0,0.5),
@@ -455,10 +455,11 @@ sites_map <- ggplot(data = iss_sites_lcc_map3)+
   #                        #guide = "none",
   #                        direction = 1)+
   theme_bw() +
-  coord_sf(xlim = xb,ylim = yb)+
-  theme(rect = element_blank(),
-        panel.grid.major = element_line(color = "white"),
-        axis.text = element_text(size = rel(0.8)))
+  theme(axis.text = element_text(size = rel(0.8)))+
+   coord_sf(xlim = xb,ylim = yb)#+
+  # theme(rect = element_blank(),
+  #       panel.grid.major = element_line(color = "white"),
+  #       axis.text = element_text(size = rel(0.8)))
 
 
 
@@ -490,7 +491,7 @@ sites_map2 <- ggplot(data = iss_sites_lcc_map2)+
           inherit.aes = FALSE)+ 
   geom_sf(aes(size = span),
           alpha = 0.1)+
-  labs(title = "B")+
+  labs(title = "A")+
   scale_radius(
     #max_size = 3,
     range = c(0.5,3),
@@ -502,15 +503,18 @@ sites_map2 <- ggplot(data = iss_sites_lcc_map2)+
   #                        guide = guide_legend(title = "Years"),
   #                        #guide = "none",
   #                        direction = 1)+
-  theme_bw() +
-  coord_sf(xlim = xb,ylim = yb)+
-  theme(rect = element_blank(),
-        panel.grid.major = element_line(color = "white"),
-        axis.text = element_text(size = rel(0.8)))
+  theme_bw()+
+  theme(axis.text = element_text(size = rel(0.8)))+
+  coord_sf(xlim = xb,ylim = yb)#+
+# theme(rect = element_blank(),
+#       panel.grid.major = element_line(color = "white"),
+#       axis.text = element_text(size = rel(0.8)))
+
+
 
 pdf("Figures/Sites_figure.pdf",
     width = 3.5,
     height = 5)
-print(sites_map/sites_map2)
+print(sites_map2/sites_map)
 dev.off()
 
