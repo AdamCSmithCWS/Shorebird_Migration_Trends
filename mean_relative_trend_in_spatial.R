@@ -13,6 +13,8 @@ library(sf)
 library(spdep)
 library(ggforce)
 library(GGally)
+library(patchwork)
+
 
 source("Functions/Utility_functions.R")
 
@@ -185,14 +187,65 @@ dev.off()
 # publication maps --------------------------------------------------------
 
 
+library(gridExtra)
 
 
   time = "Recent-three-generation"
-  # nyrs <- 15
-  # if(time == "Long-term"){
-  #   nyrs <- (2019-1980)
-  # }
+
+load(paste0("output/Strata_comparison",time,"_all_species.RData"))
+
+mu_strata <- gather_draws(stanfit,mu_strata[strat]) %>% 
+  mutate(pos = ifelse(.value > 0,TRUE,FALSE)) %>% 
+  group_by(strat) %>% 
+  summarise(mean = mean(.value),
+            lci = quantile(.value,0.05),
+            uci = quantile(.value,0.95),
+            lqrt = quantile(.value,0.25),
+            uqrt = quantile(.value,0.75),
+            p_pos = sum(pos)/n(),
+            p_neg = 1-(sum(pos)/n())) %>% 
+  mutate(sig = ifelse(lci > 0 | uci < 0,TRUE,FALSE),
+         sigq = ifelse(lqrt > 0 | uqrt < 0,TRUE,FALSE),
+         trend = (exp(mean)-1)*100,
+         trend_lci = (exp(lci)-1)*100,
+         trend_uci = (exp(uci)-1)*100,
+         trend_lqrt = (exp(lqrt)-1)*100,
+         trend_uqrt = (exp(uqrt)-1)*100,
+         p_not_zero = ifelse(p_pos > 0.5,p_pos,p_neg))
+
+strat_sums <- trends %>% 
+  select(strat,region,species) %>% 
+  distinct() %>% 
+  group_by(strat,region) %>% 
+  summarise(nspecies = n()) %>% 
+  left_join(.,mu_strata,by = "strat")
+
+
+# Mapping mean trends -----------------------------------------------------
+  
+
+
+  mp1 <- trend_map_composite_simple(trends = strat_sums,
+                            map.file = "BBS_ProvState_strata",
+                            hex_map = poly_grid,
+                            #size_value = "Species Count",
+                            size_value = "Probability > or < zero",
+                            tlab = "A",
+                            add_legend = TRUE)
+  
+  
+  print(mp1)
+  leg <- get_legend(mp1)
+
+  mp1 <- mp1 +
+    theme(legend.position = "none")
+  
+  
+  
+  time = "Previous-three-generation"
+  
   load(paste0("output/Strata_comparison",time,"_all_species.RData"))
+  
   mu_strata <- gather_draws(stanfit,mu_strata[strat]) %>% 
     mutate(pos = ifelse(.value > 0,TRUE,FALSE)) %>% 
     group_by(strat) %>% 
@@ -202,14 +255,14 @@ dev.off()
               lqrt = quantile(.value,0.25),
               uqrt = quantile(.value,0.75),
               p_pos = sum(pos)/n(),
-              p_neg = 1-(sum(pos)/n())) #%>% 
+              p_neg = 1-(sum(pos)/n())) %>% 
     mutate(sig = ifelse(lci > 0 | uci < 0,TRUE,FALSE),
            sigq = ifelse(lqrt > 0 | uqrt < 0,TRUE,FALSE),
-           trend = texp(exp(mean),ny = nyrs),
-           trend_lci = texp(exp(lci),ny = nyrs),
-           trend_uci = texp(exp(uci),ny = nyrs),
-           trend_lqrt = texp(exp(lqrt),ny = nyrs),
-           trend_uqrt = texp(exp(uqrt),ny = nyrs),
+           trend = (exp(mean)-1)*100,
+           trend_lci = (exp(lci)-1)*100,
+           trend_uci = (exp(uci)-1)*100,
+           trend_lqrt = (exp(lqrt)-1)*100,
+           trend_uqrt = (exp(uqrt)-1)*100,
            p_not_zero = ifelse(p_pos > 0.5,p_pos,p_neg))
   
   strat_sums <- trends %>% 
@@ -220,32 +273,38 @@ dev.off()
     left_join(.,mu_strata,by = "strat")
   
   
-  tp <- ggplot(data = strat_sums)+
-    geom_point(aes(x = strat,y = trend,size = p_not_zero,colour = sig))+
-    geom_errorbar(aes(x = strat,y = trend,ymin = trend_lci,ymax = trend_uci),
-                  alpha = 0.2,width = 0)+
-    geom_errorbar(aes(x = strat,y = trend,ymin = trend_lqrt,ymax = trend_uqrt),
-                  alpha = 0.2,width = 0,size = 1.3)+
-    geom_abline(slope = 0,intercept = 0)+
-    labs(title = time)
-  
-  tp_out[[time]] <- tp
-  
-  
   # Mapping mean trends -----------------------------------------------------
-  
-  mp <- trend_map_composite(trends = strat_sums,
-                            map.file = "BBS_ProvState_strata",
-                            hex_map = poly_grid,
-                            #size_value = "Species Count",
-                            size_value = "Probability > or < zero",
-                            tlab = paste(time,n_species,"species"))
-  
-  
-  mp_out[[time]] <- mp
   
   
 
+  mp2 <- trend_map_composite_simple(trends = strat_sums,
+                                    map.file = "BBS_ProvState_strata",
+                                    hex_map = poly_grid,
+                                    #size_value = "Species Count",
+                                    size_value = "Probability > or < zero",
+                                    tlab = "B",
+                                    add_legend = FALSE)
+  
+  
+
+  layt = "
+  AAAC
+  AAAC
+  BBBC
+  BBBC
+  "
+ mpboth <- mp1 + mp2 + leg +
+   plot_layout(design = layt)
+  
+  print(mpboth)
+  
+  
+  pdf(file = "Figures/trend_maps_combined.pdf",
+      width = 4,
+      height = 5.5)
+  print(mpboth)
+  dev.off()
+  
 # demo hexagon map with sites, hexagons, and political jurisdictio --------
 
 species <- "Least Sandpiper"

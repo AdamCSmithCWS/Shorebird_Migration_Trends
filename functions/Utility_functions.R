@@ -912,6 +912,104 @@ trend_map_composite = function(
 
 
 
+trend_map_composite_simple = function(
+  trends = strat_sums,
+  map.file = "BBS_ProvState_strata",
+  hex_map = poly_grid,
+  size_value = "Probability > or < zero",
+  tlab = time,
+  add_legend = FALSE)
+{
+  laea = st_crs("+proj=laea +lat_0=40 +lon_0=-95") # Lambert equal area coord reference system
+  
+  locat = system.file("maps",
+                      package = "bbsBayes")
+  
+  strata_map = read_sf(dsn = locat,
+                       layer = map.file)
+  strata_map = st_transform(strata_map,crs = laea)
+  
+  #join the hex map with trends
+  #bring in the bbsBayes colour ramp
+  #map short and long-term versions
+  if(nrow(hex_map) > nrow(trends)){
+    hex_map <- filter(hex_map,hex_name %in% trends$region)
+  }
+  
+  centres = suppressWarnings(st_centroid(hex_map))
+  t_map <- left_join(centres,trends,by = c("hex_name" = "region"))
+  
+  
+  
+  
+  #breaks <- c(-7, -4, -2, -1, -0.5, 0.5, 1, 2, 4, 7)
+  breaks <- c(-2.5,-1.5, -1, -0.5,-0.25, 0.25, 0.5, 1, 1.5, 2.5)
+  
+  labls = c(paste0("< ",breaks[1]),paste0(breaks[-c(length(breaks))],":", breaks[-c(1)]),paste0("> ",breaks[length(breaks)]))
+  labls = paste0(labls, " %")
+  map_palette <- c("#a50026", "#d73027", "#f46d43", "#fdae61", "#fee090", "#ffffbf",
+                   "#e0f3f8", "#abd9e9", "#74add1", "#4575b4", "#313695")
+  names(map_palette) <- labls
+  
+  
+  t_map$Tplot <- as.numeric(as.character(t_map$trend))
+  
+  t_map$Tplot <- cut(t_map$Tplot,breaks = c(-Inf, breaks, Inf),labels = labls)
+  
+  
+  if(grepl(pattern = "pecies",size_value)){
+    t_map = t_map %>% mutate(size_s = nspecies) 
+  }
+  if(grepl(pattern = "zero",size_value)){
+    t_map = t_map %>% mutate(size_s = p_not_zero) 
+  }
+  
+  
+  fyr = unique(t_map$start_year)
+  lyr = unique(t_map$end_year)
+  
+  
+  bb = st_bbox(hex_map)
+  xl = c(bb["xmin"],bb["xmax"])
+  yl = c(bb["ymin"],bb["ymax"])
+  
+  tmap = ggplot()+
+    
+    geom_sf(data = strata_map,alpha = 0,colour = grey(0.8))+
+    geom_sf(data = hex_map,alpha = 0,colour = grey(0.9))+
+    geom_sf(data = t_map,aes(colour = Tplot,size = size_s),alpha = 1)+
+    labs(title = paste0(tlab))+
+    coord_sf(xlim = xl,ylim = yl)+
+    theme_bw()+
+    scale_colour_manual(values = map_palette, aesthetics = c("colour"),
+                        guide = ggplot2::guide_legend(reverse=TRUE),
+                        name = paste0("Mean Difference\n","Trend"))+
+    scale_size(name = size_value,range = c(1,6))+
+    theme(legend.key.width = unit(0.75,"null"),
+          legend.key.height = unit(0.75,"null"),
+          legend.title = element_text(size = rel(0.75)),
+          legend.text = element_text(size = rel(0.75)))
+  
+  if(!add_legend){
+    tmap <- tmap+
+      theme(legend.position = "none")
+  }
+  
+  return(tmap)
+  
+}#end function
+
+
+get_legend<-function(myggplot){
+  require(gridExtra)
+  
+  tmp <- ggplot_gtable(ggplot_build(myggplot))
+  leg <- which(sapply(tmp$grobs, function(x) x$name) == "guide-box")
+  legend <- tmp$grobs[[leg]]
+  return(legend)
+}
+
+
 
 ItoTT_comparison <- function(inds = Nsamples,
                              starts = c(syear,2000),
