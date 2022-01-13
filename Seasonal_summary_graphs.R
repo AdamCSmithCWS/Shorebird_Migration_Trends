@@ -451,9 +451,62 @@ print(sp)
 
 load("Data/Season_effects.RData")
 
+d1 <- yday(as.Date.character("2019-6-30","%Y-%m-%d"))
+od <- function(x){
+  y <- as.Date(paste0("2019-",x + d1),"%Y-%j")
+}
 season_out <- season_out %>% 
-  mutate(Season_Region = factor(ifelse(is.na(seas_strat)|seas_strat == 1,"Northern",
-                                       "Southern")))
+  mutate(n_season = factor(ifelse(is.na(seas_strat),"Single","Split"),
+                           levels = c("Single","Split"),
+                           ordered = TRUE),
+         Season_Region = factor(ifelse(is.na(seas_strat)|seas_strat == 1,
+                                       "Most or all of survey area",
+                                       "Southern portion")),
+         date = od(day)) %>% 
+  arrange(n_season)
+spl <- unique(season_out$species)
+season_out <- season_out %>% 
+  mutate(species = factor(species,levels = spl,
+                          ordered = TRUE))
+
+season_spag2 <- ggplot(data = season_out,aes(x = date,y = mean,
+                                             group = Season_Region,
+                                             colour = Season_Region))+
+  geom_ribbon(aes(x = date,y = mean,
+                  ymin = lci,ymax = uci,fill = Season_Region),
+              inherit.aes = FALSE,alpha = 0.2)+
+  geom_line(alpha = 0.5)+
+  my_col2_traj+
+  guides(fill = guide_legend(title = "Region of survey area"),
+         colour = guide_legend(title = "Region of survey area"))+
+  scale_y_continuous(trans = "log10")+
+  scale_x_date(date_breaks = "1 month",
+               #date_minor_breaks = "1 week",
+               date_labels =  "%b %d")+
+  theme_bw()+
+  ylab("Mean count across all sites")+
+  #xlab("day")+
+  theme(strip.background = element_blank(),
+        strip.text = element_text(size = 7.5),
+        axis.text.x=element_text(angle=45, hjust=1),
+        legend.position = "top")+
+  facet_wrap(vars(species),
+             nrow = 5,
+             ncol = 6,
+             scales = "free_y")
+
+print(season_spag2)
+
+
+pdf("Figures/Seasonal_means.pdf",
+    width = 10,
+    height = 7)
+print(season_spag2)
+dev.off()
+
+
+
+
 
 seasonEffect_out <- seasonEffect_out %>% 
   mutate(Season_Region = factor(ifelse(is.na(seas_strat)|seas_strat == 1,"Northern",
@@ -477,41 +530,8 @@ season_spag1 <- ggplot(data = seasonEffect_out,aes(x = day,y = mean,
 print(season_spag1)
 
 
-season_spag2 <- ggplot(data = season_out,aes(x = day,y = mean,
-                                                   group = Season_Region,
-                                                   colour = Season_Region))+
-  geom_ribbon(aes(x = day,y = mean,
-                  ymin = lci,ymax = uci,fill = Season_Region),
-              inherit.aes = FALSE,alpha = 0.2)+
-  geom_line(alpha = 0.5)+
-  my_col_sim+
-  scale_y_continuous(trans = "log10")+
-  facet_wrap(vars(species),
-             nrow = 5,
-             ncol = 6,
-             scales = "free_y")
-
-print(season_spag2)
 
 
 
-
-
-
-season_spag3 <- ggplot(data = seasonEffect_out,
-                       aes(x = day,y = mean,
-                                                   group = Season_Region,
-                                                   colour = Season_Region))+
-  geom_ribbon(aes(x = day,y = mean,
-                  ymin = lci,ymax = uci,fill = Season_Region),
-              inherit.aes = FALSE,alpha = 0.2)+
-  geom_line(alpha = 0.5)+
-  my_col_sim+
-  scale_y_continuous(trans = "log10")+
-  facet_wrap(vars(species),
-             nrow = 5,
-             ncol = 6)
-
-print(season_spag3)
 
 
