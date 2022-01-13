@@ -451,16 +451,16 @@ print(sp)
 
 load("Data/Season_effects.RData")
 
-seasonEffect_out <- seasonEffect_out %>% 
-  mutate(Season_Region = ifelse(is.na(seas_strat),3,
-                                seas_strat))
+season_out <- season_out %>% 
+  mutate(Season_Region = factor(ifelse(is.na(seas_strat)|seas_strat == 1,"Northern",
+                                       "Southern")))
 
 seasonEffect_out <- seasonEffect_out %>% 
   mutate(Season_Region = factor(ifelse(is.na(seas_strat)|seas_strat == 1,"Northern",
                                 "Southern")))
 
 
-season_spag <- ggplot(data = seasonEffect_out,aes(x = day,y = mean,
+season_spag1 <- ggplot(data = seasonEffect_out,aes(x = day,y = mean,
                                             group = Season_Region,
                                             colour = Season_Region))+
   geom_ribbon(aes(x = day,y = mean,
@@ -471,9 +471,47 @@ season_spag <- ggplot(data = seasonEffect_out,aes(x = day,y = mean,
   scale_y_continuous(trans = "log10")+
   facet_wrap(vars(species),
              nrow = 5,
+             ncol = 6,
+             scales = "free_y")
+
+print(season_spag1)
+
+
+season_spag2 <- ggplot(data = season_out,aes(x = day,y = mean,
+                                                   group = Season_Region,
+                                                   colour = Season_Region))+
+  geom_ribbon(aes(x = day,y = mean,
+                  ymin = lci,ymax = uci,fill = Season_Region),
+              inherit.aes = FALSE,alpha = 0.2)+
+  geom_line(alpha = 0.5)+
+  my_col_sim+
+  scale_y_continuous(trans = "log10")+
+  facet_wrap(vars(species),
+             nrow = 5,
+             ncol = 6,
+             scales = "free_y")
+
+print(season_spag2)
+
+
+
+
+
+
+season_spag3 <- ggplot(data = seasonEffect_out,
+                       aes(x = day,y = mean,
+                                                   group = Season_Region,
+                                                   colour = Season_Region))+
+  geom_ribbon(aes(x = day,y = mean,
+                  ymin = lci,ymax = uci,fill = Season_Region),
+              inherit.aes = FALSE,alpha = 0.2)+
+  geom_line(alpha = 0.5)+
+  my_col_sim+
+  scale_y_continuous(trans = "log10")+
+  facet_wrap(vars(species),
+             nrow = 5,
              ncol = 6)
 
-print(season_spag)
-
+print(season_spag3)
 
 
