@@ -1,18 +1,12 @@
 library(tidyverse)
-library(sf)
-library(spdep)
-library(ggforce)
-library(tidybayes)
-library(GGally)
+
 library(posterior)
 library(cmdstanr)
 source("functions/utility_functions.R")
 source("functions/posterior_summary_functions.R")
 source("Functions/palettes.R")
 
-library(loo)
 load("data/allShorebirdPrismFallCounts.RData")
-source("Functions/palettes.R")
 
 
 #lists for stored figures
@@ -40,12 +34,9 @@ grid_spacing <- 300000  # size of squares, in units of the CRS (i.e. meters for 
 
 FYYYY = 1980
 
-t1 = Sys.time()
-
 season_out<- NULL
 seasonEffect_out <- NULL
 
-w_cosewic = sps[c(2:4,7,10,12:20,22,11,25)]
 
 # Species loop ------------------------------------------------------------
 output_dir <- "g:/Shorebird_Migration_Trends/output"
@@ -454,6 +445,35 @@ print(sp)
 
 
 
+# Plotting ----------------------------------------------------------------
+
+
+
+load("Data/Season_effects.RData")
+
+seasonEffect_out <- seasonEffect_out %>% 
+  mutate(Season_Region = ifelse(is.na(seas_strat),3,
+                                seas_strat))
+
+seasonEffect_out <- seasonEffect_out %>% 
+  mutate(Season_Region = factor(ifelse(is.na(seas_strat)|seas_strat == 1,"Northern",
+                                "Southern")))
+
+
+season_spag <- ggplot(data = seasonEffect_out,aes(x = day,y = mean,
+                                            group = Season_Region,
+                                            colour = Season_Region))+
+  geom_ribbon(aes(x = day,y = mean,
+                  ymin = lci,ymax = uci,fill = Season_Region),
+              inherit.aes = FALSE,alpha = 0.2)+
+  geom_line(alpha = 0.5)+
+  my_col_sim+
+  scale_y_continuous(trans = "log10")+
+  facet_wrap(vars(species),
+             nrow = 5,
+             ncol = 6)
+
+print(season_spag)
 
 
 
