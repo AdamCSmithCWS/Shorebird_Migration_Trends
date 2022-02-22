@@ -130,10 +130,31 @@ save(list = "indices_out2",
 
 
 
-# Plotting ----------------------------------------------------------------
 
 
 load("Trends/all_survey_wide_indices.RData")
+
+
+
+# exporting indices for distribution --------------------------------------
+
+inds_distribution <- indices_out2 %>% 
+  filter(parm == "Full") %>% 
+  select(species,
+         year,
+         median,
+         lci,
+         uci) %>% 
+  rename(predicted_mean_abundance = median,
+         lower_95percent_CL = lci,
+         upper_95percent_CL = uci)
+
+write.csv(inds_distribution,
+          "trends/Survey_wide_annual_indices_shorebird.csv",
+          row.names = FALSE)
+# Plotting ----------------------------------------------------------------
+
+
 
 swp <- function(x){
   nx <- gsub(pattern = "change",
