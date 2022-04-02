@@ -152,6 +152,23 @@ inds_distribution <- indices_out2 %>%
 write.csv(inds_distribution,
           "trends/Survey_wide_annual_indices_shorebird.csv",
           row.names = FALSE)
+
+
+inds_distribution_all <- indices_out2 %>% 
+  select(species,
+         parm,
+         year,
+         median,
+         lci,
+         uci) %>% 
+  rename(smooth_or_full_indices = parm,
+         predicted_mean_abundance = median,
+         lower_95percent_CL = lci,
+         upper_95percent_CL = uci)
+
+write.csv(inds_distribution_all,
+          "trends/Survey_wide_smooth_and_full_annual_indices_shorebird.csv",
+          row.names = FALSE)
 # Plotting ----------------------------------------------------------------
 
 
