@@ -305,7 +305,7 @@ strat_sums <- trends %>%
   print(mpboth)
   dev.off()
   
-# demo hexagon map with sites, hexagons, and political jurisdictio --------
+# demo hexagon map with sites, hexagons, and political jurisdictions --------
 
 species <- "Least Sandpiper"
 
@@ -372,7 +372,77 @@ pdf("Figures/Demo_strata_figure.pdf",
 print(ggp)
 dev.off()
 
+load("data/allShorebirdPrismFallCounts.RData")
 
+pdf("Figures/Demo_strata_figure_all_species.pdf",
+    width = 10,
+    height = 8)
+for(species in sps){
+  map.file = "BBS_ProvState_strata"
+  hex_map = poly_grid
+  tlab = time
+  
+  laea = st_crs("+proj=laea +lat_0=40 +lon_0=-95") # Lambert equal area coord reference system
+  
+  locat = system.file("maps",
+                      package = "bbsBayes")
+  
+  strata_map = read_sf(dsn = locat,
+                       layer = map.file)
+  strata_map = st_transform(strata_map,crs = laea)
+ #
+  load(paste0("data/data",species,"_cmdstanr_data0.5_10_2.RData"))
+  
+  
+ # load(paste0("data/data",species,"_GAMYE_strat_simple300.RData"))
+  
+  centres = suppressWarnings(st_centroid(real_grid_regs))
+  
+  coords = st_coordinates(centres)
+  
+  nb_l <- spdep::nb2listw(nb_db)
+  nt = length(attributes(nb_l$neighbours)$region.id)
+  DA = data.frame(
+    from = rep(1:nt,sapply(nb_l$neighbours,length)),
+    to = unlist(nb_l$neighbours)
+  )
+  DA = cbind(DA,coords[DA$from,c("X","Y")],coords[DA$to,c("X","Y")])
+  colnames(DA)[3:6] = c("long","lat","long_to","lat_to")
+  
+  
+  box <- st_as_sfc(st_bbox(vintj))
+  xb = range(st_coordinates(box)[,"X"])
+  yb = range(st_coordinates(box)[,"Y"])
+  
+  
+  
+  ggp <- ggplot(data = centres) + 
+    geom_sf(data = strata_map,#alpha = 0,
+            fill = grey(0.95),
+            colour = "white",
+            inherit.aes = FALSE)+ 
+    geom_sf(data = vintj,alpha = 0,colour = grey(0.9),inherit.aes = FALSE)+ 
+    geom_sf(data = real_grid_regs,alpha = 0,colour = grey(0.85),inherit.aes = FALSE)+
+    geom_segment(data=DA,aes(x = long, y = lat,xend=long_to,yend=lat_to),inherit.aes = FALSE,
+                 colour = "black",size=0.3,alpha=0.1) +
+    xlab("")+
+    ylab("")+
+    geom_sf(size = 0.9)+
+    theme_bw() +
+    labs(title = paste(species,"strata, linkages, and sites"))+
+    theme(rect = element_blank(),
+          panel.grid.major = element_line(color = "white"),
+          axis.text = element_text(size = rel(0.8)))+
+    coord_sf(xlim = xb,ylim = yb)+
+    theme(legend.position = "none")
+  
+  print(ggp)
+  
+  rm(list = c("real_grid_regs","nb_db",
+              "DA"))
+}
+
+dev.off()
 
 
 
@@ -399,6 +469,7 @@ strata_map = st_transform(strata_map,crs = laea)
 load("Data/site_map.RData")
 load("Data/full_observation_dataset.Rdata")
 
+source("functions/palettes.R")
 sample_sum <- ssData %>% 
   filter(YearCollected >= 1980) %>% 
   group_by(SamplingEventIdentifier,
@@ -440,8 +511,9 @@ sites_map <- ggplot(data = iss_sites_lcc_map3)+
           colour = grey(0.85),#= "white",
           inherit.aes = FALSE)+ 
   geom_sf(aes(size = span),
-          alpha = 0.2)+
-  labs(title = "B")+
+          alpha = 0.3,
+          colour = my_simpl_col)+
+  #labs(title = "B")+
   scale_radius(
     #max_size = 3,
                   range = c(0,0.5),
@@ -490,8 +562,14 @@ sites_map2 <- ggplot(data = iss_sites_lcc_map2)+
           colour = grey(0.85),#= "white",
           inherit.aes = FALSE)+ 
   geom_sf(aes(size = span),
-          alpha = 0.1)+
-  labs(title = "A")+
+          alpha = 0.2,
+          colour = my_simpl_col)+
+  # geom_sf(data = strata_map,#
+  #         alpha = 0,
+  #         #fill = grey(0.95),
+  #         colour = grey(0.85),#= "white",
+  #         inherit.aes = FALSE)+ 
+  #labs(title = "A")+
   scale_radius(
     #max_size = 3,
     range = c(0.5,3),
@@ -511,10 +589,16 @@ sites_map2 <- ggplot(data = iss_sites_lcc_map2)+
 #       axis.text = element_text(size = rel(0.8)))
 
 
-
-pdf("Figures/Sites_figure.pdf",
+pdf("Figures/Sites_figure_supplement.pdf",
     width = 3.5,
-    height = 5)
-print(sites_map2/sites_map)
+    height = 3)
+print(sites_map)
+dev.off()
+
+
+pdf("Figures/Figure1.pdf",
+    width = 3.5*1.5,
+    height = 3*1.5)
+print(sites_map2)
 dev.off()
 

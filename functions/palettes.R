@@ -7,7 +7,7 @@ my_col4 <-  scale_color_viridis_d(aesthetics = c("colour","fill"),
 my_col2_traj <-  scale_color_viridis_d(aesthetics = c("colour","fill"),
                                        begin = 0.25,end = 0.6,direction = 1)
 
-
+my_simpl_col <- viridisLite::viridis(1,begin = 0.1,end = 0.4,direction = -1)
 my_col_sim <-  scale_color_viridis_d(aesthetics = c("colour","fill"),
-                                  option = "magma", begin = 0.2,end = 0.45,direction = -1)
+                                  option = "D", begin = 0.2,end = 0.75,direction = -1)
 

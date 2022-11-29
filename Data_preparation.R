@@ -271,7 +271,7 @@ css <- bind_rows(acss,oss)
 css <- css[which(!is.na(css$MonthCollected) & css$MonthCollected > 6 & css$MonthCollected < 12),] 
 css <- css[which(css$YearCollected > 1973),] 
 
-css[which(is.na(css$DayCollected)),"DayCollected"] <- 15 #this places the observation in teh middle of the month
+css[which(is.na(css$DayCollected)),"DayCollected"] <- 15 #this places the observation in teh middle of the month for 3 surveys
 
 css$ObservationDate <- lubridate::ymd(paste(css$YearCollected,css$MonthCollected,css$DayCollected,sep = "/"))
 css$doy <- lubridate::yday(css$ObservationDate)

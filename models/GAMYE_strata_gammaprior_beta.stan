@@ -1,6 +1,6 @@
 // This is a full hierarchical GAM time-series, with spatial gam parameters 
 // as well as a gam-based Seasonal adjustment and sruvey-wide random year-effects
-// same as GAMYE_strata_simple but with a centered noise parameter
+
 
 
 functions {
@@ -34,15 +34,10 @@ data {
   int<lower=0> count[ncounts];              // count observations
   int<lower=1> strat[ncounts];              // strata indicators
   int<lower=1> site[ncounts];              // site indicators
-  real year[ncounts];              // centered years
+ // real year[ncounts];              // remove this
   int<lower=1> year_raw[ncounts]; // year index
   int<lower=1> date[ncounts];  // day indicator in the season
-  //vector[nsites] site_size; //log-scale size predictor for site level abundance
-  // upper 98th quartile of all counts across species with similar flocking behaviour
-  // conceptually, this should reflect the maximum size of flock that could be observed
-  // at this site, acting like an offset for area surveyed (since the area is hard to define)
-  // and generally not available for most sites
-  
+
   //indexes for re-scaling predicted counts within strata based on site-level intercepts
   int<lower=1> max_sites; //dimension 1 of sites matrix
   int<lower=0> sites[max_sites,nstrata]; //matrix of which sites are in each stratum
@@ -50,9 +45,9 @@ data {
 }
 
 parameters {
-  vector[nsites] alpha;             // intercepts
+  vector[nsites] alpha_raw;             // intercepts
   vector[nyears] year_effect_raw;             // continental year-effects
-  vector[ncounts] noise; //_raw;             // over-dispersion
+  vector[ncounts] noise_raw;             // over-dispersion
   matrix[nstrata,nknots_year] b_raw;         // spatial effect slopes (0-centered deviation from continental mean slope B)
   vector[nknots_year] B_raw;             // GAM coefficients year
   
@@ -60,7 +55,7 @@ parameters {
   //real beta_size; //effect of site level predictor
   
  real<lower=0> sdnoise;    // sd of over-dispersion
- real<lower=2.1> nu; 
+ //real<lower=2.1> nu; 
   real<lower=0> sdalpha;    // sd of site effects
   real<lower=0> sdyear;    // sd of year effects
   real<lower=0> sdseason;    // sd of year effects
@@ -74,15 +69,13 @@ transformed parameters {
   vector[ndays] season_pred = season_basispred*(sdseason*B_season_raw);
     matrix[nyears,nstrata] year_pred;
   vector[nyears] Y_pred; 
-  //vector[nsites] alpha;
+  vector[nsites] alpha;
   vector[nknots_year] B;
    matrix[nstrata,nknots_year] b;
- // vector[ncounts] noise;             // over-dispersion
    vector[nyears] year_effect;             // continental year-effects
  
-  //alpha = sdalpha*alpha_raw;// + beta_size*site_size;
+  alpha = sdalpha*alpha_raw;// + beta_size*site_size;
   B = sdyear_gam*B_raw;
-  // noise = sdnoise*noise_raw;
   year_effect = sdyear*year_effect_raw;
   
  
@@ -98,7 +91,9 @@ transformed parameters {
 }
 
   for(i in 1:ncounts){
-    E[i] = ALPHA1 + year_pred[year_raw[i],strat[i]] + alpha[site[i]] + year_effect[year_raw[i]] + season_pred[date[i]] + noise[i];
+      real noise = sdnoise*noise_raw[i];             // over-dispersion
+
+    E[i] = ALPHA1 + year_pred[year_raw[i],strat[i]] + alpha[site[i]] + year_effect[year_raw[i]] + season_pred[date[i]] + noise;
   }
   
   }
@@ -109,34 +104,29 @@ model {
   sdyear ~ normal(0,0.2); //prior on scale of annual fluctuations - 
   // above is informative so that 95% of the prior includes yearly fluctuations fall
   // between 33% decrease and a 50% increase
-  sdalpha ~ std_normal(); //prior on scale of site level variation
-  sdyear_gam ~ normal(0,0.5); //prior on sd of gam hyperparameters
-  sdyear_gam_strat ~ normal(0,0.05); // regularizing prior on variance of stratum level gam
- nu ~ gamma(2,0.1); // prior on df for t-distribution of heavy tailed site-effects from https://github.com/stan-dev/stan/wiki/Prior-Choice-Recommendations#prior-for-degrees-of-freedom-in-students-t-distribution
+  sdalpha ~ normal(0,2); //prior on scale of site level variation
+  sdyear_gam ~ normal(0,1); //prior on sd of gam hyperparameters
+  sdyear_gam_strat ~ gamma(2,4);//boundary avoiding prior 
+ //nu ~ gamma(2,0.1); // prior on df for t-distribution of heavy tailed site-effects from https://github.com/stan-dev/stan/wiki/Prior-Choice-Recommendations
   sdseason ~ std_normal();//variance of GAM parameters
   B_season_raw ~ std_normal();//GAM parameters
   ALPHA1 ~ std_normal();// overall species intercept 
  
-   // beta_size ~ normal(0,1);// effect of site-size predictor
-
   count ~ poisson_log(E); //vectorized count likelihood
-  alpha ~ normal(0,sdalpha); // site-effects
-  noise ~ student_t(nu,0,sdnoise);//std_normal(); // extra Poisson log-normal variance
+  alpha_raw ~ student_t(3,0,1); // fixed site-effects
+  noise_raw ~ student_t(3,0,1);//std_normal(); // extra Poisson log-normal variance
   B_raw ~ std_normal();// prior on GAM hyperparameters
   year_effect_raw ~ std_normal(); //prior on ▲annual fluctuations
   sum(year_effect_raw) ~ normal(0,0.0001*nyears);//sum to zero constraint on year-effects
-  sum(alpha) ~ normal(0,0.0001*nsites);//sum to zero constraint on site-effects
-  sum(B_raw) ~ normal(0,0.001*nknots_year);//sum to zero constraint on GAM hyperparameters
-  
+  sum(alpha_raw) ~ normal(0,0.0001*nsites);//sum to zero constraint on site-effects
+
+ 
+
     for(k in 1:nknots_year){
-  b_raw[,k] ~ icar_normal_lpdf(nstrata, node1, node2);
+  b_raw[,k] ~ icar_normal(nstrata, node1, node2);
   }
   
- //  for(s in 1:nstrata){
- // b_raw[s,] ~ std_normal();
- //  sum(b_raw[s,]) ~ normal(0,0.001*nknots_year);//sum to zero constraint on GAM hyperparameters
- //  
- //  }
+
 }
 
 generated quantities {
@@ -145,7 +135,7 @@ generated quantities {
   real<lower=0> NSmooth[nyears];
   real<lower=0> n[nstrata,nyears];
   real<lower=0> nsmooth[nstrata,nyears];
-    real seas_max = mean(season_pred);
+    real seas_max = max(season_pred)/2;
  
  // log_lik calculation for looic
       vector[ncounts] log_lik;
@@ -164,7 +154,7 @@ generated quantities {
         //a stratum-scaling component that tracks the alphas for sites in stratum
         for(j in 1:nsites_strat[s]){
           atmp[j] = exp(ALPHA1 + year_pred[y,s] + year_effect[y] + seas_max + 0.5*(sdnoise^2) + alpha[sites[j,s]]);
-          atmp_smo[j] = exp(ALPHA1 + year_pred[y,s] + seas_max + 0.5*(sdnoise^2) + alpha[sites[j,s]]);
+          atmp_smo[j] = exp(ALPHA1 + year_pred[y,s] + seas_max + 0.5*(sdyear^2) + 0.5*(sdnoise^2) + alpha[sites[j,s]]);
         }
         n[s,y] = mean(atmp);
         nsmooth[s,y] = mean(atmp_smo);
@@ -174,7 +164,7 @@ generated quantities {
     for(y in 1:nyears){
 
       N[y] = exp(ALPHA1 + Y_pred[y] + year_effect[y] + seas_max + 0.5*(sdalpha^2) + 0.5*(sdnoise^2) );
-      NSmooth[y] = exp(ALPHA1 + Y_pred[y] + seas_max + 0.5*(sdalpha^2) + 0.5*(sdnoise^2) );
+      NSmooth[y] = exp(ALPHA1 + Y_pred[y] + seas_max + 0.5*(sdyear^2) + 0.5*(sdalpha^2) + 0.5*(sdnoise^2) );
       
     }
     

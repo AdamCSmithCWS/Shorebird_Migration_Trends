@@ -79,7 +79,7 @@ t1 = Sys.time()
 w_cosewic = sps[c(2:4,7,10,12:20,22,11,25)]
 
 # Species loop ------------------------------------------------------------
-output_dir <- "g:/Shorebird_Migration_Trends/output"
+output_dir <- "f:/Shorebird_Migration_Trends/output"
 
 
 
@@ -97,13 +97,15 @@ for(sp in sps){
   # paste0(output_dir,"/",sp_file_name,".RDS")
   # 
   #paste0(output_dir,"/",sp_file_name,"_fit_add.RData")
-
+  
+  
   if(file.exists(paste0(output_dir,"/",sp_file_name,"_fit_add.RData"))){
-    load(paste0(output_dir,"/",sp_file_name,"_fit_add.RData"))
-    if(length(csvfl) > 4){csvfl <- csvfl[1:4]}
-    cmdstanfit <- as_cmdstan_fit(csvfl) 
-    #<- readRDS(paste0(output_dir,"/",sp_file_name,".RDS"))
-    #load(paste0(output_dir,"/",spf,"_fit_add.RData"))
+    load(paste0(output_dir,"/",sp_file_name,"_fit_add.RData"))}
+  
+  csvfl <- paste(output_dir,"/",sp_file_name,"-",1:3,".csv")
+  cmdstanfit <- as_cmdstan_fit(csvfl) 
+  
+
     three_gen <- max(10,ceiling(gens[which(gens$Common_name == sp),"GenLength"]*3))
     #Three generation assessment time in COSEWIC report
     y3g <- 2019-three_gen
@@ -1342,7 +1344,6 @@ for(sp in sps){
     
     print(paste(sp,"finished"))
     
-  }# end if species output data exists
 }#end species loop
 
 t2 = Sys.time()
@@ -1507,7 +1508,9 @@ for(sp in sps){
 }
 dev.off()
 
-
+prior <- "gamma"
+noise_dist_sel <- "t"
+TRENDSout <- read.csv(paste0("trends/All_",prior,"_",noise_dist_sel,"_survey_wide_trends.csv"))
 # Trend plots -------------------------------------------------------------
 TRENDSout$trend_type <- factor(TRENDSout$trend_type,ordered = TRUE,levels = c("Long-term","First-15-year",
                                                                               "15-year",
@@ -1517,7 +1520,7 @@ TRENDSout$trend_type <- factor(TRENDSout$trend_type,ordered = TRUE,levels = c("L
 LT_trends <- TRENDSout %>% filter(trend_type %in% c("Long-term","15-year"))
 
 lt_tplot <- ggplot(data = LT_trends,aes(x = species,y = trend,colour = trend_type))+
-  geom_pointrange(aes(ymax = uci,ymin = lci),position = position_dodge(width = 0.2))+
+  geom_pointrange(aes(ymax = uci,ymin = lci),position = position_dodge(width = 0.5))+
   geom_abline(slope = 0,intercept = 0,alpha = 0.7)+
   ylab("Trend (%/year)")+
   xlab("")+
@@ -1536,7 +1539,7 @@ dev.off()
 FL15_trends <- TRENDSout %>% filter(trend_type %in% c("First-15-year","15-year"))
 
 FL15_tplot <- ggplot(data = FL15_trends,aes(x = species,y = trend,colour = trend_type))+
-  geom_pointrange(aes(ymax = uci,ymin = lci),position = position_dodge(width = 0.2))+
+  geom_pointrange(aes(ymax = uci,ymin = lci),position = position_dodge(width = 0.5))+
   geom_abline(slope = 0,intercept = 0,alpha = 0.7)+
   ylab("Trend (%/year)")+
   xlab("")+
@@ -1556,7 +1559,7 @@ dev.off()
 EL_trends <- TRENDSout %>% filter(trend_type %in% c("Previous-three-generation","Recent-three-generation"))
 
 el_tplot <- ggplot(data = EL_trends,aes(x = species,y = trend,colour = trend_type))+
-  geom_pointrange(aes(ymax = uci,ymin = lci),position = position_dodge(width = 0.2))+
+  geom_pointrange(aes(ymax = uci,ymin = lci),position = position_dodge(width = 0.5))+
   geom_abline(slope = 0,intercept = 0,alpha = 0.7)+
   ylab("Trend (%/year)")+
   xlab("")+
@@ -1572,12 +1575,18 @@ pdf(file = paste0("Figures/All_",prior,"_",noise_dist_sel,"_early_recent_3genera
 print(el_tplot)
 dev.off()
 
+pdf(file = paste0("Figures/Figure4.pdf"),
+    height = 9,
+    width = 6.5)
+print(el_tplot)
+dev.off()
+
 
 
 LT3_trends <- TRENDSout %>% filter(trend_type %in% c("Long-term","Recent-three-generation"))
 
 lt3_tplot <- ggplot(data = LT3_trends,aes(x = species,y = trend,colour = trend_type))+
-  geom_pointrange(aes(ymax = uci,ymin = lci),position = position_dodge(width = 0.2))+
+  geom_pointrange(aes(ymax = uci,ymin = lci),position = position_dodge(width = 0.5))+
   geom_abline(slope = 0,intercept = 0,alpha = 0.7)+
   ylab("Trend (%/year)")+
   xlab("")+
@@ -1632,7 +1641,7 @@ trend_difs_plot <- Trend_difout %>% filter(trend_type %in% c("Three Generation v
   mutate(prob_neg = prob_3_f(prob_neg,0.85))
 
 dif_tplot <- ggplot(data = trend_difs_plot,aes(x = species,y = trend_dif))+
-  geom_pointrange(aes(ymax = uci,ymin = lci),position = position_dodge(width = 0.2))+
+  geom_pointrange(aes(ymax = uci,ymin = lci),position = position_dodge(width = 0.5))+
   geom_abline(slope = 0,intercept = 0,alpha = 0.7)+
   ylab("Difference between recent and earlier trends (%/year)")+
   xlab("")+
@@ -1653,7 +1662,7 @@ trend_difs_plot2 <- Trend_difout %>% filter(trend_type %in% c("Three Generation 
   mutate(prob_neg = prob_3_f(prob_neg,0.85))
 
 dif_tplot2 <- ggplot(data = trend_difs_plot2,aes(x = species,y = trend_dif,colour = prob_neg))+
-  geom_pointrange(aes(ymax = uci,ymin = lci),position = position_dodge(width = 0.2))+
+  geom_pointrange(aes(ymax = uci,ymin = lci),position = position_dodge(width = 0.5))+
   geom_abline(slope = 0,intercept = 0,alpha = 0.7)+
   ylab("Difference between recent and earlier trends (%/year)")+
   xlab("")+
@@ -1673,7 +1682,7 @@ trend_difs_plot3 <- Trend_difout %>% filter(trend_type %in% c("Three Generation 
   mutate(prob_neg = prob_3_f(prob_neg,0.85))
 
 dif_tplot3 <- ggplot(data = trend_difs_plot3,aes(x = species,y = trend_dif,colour = prob_neg))+
-  geom_pointrange(aes(ymax = uci,ymin = lci),position = position_dodge(width = 0.2))+
+  geom_pointrange(aes(ymax = uci,ymin = lci),position = position_dodge(width = 0.5))+
   geom_abline(slope = 0,intercept = 0,alpha = 0.7)+
   ylab("Difference between recent and earlier trends (%/year)")+
   xlab("")+

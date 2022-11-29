@@ -391,7 +391,7 @@ while(class(v)[1] == "try-error"){
   
 }
 
-vint = try(st_sf(st_cast(st_intersection(v,reg_bounds_buf),"POLYGON")),silent = TRUE)
+vint = try(st_sf(st_cast(st_intersection(v,reg_bounds_buf),"MULTIPOLYGON")),silent = TRUE)
 
 # Adding random noise to hex centres to avoid geometry errors -------------
 
@@ -414,8 +414,8 @@ while(class(vint)[1] == "try-error" & j < 10){
   v <- try(st_cast(st_voronoi(cun, envelope = box)),silent = TRUE)
   
   
-  reg_bounds_buf = st_buffer(reg_bounds_buf,dist = 100)
-  vint = try(st_sf(st_cast(st_intersection(v,reg_bounds_buf),"POLYGON")),silent = TRUE)
+  reg_bounds_buf = st_buffer(reg_bounds_buf,dist = 0)
+  vint = try(st_sf(st_cast(st_intersection(v,reg_bounds_buf),"MULTIPOLYGON")),silent = TRUE)
   j = j+1
   
   }
