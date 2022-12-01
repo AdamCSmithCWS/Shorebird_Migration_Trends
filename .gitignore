@@ -2,8 +2,8 @@
 .Rhistory
 .RData
 .Ruserdata
-data/eBird_all/
-data/
+data_ignore/eBird_all/
+data_ignore/
 doc/
 output/
 Figures/

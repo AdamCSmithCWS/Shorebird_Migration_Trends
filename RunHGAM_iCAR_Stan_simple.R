@@ -13,24 +13,14 @@ library(tidybayes)
 # library(foreach)
 
 #load data
-load("data/allShorebirdPrismFallCounts.RData")
+sps <- readRDS("data/species_vector.rds")
 grid_spacing <- 300000  # size of squares, in units of the CRS (i.e. meters for lae)
 
  
 FYYYY = 1980
 
-w_cosewic = sps[c(2:4,7,10,12:20,22,11,25)]
 
-# for(sp in w_cosewic){
-# 
-#   if(file.exists(paste0("output/",sp,"_GAMYE_strat_simple",grid_spacing/1000,".RData"))){w_cosewic <- w_cosewic[-which(w_cosewic == sp)]}
-# 
-# }
-sps_remain = sps[-which(sps %in% w_cosewic)]
-
-
-
- for(sp in sps_remain[4:6]){
+ for(sp in sps){
   
    if(file.exists(paste0("output/",sp,"_GAMYE_strat_simple",grid_spacing/1000,".RData"))){next}
    

@@ -1,0 +1,29 @@
+"Species","two_seasons","regions_w_alt_season"
+"American Avocet",TRUE,"Texas Coastal"
+"Black-bellied Plover",TRUE,"Southeast Coastal - Texas Coastal - Pacific and Intermountain"
+"American Golden-Plover",FALSE,NA
+"Semipalmated Plover",TRUE,"Southeast Coastal - Texas Coastal"
+"Piping Plover",TRUE,"Southeast Coastal - Texas Coastal"
+"Killdeer",FALSE,NA
+"Whimbrel",FALSE,NA
+"Hudsonian Godwit",TRUE,"East Inland - Ontario"
+"Marbled Godwit",TRUE,"Southeast Coastal - Texas Coastal"
+"Ruddy Turnstone",FALSE,NA
+"Red Knot",TRUE,"Southeast Coastal - Texas Coastal"
+"Stilt Sandpiper",TRUE,"Southeast Coastal"
+"Sanderling",TRUE,"Southeast Coastal - Texas Coastal"
+"Dunlin",FALSE,NA
+"Baird's Sandpiper",FALSE,NA
+"Least Sandpiper",TRUE,"Southeast Coastal - Midcontinental"
+"White-rumped Sandpiper",FALSE,NA
+"Buff-breasted Sandpiper",FALSE,NA
+"Pectoral Sandpiper",FALSE,NA
+"Semipalmated Sandpiper",FALSE,NA
+"Short-billed Dowitcher",TRUE,"Southeast Coastal - Texas Coastal"
+"Long-billed Dowitcher",FALSE,NA
+"Spotted Sandpiper",FALSE,NA
+"Solitary Sandpiper",FALSE,NA
+"Lesser Yellowlegs",TRUE,"Southeast Coastal"
+"Willet",TRUE,"Southeast Coastal - Texas Coastal"
+"Greater Yellowlegs",TRUE,"Southeast Coastal - Midcontinental"
+"Wilson's Phalarope",FALSE,NA
