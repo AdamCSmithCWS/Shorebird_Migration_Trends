@@ -19,6 +19,16 @@ source("functions/GAM_basis_function_mgcv.R")
 FYYYY = 1980 #first year of analysis
 
 
+
+# optional removal of all western data ------------------------------------
+east_only <- ""
+remove_west <- FALSE
+if(remove_west){
+  east_only <- "east_only"
+  ssData <- ssData %>% filter(.,DecimalLongitude > -100)
+}
+
+
  # blank holder objects to fill in species loop
  mean_counbts_doy_out <- vector(mode = "list",length = length(sps))
  names(mean_counbts_doy_out) <- sps
@@ -27,7 +37,9 @@ FYYYY = 1980 #first year of analysis
  mean_counbts_year_out <- vector(mode = "list",length = length(sps))
  names(mean_counbts_year_out) <- sps
 
- 
+
+
+# Species loop ------------------------------------------------------------
 for(sp in sps){
 
 if(sp_groups[which(sp_groups$Species == sp),"two_seasons"]){
@@ -156,7 +168,7 @@ for(j in 1:nstrata){
 
 
 # generate neighbourhoods -------------------------------------------------
-
+orig_ss_regions <- readRDS("data/original_shorebird_regions.rds")
 # Voronoi polygons from strata-centroids -----------------------------------
 # voronoi polygons ensures all strata have neighbours
 # this approach is an ad-hoc way of ensuring that all strata are able to share information
@@ -241,7 +253,7 @@ ggp = ggplot(data = real_grid_regs)+
   geom_sf(aes(col = Region))+
   geom_sf_text(aes(label = stratn),size = 3,alpha = 0.3)+
   labs(title = sp)
-pdf(file = paste0("Figures/",sp,"strata_connections_",p_time_series,"_",minspan,"_",min_nyears,".pdf"))
+pdf(file = paste0("Figures/",sp,"strata_connections_",east_only,".pdf"))
 plot(nb_db,cc,col = "pink")
 text(labels = rownames(cc),cc ,pos = 2)
 print(ggp)
@@ -519,7 +531,7 @@ save(list = c("stan_data",
               "vintj",
               "nb_db",
               "cc"),
-     file = paste0("data_ignore/data",sp,"_cmdstanr_data.RData"))
+     file = paste0("data_local/data",sp,east_only,"_cmdstanr_data.RData"))
 
 
 

@@ -390,6 +390,7 @@ orig_ss_regions = sf::read_sf(dsn = "data",
 orig_ss_regions <- select(orig_ss_regions,Region)
 orig_ss_regions = st_transform(orig_ss_regions,crs = laea)
 
+saveRDS(orig_ss_regions,file = "data/original_shorebird_regions.rds")
 # bbs_strata_proj = st_transform(bbs_strata_map,crs = 102003) #USA Contiguous albers equal area projection stanadard from ESRI - https://mgimond.github.io/Spatial/coordinate-systems-in-r.html
 
 prov_state = st_transform(prov_state,crs = laea)

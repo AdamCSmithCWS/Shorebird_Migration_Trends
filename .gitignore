@@ -2,9 +2,10 @@
 .Rhistory
 .RData
 .Ruserdata
-data_ignore/eBird_all/
-data_ignore/
+data_local/eBird_all/
+data_local/
 doc/
+convergence/
 output/
 Figures/
 **arch/
