@@ -37,9 +37,7 @@ cmdstanfit<- modl$sample(data=stan_data,
                parallel_chains = 4,
                max_treedepth = 13,
                adapt_delta = 0.8,
-               init = init_def,
-               #output_dir = output_dir,
-               output_basename = sp_file_name)
+               init = init_def)
 
 
 
