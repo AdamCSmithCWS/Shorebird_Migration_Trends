@@ -1,0 +1,113 @@
+---
+title: "Geographic patterns in trends supplement"
+date: "2022-12-02"
+output: pdf_document
+bibliography: references.bib
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE,results = "asis")
+
+```
+
+# Modeling the mean relative trend among species in each spatial stratum
+
+To estimate and visualize the mult-species spatial patterns in trends, we fit a post-hoc model to the mean-centered stratum-level trend estimates that accounts for the precision of each estimate. In effect, the model estimates the mean, precision weighted, relative trend among all species with estimates in each stratum. So the spatial pattern among strata in these mean relative trends reflect the spatial patterns in trends that are common among species.
+
+## Methods
+
+### Relative stratum-level trends
+
+To account for the variation among species in overall trends, we calculated a relative trend estimate for each stratum and species, by centering the stratum-level trend estimates for each species on the species' mean trend for the same time-period across all strata. This centering was conducted on the log-scale, so that relative measures of proportional change in populations were symmetric about 0.
+
+$$
+logTrend_i = log(NSmooth_{i,b}/NSmooth_{i,a})*(1/Y)
+$$
+
+Where, $NSmooth_{i,b}$ represent the smooth-only estimated annual abundance for stratum-i and year-b, (the end-point of the time-period for the trend) and $NSmooth_{i,a}$ is the same but for the start-point of the time-period. The value $Y$ represents the number of years separating year-a and year-b.
+
+$$
+CenteredTrend_i = logTrend_i - \sum_{i=0}^S logTrend_i*1/S
+$$ 
+
+
+Where $S$ represents the number of strata for a given species.
+
+Using the full posterior distribution of these values of $CenteredTrend_s$, we also calculated the standard deviation of each value of $SDCenteredTrend_s$, assuming an approximately Gaussian posterior.
+
+### Modeling the mean trend among species
+
+The post-hoc model was a relatively simple, measurement-error model of the mean relative trend among species in each stratum. For each stratum-i, the model assumed that each species observed relative trend was estimated with error, as a realised draw from a normal distribution with mean trend $T_{i,s}$ and standard deviation estimated from the data $SDCenteredTrend_s$.
+
+$$
+CenteredTrend_s \sim Normal(T_{s,i},SDCenteredTrend_s)
+$$ 
+
+Each value of $T_{i,s}$ was modeled as a function of a normal distribution with mean $\mu_i$ and standard deviation $\epsilon$. 
+
+$$
+T_{i,s} \sim Normal(\mu_i,\epsilon)
+$$ 
+The parameter $\mu_i$ represented the mean relative trend across species in stratum-i. Negative values of relative trend indicate that the species trends in this region tend to be lower (i.e., more negative or less positive) than they are in other regions where the species has been monitored.
+
+### Priors
+
+The mean relative trend parameter, $\mu_i$ for each stratum was given a normal distribution prior with mean = 0 and standard deviation $\sigma$. The standard deviation parameters in the model ($\epsilon$ and $\sigma$) were given weakly informative, boundary avoiding gamma distribution priors with shape = 2, and scale = 0.1, following [@chung].
+
+### Stan Code for the model
+
+``` stan
+//
+// Mean trends by strata
+// Similar to the measurement error models used to calculated annual
+//mean status for groups of species on the State of Canada's Birds
+
+
+
+data {
+  int<lower=1> nstrata; // number of strata
+  int<lower=1> N; // number of region by species combinations
+  
+  vector[N] t_hat; //vector of centered trend estimates
+  vector[N] sd_hat; //vector of sd of centered trend estimates
+  int<lower=1> strata[N]; //vector of strata indicators
+  
+}
+
+
+parameters {
+  vector[nstrata] mu_strata_raw; //location of distribution of strata level means
+  real true_t[N]; //estimated trend accounting for measurement error
+  real<lower=0> epsilon; //error
+  real<lower=0> sd_strata_raw; //scale of distribution of strata level means
+}
+
+transformed parameters {
+  real mu_t[N]; // vector of stratum means for each estimate
+  vector[nstrata] mu_strata; //mean trends by strata
+  
+  mu_strata = sd_strata_raw*mu_strata_raw; // non-centered prior
+  
+  for(i in 1:N){
+  mu_t[i] = mu_strata[strata[i]];
+  }
+}
+
+
+model{
+  mu_strata_raw ~ normal(0,1);//regularizing prior
+  sum(mu_strata_raw) ~ normal(0,0.001*nstrata); // zero-sum forcing - not really necessary here
+  sd_strata_raw ~ gamma(2,0.1); //zero-avoiding prior 
+  epsilon ~ gamma(2,0.1); //zero-avoiding prior 
+  
+   true_t ~ normal(mu_t,epsilon);
+   
+// measurement error model   
+for(i in 1:N){
+   t_hat[i] ~ normal(true_t[i],sd_hat[i]);
+    } 
+  
+}
+```
+
+## References

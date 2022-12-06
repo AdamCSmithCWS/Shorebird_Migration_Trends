@@ -393,7 +393,7 @@ ItoT <- function(inds = NSamples,
       
       ttt1 <- left_join(ttt1,ttt2,by = ".draw")
       ttt1 <- ttt1 %>% 
-        mutate(td = (t_c - t)*(1/nyrs)) %>% 
+        mutate(td = (t_c - t)*(1/nyrs)) %>% # difference in log(abundance ratios): symetrical about 0
         ungroup() %>% 
         group_by(region) %>% 
         summarise(centered_log_trend = mean(td),
