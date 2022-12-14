@@ -1,18 +1,23 @@
+---
+bibliography: references.bib
+---
+
 # Shorebird_Migration_Trends
 
-Estimate population trends for migrating shorebirds in North America using data from International Shorebird Survey, Ontario Shorebird Survey, and the Atlantic Canada Shorebird Survey
+Estimate population trends for migrating shorebirds in North America (primarily Eastern North America) using data from International Shorebird Survey, Ontario Shorebird Survey, and the Atlantic Canada Shorebird Survey
 
-Hierarchical Bayes model
+Spatially explicit, hierarchical Bayesian model that estimates population trends using a penalized spline (GAM) smoothed population trajectory, similar to [@smith2020].
 
-Based on earlier unpublished models. The results of these earlier models have already been used in a number of conservation applications including the:
-* State of Canada's Birds 2019, 
-* State of North America's Birds 2016
-* Rosenberg et al. 2019
-* Status of Birds in Canada, 2019
+A paper describing the results from this model is currently in review.
 
-Paul Smith and I have been trying to get around to publishing this model for years...
+The results from this model, and earlier versions of it, have already been used in a number of conservation applications including the:
 
-## note on the data availability
+-   [State of Canada's Birds 2019](www.stateofcanadasbirds.org)
 
-I will make the data part of this, of course. Right now the raw data files are too large to add to GitHub. I'll be exploring Git Large File Storage (haven't used it before)
+-   [State of North America's Birds 2016](https://www.stateofthebirds.org/2016)
 
+-   Rosenberg et al. 2019 [@rosenberg2019]
+
+-   [State of the Birds (U.S.A)](www.stateofthebirds.org)
+
+## References

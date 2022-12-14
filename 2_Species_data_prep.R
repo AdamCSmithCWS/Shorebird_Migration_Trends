@@ -20,15 +20,6 @@ FYYYY = 1980 #first year of analysis
 
 
 
-# optional removal of all western data ------------------------------------
-east_only <- ""
-remove_west <- FALSE
-if(remove_west){
-  east_only <- "east_only"
-  ssData <- ssData %>% filter(.,DecimalLongitude > -100)
-}
-
-
  # blank holder objects to fill in species loop
  mean_counbts_doy_out <- vector(mode = "list",length = length(sps))
  names(mean_counbts_doy_out) <- sps
