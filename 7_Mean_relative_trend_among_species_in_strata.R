@@ -1,5 +1,7 @@
 ### estimating the mean relative trend among spatial units (strata and regions)
 
+### also produces supplementary figures of maps of the strata neighbourhood relationships for each species
+### as well as the supplementary figures showing site locations
 
 # PACKAGES ----------------------------------------------------------------
 
@@ -305,6 +307,31 @@ strat_sums <- trends %>%
   print(mpboth)
   dev.off()
   
+
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
 # demo hexagon map with sites, hexagons, and political jurisdictions --------
 
 species <- "Least Sandpiper"
@@ -322,7 +349,7 @@ strata_map = read_sf(dsn = locat,
                      layer = map.file)
 strata_map = st_transform(strata_map,crs = laea)
 
-load(paste0("data/data",species,"_cmdstanr_data0.5_10_2.RData"))
+load(paste0("data_local/arch/data",species,"_cmdstanr_data0.5_10_2.RData"))
 
 
 centres = suppressWarnings(st_centroid(real_grid_regs))
@@ -350,10 +377,10 @@ ggp <- ggplot(data = centres) +
           fill = grey(0.95),
           colour = "white",
           inherit.aes = FALSE)+ 
-  geom_sf(data = vintj,alpha = 0,colour = grey(0.9),inherit.aes = FALSE)+ 
+#  geom_sf(data = vintj,alpha = 0,colour = grey(0.9),inherit.aes = FALSE)+ 
   geom_sf(data = real_grid_regs,alpha = 0,colour = grey(0.85),inherit.aes = FALSE)+
   geom_segment(data=DA,aes(x = long, y = lat,xend=long_to,yend=lat_to),inherit.aes = FALSE,
-               colour = "black",size=0.3,alpha=0.1) +
+               colour = "black",linewidth=0.3,alpha=0.1) +
   xlab("")+
   ylab("")+
   geom_sf(size = 0.9)+
@@ -372,11 +399,16 @@ pdf("Figures/Demo_strata_figure.pdf",
 print(ggp)
 dev.off()
 
-load("data/allShorebirdPrismFallCounts.RData")
 
-pdf("Figures/Demo_strata_figure_all_species.pdf",
-    width = 10,
-    height = 8)
+
+
+
+# pdf("Figures/Demo_strata_figure_all_species.pdf",
+#     width = 10,
+#     height = 8)
+
+maps_out <- vector("list",length = length(sps))
+names(maps_out) <- sps
 for(species in sps){
   map.file = "BBS_ProvState_strata"
   hex_map = poly_grid
@@ -391,11 +423,10 @@ for(species in sps){
                        layer = map.file)
   strata_map = st_transform(strata_map,crs = laea)
  #
-  load(paste0("data/data",species,"_cmdstanr_data0.5_10_2.RData"))
+  load(paste0("data_local/arch/data",species,"_cmdstanr_data0.5_10_2.RData"))
   
   
- # load(paste0("data/data",species,"_GAMYE_strat_simple300.RData"))
-  
+ 
   centres = suppressWarnings(st_centroid(real_grid_regs))
   
   coords = st_coordinates(centres)
@@ -421,29 +452,76 @@ for(species in sps){
             fill = grey(0.95),
             colour = "white",
             inherit.aes = FALSE)+ 
-    geom_sf(data = vintj,alpha = 0,colour = grey(0.9),inherit.aes = FALSE)+ 
+    #geom_sf(data = vintj,alpha = 0,colour = grey(0.9),inherit.aes = FALSE)+ 
     geom_sf(data = real_grid_regs,alpha = 0,colour = grey(0.85),inherit.aes = FALSE)+
     geom_segment(data=DA,aes(x = long, y = lat,xend=long_to,yend=lat_to),inherit.aes = FALSE,
-                 colour = "black",size=0.3,alpha=0.1) +
+                 colour = "black",linewidth=0.3,alpha=0.1) +
     xlab("")+
     ylab("")+
     geom_sf(size = 0.9)+
     theme_bw() +
-    labs(title = paste(species,"strata, linkages, and sites"))+
+    labs(title = paste(species))+
     theme(rect = element_blank(),
           panel.grid.major = element_line(color = "white"),
           axis.text = element_text(size = rel(0.8)))+
     coord_sf(xlim = xb,ylim = yb)+
     theme(legend.position = "none")
   
-  print(ggp)
+  maps_out[[species]] <- ggp
   
   rm(list = c("real_grid_regs","nb_db",
               "DA"))
 }
 
-dev.off()
 
+pdf("Figures/Figure_S4_temp.pdf",
+    width = 8.5,
+    height = 11)
+ 
+  plott <- (maps_out[[1]] +
+    maps_out[[2]] +
+    maps_out[[3]] +
+    maps_out[[4]] +
+    maps_out[[5]] +
+    maps_out[[6]] +
+    maps_out[[7]] +
+    maps_out[[8]] +
+    maps_out[[9]] +
+    maps_out[[10]] +
+    maps_out[[11]] +
+    maps_out[[12]]+
+      maps_out[[15]]+
+      maps_out[[14]] ) + 
+    plot_layout(ncol = 3, nrow = 5) +
+    plot_annotation(caption = "Figure S4. Neighbourhood relationships for the 28 shorebird species included in analyses",
+                    theme = theme(plot.caption = element_text(size = 12,hjust = 0),
+                                  plot.margin = margin(0.75,0.75,0.75,0.75,"in")))
+  
+  print(plott)
+  
+  
+  plott <- (maps_out[[15]] +
+              maps_out[[16]] +
+              maps_out[[17]] +
+              maps_out[[18]] +
+              maps_out[[19]] +
+              maps_out[[20]] +
+              maps_out[[21]] +
+              maps_out[[22]] +
+              maps_out[[23]] +
+              maps_out[[24]] +
+              maps_out[[25]] +
+              maps_out[[26]]+
+              maps_out[[27]]+
+              maps_out[[28]] ) + 
+    plot_layout(ncol = 3, nrow = 5) +
+    plot_annotation(caption = "Figure S4-Cont. Neighbourhood relationships for the 28 shorebird species included in analyses",
+                    theme = theme(plot.caption = element_text(size = 12,hjust = 0),
+                                  plot.margin = margin(0.75,0.75,0.75,0.75,"in")))
+  
+
+  print(plott)
+dev.off()
 
 
 

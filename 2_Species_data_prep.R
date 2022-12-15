@@ -244,7 +244,7 @@ ggp = ggplot(data = real_grid_regs)+
   geom_sf(aes(col = Region))+
   geom_sf_text(aes(label = stratn),size = 3,alpha = 0.3)+
   labs(title = sp)
-pdf(file = paste0("Figures/",sp,"strata_connections_",east_only,".pdf"))
+pdf(file = paste0("Figures/",sp,"strata_connections.pdf"))
 plot(nb_db,cc,col = "pink")
 text(labels = rownames(cc),cc ,pos = 2)
 print(ggp)
@@ -522,7 +522,7 @@ save(list = c("stan_data",
               "vintj",
               "nb_db",
               "cc"),
-     file = paste0("data_local/data",sp,east_only,"_cmdstanr_data.RData"))
+     file = paste0("data_local/data",sp,"_cmdstanr_data.RData"))
 
 
 

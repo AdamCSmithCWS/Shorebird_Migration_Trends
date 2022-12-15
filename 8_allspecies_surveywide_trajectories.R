@@ -7,8 +7,14 @@ source("functions/utility_functions.R")
 source("functions/posterior_summary_functions.R")
 source("Functions/palettes.R")
 
-load("data/allShorebirdPrismFallCounts.RData")
 source("Functions/palettes.R")
+
+#load observation data
+load("data/full_observation_dataset.Rdata")
+#load the hexagon map
+load( "data/hexagon_grid.RData")
+sps <- readRDS("data/species_vector.rds")
+sp_groups <- read.csv("data/seasons_by_species.csv")
 
 indices_out <- NULL
 
@@ -38,7 +44,7 @@ FYYYY = 1980
 
 
 # Species loop ------------------------------------------------------------
-output_dir <- "g:/Shorebird_Migration_Trends/output"
+output_dir <- "output"
 
 
 
@@ -228,15 +234,18 @@ np <- ggplot(data = inds_f,
   ylab("Modeled annual abundance (mean count/survey)")+
   my_col2_traj+
   theme_bw()+
+  labs(caption = str_wrap("Figure S5. Smoothed and unsmoothed population trajectories (displayed as esimated mean count per survey on a log scale) for 28 species of North American shorebirds 1980-2019. The most recent three-generation trends, the previous three-generation trends, and any prior years are separated by vertical bars, and displayed in different colours.",110))+
   theme(legend.position = "none",
         strip.background = element_blank(),
-        strip.text = element_text(size = 8))+
-  facet_wrap(~species,nrow = 6,ncol = 5,
+        strip.text = element_text(size = 8),
+        plot.caption = element_text(size = 10,hjust = 0),
+        plot.margin = margin(0.75,0.75,0.75,0.75,"in"))+
+  facet_wrap(~species,nrow = 7,ncol = 4,
              scales = "free_y")
 
-pdf(file = "Figures/multispecies_trajectory_panel.pdf",
-    width = 10,
-    height = 7.5)
+pdf(file = "Figures/Figure_S5_temp.pdf",
+    width = 8.5,
+    height = 11)
 print(np)
 dev.off()
 

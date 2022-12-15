@@ -1,4 +1,15 @@
 # compiling data for fall migration from eBIrd (ISS), Nature Counts (ACSS and OSS)
+
+
+######## NOTE:
+### This script creates a data file that includes all of the raw count data used in these analyses.
+### The file: "Data/full_observation_dataset.Rdata"
+### and other files in the "data/" folder allow all other scripts to be run
+### this script cannot be run. The original data files from eBird (ISS), the Ontario Shorebird Surveys (OSS), and Atlantic Canada Shorebird Surveys (ACSS) are available from eBird, and regional offices of the Canadian Wildlife Service.
+### This script is provided as an open record of the manipulations conducted on the original databases
+
+
+
 library(auk)
 library(tidyverse)
 library(lubridate)
@@ -12,7 +23,7 @@ library(sf)
 ### setting path to eBird full dataset
 #auk::auk_set_ebd_path("E:/eBird_all",overwrite = T)
 
-# species list from the last analysis - useful to filter down to the species likely to provide sufficient info to estimate trends
+# list of species for which previous models have converged
 sps <- readRDS("data/species_vector.rds")
 
 #ebd <- auk_ebd("E:/eBird_all/ebd_relJun-2020.txt", 
@@ -34,7 +45,7 @@ sps <- readRDS("data/species_vector.rds")
 # post filtering ----------------------------------------------------------
 
 
-data_dir <- "data_ignore"
+data_dir <- "data_local"
 if (!dir.exists(data_dir)) {
   dir.create(data_dir)
 }

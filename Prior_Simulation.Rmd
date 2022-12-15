@@ -1,8 +1,7 @@
 ---
-title: "Prior_Simulation"
+title: "Prior Simulation"
 author: "Adam C. Smith"
-date: "26/08/2021"
-output: html_document
+output: pdf_document
 ---
 
 ```{r setup, include=FALSE, echo=FALSE}
@@ -10,7 +9,7 @@ knitr::opts_chunk$set(echo = TRUE,cache = TRUE)
 ```
 
 
-```{r data_load,echo=FALSE}
+```{r data_load,echo=FALSE,message=FALSE,warning=FALSE}
 library(tidyverse)
 library(sf)
 library(spdep)
@@ -27,15 +26,18 @@ source("functions/GAM_basis_function_mgcv.R")
 
 
 
-#load data
-load("data/allShorebirdPrismFallCounts.RData")
+#load observation data
+load("data/full_observation_dataset.Rdata")
+#load the hexagon map
+load( "data/hexagon_grid.RData")
+sps <- readRDS("data/species_vector.rds")
+sp_groups <- read.csv("data/seasons_by_species.csv")
 grid_spacing <- 300000  # size of squares, in units of the CRS (i.e. meters for lae)
 
  
 FYYYY = 1980
 
-output_dir <- "g:/Shorebird_Migration_Trends/output"
-#output_dir2 <- "g:/Shorebird_Migration_Trends/output"
+output_dir <- "output"
 
 # Loading gen times from Bird et al 2020 --------
 gens = read.csv("data/cobi13486-sup-0004-tables4.csv")
@@ -77,7 +79,7 @@ sp1 = "Semipalmated Plover"
     sp_file_name1 <- "Semipalmated_Plover-gamma-t"
     
     #loading the original data
-    load(paste0("data/data",sp1,"_cmdstanr_data.RData"))
+    load(paste0("data_local/data",sp1,"_cmdstanr_data.RData"))
     #loading the objects saved after model run
     load(paste0(output_dir,"/",sp_file_name1,"_fit_add.RData"))
 
@@ -128,10 +130,10 @@ sp1 = "Semipalmated Plover"
 #                   "sdnoise",
 #                   "alpha_samples",
 #                   "ALPHA1_samples"),
-#          file = "data/temp_SEPL_output.RData")
+#          file = "data_local/temp_SEPL_output.RData")
     
     
-    load("data/temp_SEPL_output.RData")
+    load("data_local/temp_SEPL_output.RData")
     
 
 ```

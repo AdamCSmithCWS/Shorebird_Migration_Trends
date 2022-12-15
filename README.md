@@ -16,4 +16,4 @@ The results from this model, and earlier versions of it, have already been used 
 
 -   Rosenberg et al. [2019](https://doi.org/10.1126/science.aaw1313)
 
-    [State of the Birds (U.S.A)](www.stateofthebirds.org)
+-   [State of the Birds (U.S.A)](www.stateofthebirds.org)

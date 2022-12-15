@@ -1,13 +1,21 @@
-library(tidyverse)
+### script to prepare Figure S3 
 
+library(tidyverse)
 library(posterior)
 library(cmdstanr)
+library(lubridate)
 source("functions/utility_functions.R")
 source("functions/posterior_summary_functions.R")
 source("Functions/palettes.R")
 
-load("data/allShorebirdPrismFallCounts.RData")
 
+
+#load observation data
+load("data/full_observation_dataset.Rdata")
+#load the hexagon map
+load( "data/hexagon_grid.RData")
+sps <- readRDS("data/species_vector.rds")
+sp_groups <- read.csv("data/seasons_by_species.csv")
 
 #lists for stored figures
 
@@ -39,20 +47,17 @@ seasonEffect_out <- NULL
 
 
 # Species loop ------------------------------------------------------------
-output_dir <- "g:/Shorebird_Migration_Trends/output"
+output_dir <- "output"
 
 
 for(sp in sps){
-  #if(sp == "Semipalmated Sandpiper"){next}
   spf = gsub(sp,pattern = " ",replacement = "_")
   spf = gsub(pattern = "\'",replacement = "",
              x = spf)
   
   load(paste0("data/data",sp,"_cmdstanr_data.RData"))
   
-  noise_dist_sel <- noise_dist2
-  
-  sp_file_name <- paste0(spf,"-",prior,"-",noise_dist_sel)
+  sp_file_name <- paste0(spf,"-","gamma-t")
 
   if(file.exists(paste0(output_dir,"/",sp_file_name,"_fit_add.RData"))){
     load(paste0(output_dir,"/",sp_file_name,"_fit_add.RData"))
@@ -83,8 +88,7 @@ for(sp in sps){
     sites_strat = (stan_data$sites)
     nstrata = stan_data$nstrata
     nsites_strat = stan_data$nsites_strat
-    # #offsets = stan_data$site_size
-    #
+    
     sitesbystrat = NULL
     for(st in 1:stan_data$nstrata){
       tmp = data.frame(strat = st,
@@ -98,36 +102,7 @@ for(sp in sps){
                 lci = quantile(exp(.value),0.025),
                 uci = quantile(exp(.value),0.975)) %>%
       mutate(site = s) %>% left_join(.,sitesbystrat)
-    #
-    # # ## site-effects against the observed counts at each site
-    # nr = ceiling(sqrt(nstrata))
-    # obs_by_alpha = ggplot(data = alphas,aes(x = site,y = mean))+
-    #   geom_pointrange(aes(ymin = lci,ymax = uci),colour = "red")+
-    #   geom_point(data = dts, inherit.aes = FALSE,aes(x = site,y = count),
-    #              fill = grDevices::grey(0.6),colour = grDevices::grey(0),alpha = 0.1,
-    #              position = position_jitter(width = 0.2,height = 0))+
-    #   labs(title = sp)+
-    #   facet_wrap(~strat,nrow = nr,ncol = nr,scales = "free")+
-    #   theme_minimal()
-    # 
-    # # pdf(paste0("Figures/",sp,prior,"_",noise_dist_sel,"_obs_by_alpha.pdf"),
-    # #     width = 11,
-    # #     height = 11)
-    # # print(obs_by_alpha)
-    # # dev.off()
-    # 
-    # # 
-    # # 
-    # # 
-    # # # visualize the seasonal corrections --------------------------------------
-    # # 
-    # # 
-    # # 
-    # # # # extracting the seasonal smooth ------------------------------------------
-    # # # 
-    # # 
-    # # 
-    # 
+    
     ALm <- posterior_samples(fit = cmdstanfit,
                              parm = "ALPHA1",
                              dims = NULL) %>%
@@ -143,16 +118,7 @@ for(sp in sps){
 
     scale_adj <- ((sdnm^2)*0.5 + ALm)
     # 
-    # 
-    # # n_by_strat <- dts %>% group_by(strat) %>% 
-    # #   summarise(n_cst = n())
-    # # n_countsby_site <- dts %>% group_by(site,strat) %>% 
-    # #   summarise(n_c = n()) %>% 
-    # #   left_join(.,n_by_strat,by = "strat") %>% 
-    # #   mutate(n_c = n_c/n_cst) %>% 
-    # #   select(site,strat,n_c)
-    # 
-    # 
+    
     n_countsby_site <- dts %>% group_by(site) %>%
       summarise(n_c = n())
     # 
@@ -229,85 +195,7 @@ for(sp in sps){
       
       season_out <- bind_rows(season_out,seasonEffect_plot)
       
-      # pp_simple <- ggplot()+
-      #   geom_point(data = dts,aes(x = date,y = count+1,colour = year),alpha = 0.5,size = 1,position = position_jitter(width = 0.7,height = 0))+
-      #   #geom_smooth(data = dts,aes(x = date,y = count+1))+
-      #   scale_colour_viridis_c()+
-      #   geom_line(data = seasonEffect_plot,aes(x = day,y = mean),inherit.aes = FALSE)+
-      #   #coord_cartesian(ylim = c(0,yup))+
-      #   geom_ribbon(data = seasonEffect_plot,aes(x = day,y = mean,ymax = uci,ymin = lci),alpha = 0.2,inherit.aes = FALSE)+
-      #   ylab("")+
-      #   xlab("Days since July 1")+
-      #   scale_y_log10()+
-      #   facet_wrap(facets = ~seas_strat,nrow = 2, ncol = 1,scales = "free")+
-      #   labs(title = sp)
-      # 
-      # print(pp_simple)
-      # 
-      # 
       
-      # out_simple_season_graphs[[sp]] <- pp_simple
-      # 
-      # 
-      # ncl = 3
-      # nrr = 3
-      # ppag = ncl*nrr
-      # rem = nstrata-(floor(nstrata/ppag)*ppag)
-      # if(rem < ncl){
-      #   nrr = 4
-      #   ppag = ncl*nrr
-      #   rem = nstrata-(floor(nstrata/ppag)*ppag)
-      # }
-      # if(rem < ncl){
-      #   nrr = 3
-      #   ncl = 2
-      #   ppag = ncl*nrr
-      #   rem = nstrata-(floor(nstrata/ppag)*ppag)
-      # }
-      # if(rem < ncl){
-      #   nrr = 5
-      #   ncl = 3
-      #   ppag = ncl*nrr
-      #   rem = nstrata-(floor(nstrata/ppag)*ppag)
-      # }
-      # 
-      # tmp_season_graphs <- vector(mode = "list",length = ceiling(nstrata/ppag))
-      # 
-      # pdf(file = paste0("Figures/",sp,prior,"_",noise_dist_sel,"_cmd_simple_Season.pdf"),
-      #     width = 8.5,
-      #     height = 8.5)
-      # 
-      # 
-      # for(jj in 1:ceiling(nstrata/ppag)){
-      #   #yup <- quantile(dts$count,0.99)
-      #   pp <- ggplot()+
-      #     # geom_pointrange(data = obs_season,inherit.aes = FALSE,
-      #     #                 aes(x = day,y = mean,ymin = lqrt,ymax = uqrt),alpha = 0.1)+
-      #     geom_point(data = dts,aes(x = date,y = count,colour = year),alpha = 0.5,size = 1,position = position_jitter(width = 0.7,height = 0))+
-      #     scale_colour_viridis_c()+
-      #     geom_line(data = seasonEffect,aes(x = day,y = mean),inherit.aes = FALSE)+
-      #     #coord_cartesian(ylim = c(0,yup))+
-      #     geom_ribbon(data = seasonEffect,aes(x = day,y = mean,ymax = uci,ymin = lci),alpha = 0.2,inherit.aes = FALSE)+
-      #     ylab("")+
-      #     xlab("Days since July 1")+
-      #     facet_wrap_paginate(facets = ~strat,page = jj,nrow = nrr, ncol = ncl,scales = "free")+
-      #     labs(title = sp)
-      #   tmp_season_graphs[[jj]] <- pp
-      #   print(pp)
-      # }
-      # dev.off()
-      # 
-      # pp <- ggplot(data = seasonEffect,aes(x = day,y = mean))+
-      #   # geom_pointrange(data = obs_season,inherit.aes = FALSE,
-      #   #                 aes(x = day,y = mean,ymin = lqrt,ymax = uqrt),alpha = 0.1)+
-      #   geom_point(data = dts,inherit.aes = FALSE,aes(x = day,y = count),alpha = 0.1,size = 1)+
-      #   geom_line()+
-      #   geom_ribbon(aes(x = day,y = mean,ymax = uci,ymin = lci),alpha = 0.2)+
-      #   ylab("")+
-      #   xlab("Days since July 1")+
-      #   labs(title = sp)+
-      #   facet_wrap(facets = ~seas_strat,ncol = 3,scales = "free")
-      # 
       
     }else{
       strat_offs <- alphas %>% group_by(strat) %>% 
@@ -352,11 +240,6 @@ for(sp in sps){
       
       
       
-      # seas_strat_offs <- alphas %>% left_join(.,n_countsby_site,by = "site") %>% 
-      #   group_by(seas_strat) %>% 
-      #   summarise(adjs = mean(mean),
-      #             adjs2 = median(mean))
-      
       seasonEffect_plot <- seasonEffectT %>% 
         mutate(mean = mean*mean(alphas$mean)+1,
                lci = lci*mean(alphas$mean)+1,
@@ -364,78 +247,12 @@ for(sp in sps){
                species = sp)
       
       season_out <- bind_rows(season_out,seasonEffect_plot)
-      # 
-      # pp_simple <- ggplot()+
-      #   geom_point(data = dts,aes(x = date,y = count+1,colour = year),alpha = 0.5,size = 1,position = position_jitter(width = 0.7,height = 0))+
-      #   #geom_smooth(data = dts,aes(x = date,y = count+1))+
-      #   scale_colour_viridis_c()+
-      #   geom_line(data = seasonEffect_plot,aes(x = day,y = mean),inherit.aes = FALSE)+
-      #   #coord_cartesian(ylim = c(0,yup))+
-      #   geom_ribbon(data = seasonEffect_plot,aes(x = day,y = mean,ymax = uci,ymin = lci),alpha = 0.2,inherit.aes = FALSE)+
-      #   ylab("")+
-      #   xlab("Days since July 1")+
-      #   scale_y_log10()+
-      #   labs(title = sp)
-      # #print(pp_simple)
-      # out_simple_season_graphs[[sp]] <- pp_simple
-      # 
-      # pdf(file = paste0("Figures/",sp,prior,"_",noise_dist_sel,"_cmd_simple_Season_simplified.pdf"),
-      #     width = 8.5,
-      #     height = 8.5)
-      # print(pp_simple)
-      # dev.off()
-      # 
-      # ncl = 3
-      # nrr = 3
-      # ppag = ncl*nrr
-      # rem = nstrata-(floor(nstrata/ppag)*ppag)
-      # if(rem < ncl){
-      #   nrr = 4
-      #   ppag = ncl*nrr
-      #   rem = nstrata-(floor(nstrata/ppag)*ppag)
-      # }
-      # if(rem < ncl){
-      #   nrr = 3
-      #   ncl = 2
-      #   ppag = ncl*nrr
-      #   rem = nstrata-(floor(nstrata/ppag)*ppag)
-      # }
-      # if(rem < ncl){
-      #   nrr = 5
-      #   ncl = 3
-      #   ppag = ncl*nrr
-      #   rem = nstrata-(floor(nstrata/ppag)*ppag)
-      # }
-      # tmp_season_graphs <- vector(mode = "list",length = ceiling(nstrata/ppag))
-      # 
-      # pdf(file = paste0("Figures/",sp,prior,"_",noise_dist_sel,"_cmd_simple_Season.pdf"),
-      #     width = 8.5,
-      #     height = 8.5)
-      # 
-      # for(jj in 1:ceiling(nstrata/ppag)){
-      #   #yup <- quantile(dts$count,0.99)
-      #   pp <- ggplot()+
-      #     # geom_pointrange(data = obs_season,inherit.aes = FALSE,
-      #     #                 aes(x = day,y = mean,ymin = lqrt,ymax = uqrt),alpha = 0.1)+
-      #     geom_point(data = dts,aes(x = date,y = count,colour = year),alpha = 0.5,size = 1,position = position_jitter(width = 0.7,height = 0))+
-      #     scale_colour_viridis_c()+
-      #     geom_line(data = seasonEffect,aes(x = day,y = mean),inherit.aes = FALSE)+
-      #     #coord_cartesian(ylim = c(0,yup))+
-      #     geom_ribbon(data = seasonEffect,aes(x = day,y = mean,ymax = uci,ymin = lci),alpha = 0.2,inherit.aes = FALSE)+
-      #     ylab("")+
-      #     xlab("Days since July 1")+
-      #     facet_wrap_paginate(facets = ~strat,page = jj,nrow = nrr, ncol = ncl,scales = "free")+
-      #     labs(title = sp)
-      #   tmp_season_graphs[[jj]] <- pp
-      #   print(pp)
-      # }
-      # dev.off()
-      # 
+      
     }
     
 save(list = c("seasonEffect_out",
               "season_out"),
-     file = "Data/Season_effects.RData")
+     file = "Data_local/Season_effects.RData")
     
 print(sp)
   }
@@ -449,7 +266,7 @@ print(sp)
 
 
 
-load("Data/Season_effects.RData")
+load("Data_local/Season_effects.RData")
 
 d1 <- yday(as.Date.character("2019-6-30","%Y-%m-%d"))
 od <- function(x){
@@ -508,26 +325,6 @@ dev.off()
 
 
 
-seasonEffect_out <- seasonEffect_out %>% 
-  mutate(Season_Region = factor(ifelse(is.na(seas_strat)|seas_strat == 1,"Northern",
-                                "Southern")))
-
-
-season_spag1 <- ggplot(data = seasonEffect_out,aes(x = day,y = mean,
-                                            group = Season_Region,
-                                            colour = Season_Region))+
-  geom_ribbon(aes(x = day,y = mean,
-                  ymin = lci,ymax = uci,fill = Season_Region),
-              inherit.aes = FALSE,alpha = 0.2)+
-  geom_line(alpha = 0.5)+
-  my_col_sim+
-  scale_y_continuous(trans = "log10")+
-  facet_wrap(vars(species),
-             nrow = 5,
-             ncol = 6,
-             scales = "free_y")
-
-print(season_spag1)
 
 
 
