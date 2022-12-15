@@ -9,7 +9,7 @@ knitr::opts_chunk$set(echo = TRUE,cache = TRUE)
 ```
 
 
-```{r data_load,echo=FALSE,message=FALSE,warning=FALSE}
+```{r data_load,echo=FALSE,message=FALSE,warning=FALSE, cache=FALSE}
 library(tidyverse)
 library(sf)
 library(spdep)
@@ -173,7 +173,7 @@ rates = c(0.5,2,1,4)
 
 Then we simulated the stratum-level trajectories using the real data from each posterior draw of the SEPL model output and the proposed prior distribution of SD values for the GAM parameters in each stratum.
 
-```{r}
+```{r, cache=TRUE}
    for(prior_rate in rates){
       #samples from the prior
     sdyear_gam_sim <- rgamma(niter,2,prior_rate)
@@ -279,7 +279,7 @@ The different priors capture a large range of variation in the stratum level tre
 The gamma(2,0.5) and gamma(2,1) include some prior mass at ranges of variation in the trends that are not reasonable to expect in a natural population. They each include substantial prior mass where 90% of the 39-year population trends, vary by more than 30% for an overall stable population. E.g., they may include regional populations that have extreme declines (more than 15%/year) and regional populations that have similarly extreme increases. 
 The gamma(2,2) prior suggest fewer of these extreme levels of variation, although it still includes a long-tail allowing for unlikely levels of variation.
 
-```{r trend_distributions, fig.show='asis'}
+```{r trend_distributions}
  
  br = c(0,5,10,20,30,50,100,150)
  lb = paste0(br,"%") #x-axis labels
@@ -297,7 +297,7 @@ The gamma(2,4) prior allows for high levels of variation in the range of long-te
 
 
 
-```{r change_distributions, fig.show='asis'}
+```{r change_distributions}
  
  ch_stack <- Trends_comp_out %>% select(prior_scale,p_ch_1,p_ch_9) %>%
    pivot_longer(.,cols = starts_with("p_ch"),

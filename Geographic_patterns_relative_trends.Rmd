@@ -21,8 +21,9 @@ To estimate and visualize the mult-species spatial patterns in trends, we fit a 
 To account for the variation among species in overall trends, we calculated a relative trend estimate for each stratum and species, by centering the stratum-level trend estimates for each species on the species' mean trend for the same time-period across all strata. This centering was conducted on the log-scale, so that relative measures of proportional change in populations were symmetric about 0.
 
 $$
-logTrend_i = log(nSmooth_{i,b}/nSmooth_{i,a})*(1/Y)
+logTrend_i = log(nSmooth_{i,b}/nSmooth_{i,a})*(1/Y) 
 $$
+
 
 Where, $nSmooth_{i,b}$ represent the smooth-only estimated annual abundance for stratum-i and year-b, (the end-point of the time-period for the trend) and $nSmooth_{i,a}$ is the same but for the start-point of the time-period. The value $Y$ represents the number of years separating year-a and year-b.
 
