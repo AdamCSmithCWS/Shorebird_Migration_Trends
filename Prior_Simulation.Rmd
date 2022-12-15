@@ -1,15 +1,13 @@
 ---
-title: "Prior Simulation"
-author: "Adam C. Smith"
 output: pdf_document
 ---
 
 ```{r setup, include=FALSE, echo=FALSE}
 knitr::opts_chunk$set(echo = TRUE,cache = TRUE)
 ```
+# Appendix S4 Model assessment and evaluation
 
-
-```{r data_load,echo=FALSE,message=FALSE,warning=FALSE, cache=FALSE}
+```{r data_load,echo=FALSE,message=FALSE,warning=FALSE, cache=TRUE}
 library(tidyverse)
 library(sf)
 library(spdep)
@@ -46,19 +44,17 @@ fullgensnames = read.csv("data/cobi13486-sup-0001-tables1.csv")
 fullgensnames <- fullgensnames %>% select(Scientific_name,Common_name)
 gens <- gens %>% select(Scientific_name,
                         GenLength) %>% 
-   left_join(.,fullgensnames)
+   left_join(.,fullgensnames, by = "Scientific_name")
 
 gens[which(gens$Common_name == "American Golden Plover"),"Common_name"] <- "American Golden-Plover"
 gens[which(gens$Common_name == "Grey Plover"),"Common_name"] <- "Black-bellied Plover"
-
-sps[-which(sps %in% gens$Common_name)]
 
 gens <- gens %>% filter(Common_name %in% sps)
 
 
 ```
 
-## Priors for the spatial variance in GAM parameters
+## Prior simulations for the spatial variance in GAM parameters
 
 The stratum-level population trajectories are fit using a spatially explicit, hierarchical GAM smooth. This spatial hierarchical structure allows the model to share information on the shape of the population trajectory among neighbouring strata and across the full range of the sites monitored for a given species. The variation among strata in the shape of the population trajectory is estimated using an intrinsic conditional autoregressive (iCAR) structure. This iCAR component of the model estimates the parameters of the GAM smooth as drawn from a normal distribution centered on the means of the parameter values in the neighbouring strata and with an estimated standard deviation (SD). The value of the SD controls the amount of variation in the shape of the trajectories among strata.
 
@@ -313,7 +309,8 @@ The gamma(2,4) prior allows for high levels of variation in the range of long-te
    scale_x_log10(breaks = br,labels = lb)+
    scale_fill_viridis_d(end = 0.8)+
    xlab("10th and 90th percentile of stratum-level population change")+
-   facet_wrap(~prior_scale,scales = "free")
+   facet_wrap(~prior_scale,scales = "free")+
+   theme(legend.position = "bottom")
  
  print(ggh_p)
  
