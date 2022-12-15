@@ -493,7 +493,7 @@ pdf("Figures/Figure_S4_temp.pdf",
       maps_out[[15]]+
       maps_out[[14]] ) + 
     plot_layout(ncol = 3, nrow = 5) +
-    plot_annotation(caption = "Figure S4. Neighbourhood relationships for the 28 shorebird species included in analyses",
+    plot_annotation(caption = str_wrap("Figure S4. Neighbourhood relationships for the 28 shorebird species included in analyses. The hexagons represent the spatial strata, within which individual survey sites were grouped. The points are centroids of the hexagons, and the lines connecting points represent the strata that are considered neighbours in the intrinsic Conditional Autoregressive component of the model",75),
                     theme = theme(plot.caption = element_text(size = 12,hjust = 0),
                                   plot.margin = margin(0.75,0.75,0.75,0.75,"in")))
   
