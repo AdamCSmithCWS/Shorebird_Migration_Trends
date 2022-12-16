@@ -1,10 +1,12 @@
 ---
 output: pdf_document
+bibliography: references.bib
 ---
 
 ```{r setup, include=FALSE, echo=FALSE}
 knitr::opts_chunk$set(echo = TRUE,cache = TRUE)
 ```
+
 # Appendix S4 Model assessment and evaluation
 
 ```{r data_load,echo=FALSE,message=FALSE,warning=FALSE, cache=TRUE}
@@ -58,13 +60,11 @@ gens <- gens %>% filter(Common_name %in% sps)
 
 The stratum-level population trajectories are fit using a spatially explicit, hierarchical GAM smooth. This spatial hierarchical structure allows the model to share information on the shape of the population trajectory among neighbouring strata and across the full range of the sites monitored for a given species. The variation among strata in the shape of the population trajectory is estimated using an intrinsic conditional autoregressive (iCAR) structure. This iCAR component of the model estimates the parameters of the GAM smooth as drawn from a normal distribution centered on the means of the parameter values in the neighbouring strata and with an estimated standard deviation (SD). The value of the SD controls the amount of variation in the shape of the trajectories among strata.
 
-An appropriate prior for the SD parameter is not intuitive, because the GAM parameters do not directly reflect a biological process for which prior knowledge might provide an informative prior. Priors on variance parameters can be unintentionally informative if the put substantial prior mass at improbable levesl of variation (). Therefore, we conducted a prior simulation to translate the SD priors into a variation in long-term population trends, for which we do have some biological intuition. The simulation was designed to ensure that the prior on the spatial SD was largely uninformative, allowing for a reasonably broad range of long-term (1980-2019) population trend estimates across a species migration range, and that it did not contain substantial prior mass at highly improbable levels of variation (Lemoine 2019).   
+An appropriate prior for the SD parameter is not intuitive, because the GAM parameters do not directly reflect a biological process for which prior knowledge might provide an informative prior. Priors on variance parameters can be unintentionally informative if they put substantial prior mass at improbable levels of variation [@banner2020]. Therefore, we conducted a prior simulation to translate the SD priors into a variation in long-term population trends, for which we do have some biological intuition. The simulation was designed to ensure that the prior on the spatial SD was largely uninformative, allowing for a reasonably broad range of long-term (1980-2019) population trend estimates across a species migration range, and that it did not contain substantial prior mass at highly improbable levels of variation [@lemoine2019].
 
 ### Simulation
 
-We simulated population trajectories from the model, using estimated parameter values for Semipalmated Plover for all parameters except the stratum-level GAM parameters. We chose to use Semipalmated Plover as the example species in the simulation so that the simulated data would closely match real data and because the Semipalmated Plover mean population trajectory is largely stable through time. Simulating a stable population allowed us to more intuitively assess the variation in population trends in the simulated data. 
-
-
+We simulated population trajectories from the model, using estimated parameter values for Semipalmated Plover for all parameters except the stratum-level GAM parameters. We chose to use Semipalmated Plover as the example species in the simulation so that the simulated data would closely match real data and because the Semipalmated Plover mean population trajectory is largely stable through time. Simulating a stable population allowed us to more intuitively assess the variation in population trends in the simulated data.
 
 ```{r SEPL}
 
@@ -138,7 +138,6 @@ sp1 = "Semipalmated Plover"
 
 We used the realised adjacency matrix for SEPL monitoring data to generate the distribution of stratum-level GAM parameters.
 
-
 ```{r matrix_setup}
 
 #neighbourhood matrix from the original species data
@@ -160,7 +159,7 @@ We used the realised adjacency matrix for SEPL monitoring data to generate the d
     
 ```
 
-We used gamma priors as weakly informative, boundary-avoiding priors on the SD. All gamma priors had a shape parameter = 2, so that the mode of the prior distribution = 1/rate, following (Chung et al. 2013). USing a gamma distribution excludes values of 0 from the prior on the SD. We assessed four alternative rate parameters c(0.5,1,2,4). This selection of parameter values allow the priors to span a wide range of distributions, where the prior modes range from 0.25 (4) to 2 (0.5) and the upper 95 percentile of prior distributions range from 1.2 (4) to 10 (0.5).
+We used gamma priors as weakly informative, boundary-avoiding priors on the SD. All gamma priors had a shape parameter = 2, so that the mode of the prior distribution = 1/rate, following [@chung]. Using a gamma distribution excludes values of 0 from the prior on the SD. We assessed four alternative rate parameters c(0.5,1,2,4). This selection of parameter values allow the priors to span a wide range of distributions, where the prior modes range from 0.25 (4) to 2 (0.5) and the upper 95 percentile of prior distributions range from 1.2 (4) to 10 (0.5).
 
 ```{r rates}
 rates = c(0.5,2,1,4)
@@ -269,11 +268,9 @@ Then we simulated the stratum-level trajectories using the real data from each p
 
 ```
 
-
 The different priors capture a large range of variation in the stratum level trend estimates.
 
-The gamma(2,0.5) and gamma(2,1) include some prior mass at ranges of variation in the trends that are not reasonable to expect in a natural population. They each include substantial prior mass where 90% of the 39-year population trends, vary by more than 30% for an overall stable population. E.g., they may include regional populations that have extreme declines (more than 15%/year) and regional populations that have similarly extreme increases. 
-The gamma(2,2) prior suggest fewer of these extreme levels of variation, although it still includes a long-tail allowing for unlikely levels of variation.
+The gamma(2,0.5) and gamma(2,1) include some prior mass at ranges of variation in the trends that are not reasonable to expect in a natural population. They each include substantial prior mass where 90% of the 39-year population trends, vary by more than 30% for an overall stable population. E.g., they may include regional populations that have extreme declines (more than 15%/year) and regional populations that have similarly extreme increases. The gamma(2,2) prior suggest fewer of these extreme levels of variation, although it still includes a long-tail allowing for unlikely levels of variation.
 
 ```{r trend_distributions}
  
@@ -283,22 +280,22 @@ The gamma(2,2) prior suggest fewer of these extreme levels of variation, althoug
    geom_histogram(bins = 50)+
    scale_x_continuous(breaks = br,labels = lb,limits = c(0,NA))+
    xlab("Difference between 95th and 5th percentiles of stratum-level long-term trend estimates (%/year)")+
+   theme(text = element_text(family = "serif"))+
    facet_wrap(~prior_scale,scales = "free")
 
  print(ggh_t)
  
 ```
 
-The gamma(2,4) prior allows for high levels of variation in the range of long-term trends, but the 10th and 90th percentiles of the stratum-level estimates of %-change in the population are largely limited to feasible values of local population change. Whereas the other priors include substantial prior mass that includes extremely unlikly levels of local population change (i.e., populations that have increased and decreased by more than 4 orders of magnitude) 
-
-
+The gamma(2,4) prior allows for high levels of variation in the range of long-term trends, but the 10th and 90th percentiles of the stratum-level estimates of %-change in the population are largely limited to feasible values of local population change. Whereas the other priors include substantial prior mass at extremely unlikely levels of local population change (i.e., populations that have increased and decreased by more than 4 orders of magnitude)
 
 ```{r change_distributions}
  
  ch_stack <- Trends_comp_out %>% select(prior_scale,p_ch_1,p_ch_9) %>%
    pivot_longer(.,cols = starts_with("p_ch"),
                                               names_to = "quantile_population_change",
-                                              values_to = "Percent_change")
+                                              values_to = "Percent_change") %>% 
+   mutate(quantile_population_change = ifelse(quantile_population_change == "p_ch_1","10th percentile","90th percentile"))
 
 
  
@@ -310,17 +307,10 @@ The gamma(2,4) prior allows for high levels of variation in the range of long-te
    scale_fill_viridis_d(end = 0.8)+
    xlab("10th and 90th percentile of stratum-level population change")+
    facet_wrap(~prior_scale,scales = "free")+
-   theme(legend.position = "bottom")
+   theme(text = element_text(family = "serif"),
+         legend.position = "bottom")
  
  print(ggh_p)
  
  
 ```
-
-
-
-
-
-
-
-

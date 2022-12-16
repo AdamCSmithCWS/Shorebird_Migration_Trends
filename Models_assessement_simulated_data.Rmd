@@ -19,7 +19,7 @@ library(tidyverse)
 
 The hierarchical GAMYE model in this paper is based on the model in [@smith2020]. The basic model, hierarchical GAM smooth plus year-effects, works well for tracking non-linear patterns in population trajectories.
 
-The shorebird migration monitoring data have some particular biases in space and time, in that many sites and regions have been surveyed for only a portion of the entire 40-year time-series. If they are severe, these spatial and temporal biases and imbalances could confound estimates of population trends. 
+The shorebird migration monitoring data have some particular biases in space and time, in that many sites and regions have been surveyed for only a portion of the entire 40-year time-series. If they are severe, these spatial and temporal biases and imbalances could confound estimates of population trends.
 
 Here we generated simulated data that exactly match the realized spatial and temporal distribution of counts and surveys in the real monitoring data, but include a known population trend that varies in space. Using these simulated data, we assessed the model's ability to accurately estimate the true simulated trend overall, and in each region. In addition, to specifically test the rigor of one of the key patterns in the real data--that most species of shorebirds show accelerating rates of decline--the simulated data had a constant rate of decline over the entire time period. So in addition to testing if the model could accurately estimate the true rate of decline over the long-term, we also tested if the model could accurately estimate the same long- and short-term trends.
 
@@ -45,6 +45,7 @@ trend_comparison_full <- ggplot(data = sim_T,aes(x = true_trend,y = trend,
             geom_abline(intercept = 0,slope = 1)+
   scale_colour_viridis_d(begin = 0.2,end = 0.9)+
   theme_bw()+
+   theme(text = element_text(family = "serif"))+
   labs(title = "Estimated vs true trends for simulated shorebird migration data")
           
 
@@ -53,8 +54,8 @@ print(trend_comparison_full)
 
 ```
 
+In addition to accurately estimating the simulated survey-wide trends, the model also accurately estimated the strata level trends that varied by latitude. Here again there is evidence of a regularizing effect for the more extreme strata-level trends (e.g., trends \< -6%/year), but with the exception of a few of the strata with the most extreme declines, all 95% credible intervals overlap the true simulated strata-level trends.
 
-In addition to accurately estimating the simulated survey-wide trends, the model also accurately estimated the strata level trends that varied by latitude. Here again there is evidence of a regularizing effect for the more extreme strata-level trends (e.g., trends < -6%/year), but with the exception of a few of the strata with the most extreme declines, all 95% credible intervals overlap the true simulated strata-level trends. 
 ```{r strata-level trend comparison plot, warning=FALSE}
 
 
@@ -73,6 +74,7 @@ trend_comparison_regional <- ggplot(data = sim_t,aes(x = true_trend,y = trend,
             geom_abline(intercept = 0,slope = 1)+
   scale_colour_viridis_d(begin = 0.2,end = 0.9)+
   theme_bw()+
+   theme(text = element_text(family = "serif"))+
   labs(title = "Estimated vs true trends for simulated shorebird migration data")+
   theme(legend.position = "none")
           
@@ -82,12 +84,12 @@ print(trend_comparison_regional)
 
 ```
 
-
-
 ## Simulating the data
 
 ### Extracting the realized survey data and estimated parameters
 
 To simulate the data, we took the observed surveys for each species (combinations of survey dates and sites) and used the realized estimates of seasonal-effects, site intercepts, and overdispersion to create simulated counts for each survey event from a population with a true log-linear population trend equal to the estimated survey-wide long-term trend for the species. For example, for Red Knot, the simulated data were based on a population that was declining at a constant rate of -6.9%/year, and had the same set of realized monitoring surveys since 1980.
 
-The code in the online code supplement "5_Fit_simulated_data_models.R", creates the simulated data, fits the model, and then estimates the trends to create the plots above. 
+The code in the online code supplement "5_Fit_simulated_data_models.R", creates the simulated data, fits the model, and then estimates the trends to create the plots above.
+
+## References

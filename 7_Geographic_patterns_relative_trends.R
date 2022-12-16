@@ -19,8 +19,12 @@ library(patchwork)
 
 
 source("Functions/Utility_functions.R")
-# loading the base hexagon map
-load("data/hexagon_grid.RData")
+#load observation data
+load("data/full_observation_dataset.Rdata")
+#load the hexagon map
+load( "data/hexagon_grid.RData")
+sps <- readRDS("data/species_vector.rds")
+sp_groups <- read.csv("data/seasons_by_species.csv")
 
 # DATA LOAD --------------------------------------------------
 
@@ -461,7 +465,8 @@ for(species in sps){
     geom_sf(size = 0.9)+
     theme_bw() +
     labs(title = paste(species))+
-    theme(rect = element_blank(),
+    theme(text = element_text(family = "serif"),
+          rect = element_blank(),
           panel.grid.major = element_line(color = "white"),
           axis.text = element_text(size = rel(0.8)))+
     coord_sf(xlim = xb,ylim = yb)+
@@ -494,7 +499,7 @@ pdf("Figures/Figure_S4_temp.pdf",
       maps_out[[14]] ) + 
     plot_layout(ncol = 3, nrow = 5) +
     plot_annotation(caption = str_wrap("Figure S4. Neighbourhood relationships for the 28 shorebird species included in analyses. The hexagons represent the spatial strata, within which individual survey sites were grouped. The points are centroids of the hexagons, and the lines connecting points represent the strata that are considered neighbours in the intrinsic Conditional Autoregressive component of the model",75),
-                    theme = theme(plot.caption = element_text(size = 12,hjust = 0),
+                    theme = theme(plot.caption = element_text(size = 12,hjust = 0,family="serif"),
                                   plot.margin = margin(0.75,0.75,0.75,0.75,"in")))
   
   print(plott)
@@ -516,7 +521,7 @@ pdf("Figures/Figure_S4_temp.pdf",
               maps_out[[28]] ) + 
     plot_layout(ncol = 3, nrow = 5) +
     plot_annotation(caption = "Figure S4-Cont. Neighbourhood relationships for the 28 shorebird species included in analyses",
-                    theme = theme(plot.caption = element_text(size = 12,hjust = 0),
+                    theme = theme(plot.caption = element_text(size = 12,hjust = 0,family="serif"),
                                   plot.margin = margin(0.75,0.75,0.75,0.75,"in")))
   
 

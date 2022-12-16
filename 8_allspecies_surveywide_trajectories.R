@@ -235,7 +235,8 @@ np <- ggplot(data = inds_f,
   my_col2_traj+
   theme_bw()+
   labs(caption = str_wrap("Figure S5. Smoothed and unsmoothed population trajectories (displayed as esimated mean count per survey on a log scale) for 28 species of North American shorebirds 1980-2019. The most recent three-generation trends, the previous three-generation trends, and any prior years are separated by vertical bars, and displayed in different colours.",110))+
-  theme(legend.position = "none",
+  theme(text = element_text(family = "serif"),
+        legend.position = "none",
         strip.background = element_blank(),
         strip.text = element_text(size = 8),
         plot.caption = element_text(size = 10,hjust = 0),
