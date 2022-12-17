@@ -1,6 +1,10 @@
 ---
-output: pdf_document
 bibliography: references.bib
+fontsize: 12pt
+mainfont: Times New Roman
+output: 
+  pdf_document:
+    latex_engine: xelatex
 ---
 # Appendix S2 Description of the model used to analyse the multi-species spatial pattern in trends
 ```{r setup, include=FALSE}

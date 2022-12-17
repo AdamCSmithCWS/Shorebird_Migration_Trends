@@ -1,6 +1,10 @@
 ---
-output: pdf_document
 bibliography: references.bib
+fontsize: 12pt
+mainfont: Times New Roman
+output: 
+  pdf_document:
+    latex_engine: xelatex
 ---
 
 ```{r setup, include=FALSE}
@@ -25,7 +29,7 @@ Here we generated simulated data that exactly match the realized spatial and tem
 
 ### Overall results of simulation
 
-For all species, the model was able to accurately estimate the true underlying trend over the long-term, with some regularizing effect on the more extreme decline estimates. Similarly, the estimated trends for the recent three-generations all have 95% CI that overlap the true trend In comparison to the long-term trend estimates, there is an even stronger regularizing effect for the shorter-term trends. This regularization for extreme long-term trends and for the short-term trends is a desirable feature of this hierarchical model, that guards against making extreme findings of population change without strong evidence. It also makes it clear that there is relatively strong evidence of a recent acceleration in shorebird declines for many species in the real survey data.
+For all species, the model was able to accurately estimate the true underlying trend over the long-term, with some regularizing effect on the more extreme decline estimates. Similarly, the estimated trends for the recent three-generations all have 95% CI that overlap the true trend. In comparison to the long-term trend estimates, there is an even stronger regularizing effect for the shorter-term trends. This regularization for extreme long-term trends and for the short-term trends is a desirable feature of this hierarchical model, that guards against making extreme findings of population change without strong evidence. It also makes it clear that there is relatively strong evidence of a recent acceleration in shorebird declines for many species in the real survey data.
 
 ```{r overall trend comparison plot, warning=FALSE}
 

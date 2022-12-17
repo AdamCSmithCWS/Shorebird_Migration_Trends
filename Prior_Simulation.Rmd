@@ -1,6 +1,10 @@
 ---
-output: pdf_document
 bibliography: references.bib
+fontsize: 12pt
+mainfont: Times New Roman
+output: 
+  pdf_document:
+    latex_engine: xelatex
 ---
 
 ```{r setup, include=FALSE, echo=FALSE}
@@ -159,7 +163,7 @@ We used the realised adjacency matrix for SEPL monitoring data to generate the d
     
 ```
 
-We used gamma priors as weakly informative, boundary-avoiding priors on the SD. All gamma priors had a shape parameter = 2, so that the mode of the prior distribution = 1/rate, following [@chung]. Using a gamma distribution excludes values of 0 from the prior on the SD. We assessed four alternative rate parameters c(0.5,1,2,4). This selection of parameter values allow the priors to span a wide range of distributions, where the prior modes range from 0.25 (4) to 2 (0.5) and the upper 95 percentile of prior distributions range from 1.2 (4) to 10 (0.5).
+We used gamma priors as weakly informative, boundary-avoiding priors on the SD. All gamma priors had a shape parameter = 2, so that the mode of the prior distribution = 1/rate, following [@chung]. Using a gamma distribution excludes values of 0 from the prior on the SD. We assessed four alternative rate parameters c(0.5,1,2,4). This selection of parameter values allow the priors to span a wide range of distributions, where the prior modes range from 0.25 (4) to 2 (0.5) and the upper 95th percentile of prior distributions range from 1.2 (4) to 10 (0.5).
 
 ```{r rates}
 rates = c(0.5,2,1,4)
@@ -270,7 +274,7 @@ Then we simulated the stratum-level trajectories using the real data from each p
 
 The different priors capture a large range of variation in the stratum level trend estimates.
 
-The gamma(2,0.5) and gamma(2,1) include some prior mass at ranges of variation in the trends that are not reasonable to expect in a natural population. They each include substantial prior mass where 90% of the 39-year population trends, vary by more than 30% for an overall stable population. E.g., they may include regional populations that have extreme declines (more than 15%/year) and regional populations that have similarly extreme increases. The gamma(2,2) prior suggest fewer of these extreme levels of variation, although it still includes a long-tail allowing for unlikely levels of variation.
+The gamma(2,0.5) and gamma(2,1) include some prior mass at ranges of variation in the trends that are not reasonable to expect in a natural population. They each include substantial prior mass where 90% of the 39-year population trends vary by more than 30%/year for an overall stable population. E.g., they may include regional populations that have extreme declines (more than 15%/year over 39 years) and regional populations that have similarly extreme increases. The gamma(2,2) prior suggest fewer of these extreme levels of variation, although it still includes a long-tail allowing for unlikely levels of variation.
 
 ```{r trend_distributions}
  
