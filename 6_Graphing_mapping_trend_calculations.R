@@ -1099,7 +1099,7 @@ for(sp in sps){
 t2 = Sys.time()
 t2-t1
 
-write.csv(trendsout,paste0("trends/All_region_strata_gamma_t_composite_trends.csv"),row.names = FALSE)
+#write.csv(trendsout,paste0("trends/All_region_strata_gamma_t_composite_trends.csv"),row.names = FALSE)
 
 TRENDSout <- TRENDSout %>% relocate(species,start_year,end_year,trend_type) %>% 
   select(-parameter)
@@ -1111,12 +1111,12 @@ trendsoutsplit <- trendsout %>% relocate(species,start_year,end_year,trend_type,
            group_split()
 
 
-write.csv(trendsoutsplit[[1]],paste0("trends/All_strata_gamma_t_level_trends.csv"),row.names = FALSE)
-write.csv(trendsoutsplit[[2]],paste0("trends/All_region_",prior,"_",noise_dist_sel,"_level_trends.csv"),row.names = FALSE)
+# write.csv(trendsoutsplit[[1]],paste0("trends/All_strata_gamma_t_level_trends.csv"),row.names = FALSE)
+# write.csv(trendsoutsplit[[2]],paste0("trends/All_region_",prior,"_",noise_dist_sel,"_level_trends.csv"),row.names = FALSE)
 
-write.csv(TRENDSout,paste0("trends/All_",prior,"_",noise_dist_sel,"_survey_wide_trends.csv"),row.names = FALSE)
+write.csv(TRENDSout,paste0("trends/All_Shorebird_migration_survey_wide_trends.csv"),row.names = FALSE)
 
-write.csv(Trend_difout,paste0("trends/All_",prior,"_",noise_dist_sel,"_survey_wide_Differences_in_trends.csv"),row.names = FALSE)
+write.csv(Trend_difout,paste0("trends/All_trend_differences_survey_wide_shorebird_migration_surveys.csv"),row.names = FALSE)
 
 
 save(list = c("trend_maps_1980",
