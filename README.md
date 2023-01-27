@@ -6,7 +6,7 @@ Estimate population trends for migrating shorebirds in North America (primarily 
 
 Spatially explicit, hierarchical Bayesian model that estimates population trends using a penalized spline (GAM) smoothed population trajectory, similar to Smith and Edwards [2020](https://doi.org/10.1093/ornithapp/duaa065).
 
-A paper describing the results from this model is currently in review.
+A paper describing the results from this model is in press at Ornithological Applications.
 
 The results from this model, and earlier versions of it, have already been used in a number of conservation applications including the:
 
