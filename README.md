@@ -2,6 +2,8 @@
 
 # Shorebird_Migration_Trends
 
+publication release: [![DOI](https://zenodo.org/badge/188279589.svg)](https://zenodo.org/badge/latestdoi/188279589)
+
 Estimate population trends for migrating shorebirds in North America (primarily Eastern North America) using data from International Shorebird Survey (ISS), Ontario Shorebird Survey (OSS), and the Atlantic Canada Shorebird Survey (ACSS)
 
 Spatially explicit, hierarchical Bayesian model that estimates population trends using a penalized spline (GAM) smoothed population trajectory, similar to Smith and Edwards [2020](https://doi.org/10.1093/ornithapp/duaa065).
