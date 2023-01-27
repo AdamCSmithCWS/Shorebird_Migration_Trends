@@ -2,7 +2,7 @@
 
 # Shorebird_Migration_Trends
 
-publication release: [![DOI](https://zenodo.org/badge/188279589.svg)](https://zenodo.org/badge/latestdoi/188279589)
+publication release: [![DOI](https://zenodo.org/badge/291260452.svg)](https://zenodo.org/badge/latestdoi/291260452)
 
 Estimate population trends for migrating shorebirds in North America (primarily Eastern North America) using data from International Shorebird Survey (ISS), Ontario Shorebird Survey (OSS), and the Atlantic Canada Shorebird Survey (ACSS)
 
