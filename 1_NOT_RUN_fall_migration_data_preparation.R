@@ -432,6 +432,10 @@ save(list = c("poly_grid"),file = "data/hexagon_grid.RData")
 save(list = c("ssData"),
      file = "Data/full_observation_dataset.Rdata")
 
+#Writing a csv copy of ssData - identical to full_observational_dataset.Rdata
+write.csv(ssData,"full_fall_migration_shorebird_dataset.csv",row.names = FALSE)
+
+
 
 
 

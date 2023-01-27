@@ -6,8 +6,12 @@ library(ggforce)
 library(tidybayes)
 
 
-#load observation data
+#load observation data - this .Rdata file is included in the GitHub repo
 load("data/full_observation_dataset.Rdata")
+#alternate csv version of full_observation_dataset.Rdata
+## csv not included in GitHub repo, but archived on Dryad
+# ssData <- read.csv("full_fall_migration_shorebird_dataset.csv",row.names = FALSE)
+
 #load the hexagon map
 load( "data/hexagon_grid.RData")
 sps <- readRDS("data/species_vector.rds")
