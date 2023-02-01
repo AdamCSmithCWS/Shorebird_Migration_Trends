@@ -175,9 +175,36 @@ inds_distribution_all <- indices_out2 %>%
 write.csv(inds_distribution_all,
           "trends/Survey_wide_smooth_and_full_annual_indices_shorebird.csv",
           row.names = FALSE)
+
+
+# Export for State of Canada's Birds publication --------------------------
+source("functions/loess_func.r")
+inds_socb <- inds_distribution_all %>% 
+  filter(smooth_or_full_indices == "Full") %>% 
+  select(-smooth_or_full_indices) %>% 
+  rename(Index = predicted_mean_abundance,
+         Year = year,
+         lower_ci = lower_95percent_CL,
+         upper_ci = upper_95percent_CL) %>% 
+  group_by(species) %>% 
+mutate(LOESS_index = loess_func(Index,Year))
+
+add_sm <- inds_distribution_all %>% 
+  filter(smooth_or_full_indices == "Smooth") %>% 
+  select(species,year,predicted_mean_abundance) %>% 
+  rename(Alternate_LOESS_index_oringinal_GAM = predicted_mean_abundance,
+         Year = year)
+
+inds_socb <- inner_join(inds_socb,add_sm,
+                        by = c("species","Year"))
+
+
+write.csv(inds_socb, "Trends/Shorebird_migration_2019_annual_indices_for_socb.csv")
+
+
+
+
 # Plotting ----------------------------------------------------------------
-
-
 
 swp <- function(x){
   nx <- gsub(pattern = "change",

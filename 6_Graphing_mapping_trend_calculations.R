@@ -1135,6 +1135,136 @@ save(list = c("trend_maps_1980",
 
 
 
+# Export trends for State of Canada's Birds -------------------------------
+
+socb_headings <- c("results_code",
+                   "version",
+                   "area_code",
+                   "species_code",
+                   "species_id",
+                   "season",
+                   "period",
+                   "years",
+                   "year_start",
+                   "year_end",
+                   "trnd",
+                   "index_type",
+                   "lower_ci",
+                   "upper_ci",
+                   "stderr",
+                   "model_type",
+                   "model_fit",
+                   "percent_change",
+                   "percent_change_low",
+                   "percent_change_high",
+                   "prob_decrease_0",
+                   "prob_decrease_25",
+                   "prob_decrease_30",
+                   "prob_decrease_50",
+                   "prob_increase_0",
+                   "prob_increase_33",
+                   "prob_increase_100",
+                   "reliability",
+                   "precision_num",
+                   "precision_cat",
+                   "coverage_num",
+                   "coverage_cat",
+                   "goal",
+                   "goal_lower",
+                   "sample_size",
+                   "sample_total",
+                   "subtitle",
+                   "prob_LD",
+                   "prob_MD",
+                   "prob_LC",
+                   "prob_MI",
+                   "prob_LI")
+
+trend_headings_match <- c("",
+                          "",
+                          "",
+                          "",
+                          "species",
+                          "",
+                          "trend_type",
+                          "",
+                          "start_year",
+                          "end_year",
+                          "trend",
+                          "",
+                          "lci",
+                          "uci",
+                          "",
+                          "",
+                          "",
+                          "percent_change",
+                          "p_ch_lci",
+                          "p_ch_uci",
+                          "prob_decline",
+                          "",
+                          "prob_decline_GT30",
+                          "prob_decline_GT50",
+                          "",
+                          "",
+                          "",
+                          "",
+                          "",
+                          "",
+                          "",
+                          "",
+                          "",
+                          "",
+                          "mean_n_surveys",
+                          "",
+                          "",
+                          "",
+                          "",
+                          "",
+                          "",
+                          "")
+
+socb_headings_extract <- data.frame(socb = socb_headings,
+                                    trend = trend_headings_match)
+
+trends_select <- trend_headings_match[-which(trend_headings_match == "")]
+
+socb_headings_select <- socb_headings_extract %>% 
+  filter(trend != "")
+
+trends_socb <- TRENDSout %>% 
+  select(any_of(trends_select))
+
+if(any(names(trends_socb) != socb_headings_select[,2])) stop("Stop columns don't match")
+
+names(trends_socb) <- socb_headings_select[,1]
+
+trends_socb <- trends_socb %>% 
+  mutate(prob_increase_0 = 1-prob_decrease_0,
+         precision_num = upper_ci - lower_ci)
+write.csv(trends_socb,
+          paste0("trends/Shorebird_migration_trends_2019_for_socb.csv"),
+          row.names = FALSE)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 # Printing the maps -------------------------------------------------------
 
 
