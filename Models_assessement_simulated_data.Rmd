@@ -31,16 +31,20 @@ Here we generated simulated data that exactly match the realized spatial and tem
 
 For all species, the model was able to accurately estimate the true underlying trend over the long-term, with some regularizing effect on the more extreme decline estimates. Similarly, the estimated trends for the recent three-generations all have 95% CI that overlap the true trend. In comparison to the long-term trend estimates, there is an even stronger regularizing effect for the shorter-term trends. This regularization for extreme long-term trends and for the short-term trends is a desirable feature of this hierarchical model, that guards against making extreme findings of population change without strong evidence. It also makes it clear that there is relatively strong evidence of a recent acceleration in shorebird declines for many species in the real survey data.
 
-```{r overall trend comparison plot, warning=FALSE}
+```{r overall trend comparison plot, warning=FALSE, echo=FALSE}
 
 
-sim_T <- read.csv("trends/All_Simulated_gamma-t_survey_wide_trends.csv") %>% 
+sim_T <- 
+  read.csv("trends/All_Simulated_gamma-t_survey_wide_trends.csv") %>%
   filter(trend_type %in% c("Long-term","Recent-three-generation")) 
 
 
 
-trend_comparison_full <- ggplot(data = sim_T,aes(x = true_trend,y = trend, 
-                                                 colour = trend_type,group = trend_type))+
+trend_comparison_full <- ggplot(data = sim_T,
+                                aes(x = true_trend,
+                                    y = trend,
+                                    colour = trend_type,
+                                    group = trend_type))+
             xlab("True trend (simulated data)")+
             ylab("Estimated trend")+
             geom_point(position = position_dodge(width = 0.1),alpha = 0.7)+
@@ -50,7 +54,8 @@ trend_comparison_full <- ggplot(data = sim_T,aes(x = true_trend,y = trend,
   scale_colour_viridis_d(begin = 0.2,end = 0.9)+
   theme_bw()+
    theme(text = element_text(family = "serif"))+
-  labs(title = "Estimated vs true trends for simulated shorebird migration data")
+  labs(title = "Estimated vs true trends for simulated 
+       shorebird migration data")
           
 
 print(trend_comparison_full)
@@ -60,16 +65,20 @@ print(trend_comparison_full)
 
 In addition to accurately estimating the simulated survey-wide trends, the model also accurately estimated the strata level trends that varied by latitude. Here again there is evidence of a regularizing effect for the more extreme strata-level trends (e.g., trends \< -6%/year), but with the exception of a few of the strata with the most extreme declines, all 95% credible intervals overlap the true simulated strata-level trends.
 
-```{r strata-level trend comparison plot, warning=FALSE}
+```{r strata-level trend comparison plot, warning=FALSE, echo=FALSE}
 
 
-sim_t <- read.csv("trends/All_strata_Simulated_gamma-t_level_trends.csv") %>% 
+sim_t <- 
+  read.csv("trends/All_strata_Simulated_gamma-t_level_trends.csv") %>% 
   filter(trend_type %in% c("Long-term")) 
 
 
 
-trend_comparison_regional <- ggplot(data = sim_t,aes(x = true_trend,y = trend, 
-                                                     colour = species,group = species))+
+trend_comparison_regional <- ggplot(data = sim_t,
+                                    aes(x = true_trend,
+                                        y = trend,
+                                        colour = species,
+                                        group = species))+
             xlab("True trend (simulated data)")+
             ylab("Estimated trend")+
             geom_point(position = position_dodge(width = 0.1),alpha = 0.7)+
@@ -79,7 +88,8 @@ trend_comparison_regional <- ggplot(data = sim_t,aes(x = true_trend,y = trend,
   scale_colour_viridis_d(begin = 0.2,end = 0.9)+
   theme_bw()+
    theme(text = element_text(family = "serif"))+
-  labs(title = "Estimated vs true trends for simulated shorebird migration data")+
+  labs(title = "Estimated vs true trends for simulated 
+       shorebird migration data")+
   theme(legend.position = "none")
           
 

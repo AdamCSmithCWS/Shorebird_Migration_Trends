@@ -36,7 +36,8 @@ load("data/full_observation_dataset.Rdata")
 load( "data/hexagon_grid.RData")
 sps <- readRDS("data/species_vector.rds")
 sp_groups <- read.csv("data/seasons_by_species.csv")
-grid_spacing <- 300000  # size of squares, in units of the CRS (i.e. meters for lae)
+grid_spacing <- 300000  
+# size of squares, in units of the CRS (i.e. meters for lae)
 
  
 FYYYY = 1980
@@ -52,8 +53,10 @@ gens <- gens %>% select(Scientific_name,
                         GenLength) %>% 
    left_join(.,fullgensnames, by = "Scientific_name")
 
-gens[which(gens$Common_name == "American Golden Plover"),"Common_name"] <- "American Golden-Plover"
-gens[which(gens$Common_name == "Grey Plover"),"Common_name"] <- "Black-bellied Plover"
+gens[which(gens$Common_name == "American Golden Plover"),"Common_name"] <-
+  "American Golden-Plover"
+gens[which(gens$Common_name == "Grey Plover"),"Common_name"] <- 
+  "Black-bellied Plover"
 
 gens <- gens %>% filter(Common_name %in% sps)
 
@@ -83,12 +86,14 @@ sp1 = "Semipalmated Plover"
     #loading the objects saved after model run
     load(paste0(output_dir,"/",sp_file_name1,"_fit_add.RData"))
 
-# commented out section run in separate session to avoid loading the large cmdstan output
+# commented out section run in separate session to avoid loading 
+#    the large cmdstan output
 #     ## load the stan csv files that include the model output for SEPL
+#    
 #     cmdstanfit <- as_cmdstan_fit(csvfl) 
 # 
 # 
-# # Gather parameter estimates from fitted model --------------------------------------
+# # Gather parameter estimates from fitted model
 # 
 #     #posterior samples of site-level effects
 #     alpha_samples <- posterior_samples(fit = cmdstanfit,
@@ -118,7 +123,8 @@ sp1 = "Semipalmated Plover"
 #     
 #     
 #   
-#     #posterior samples of hyperparameter GAM parameters (survey-wide mean population trajectory)
+#     #posterior samples of hyperparameter GAM parameters 
+#     #(survey-wide mean population trajectory)
 #     B_samples <- posterior_samples(fit = cmdstanfit,
 #                                   parm = "B",
 #                                   dims = c("k"))
@@ -177,15 +183,19 @@ Then we simulated the stratum-level trajectories using the real data from each p
       #samples from the prior
     sdyear_gam_sim <- rgamma(niter,2,prior_rate)
     
-    #blank array to hold the simulated population trajectories from which the trends are generated
-    nsmooth <- array(NA,dim = c(niter,stan_data$nstrata,stan_data$nyears))
+    #blank array to hold the simulated population trajectories 
+    #from which the trends are generated
+    nsmooth <- array(NA,dim = c(niter,
+                                stan_data$nstrata,stan_data$nyears))
     
     for(i in 1:niter){
       
       #blank matrix to hold the yearly predictions of the smooths
-      year_pred <- matrix(NA,nrow = stan_data$nyears,ncol = stan_data$nstrata)
+      year_pred <- matrix(NA,nrow = stan_data$nyears,
+                          ncol = stan_data$nstrata)
       # blank matrix to hold the simulated stratum-level GAM parameters
-      b <- matrix(NA,nrow = stan_data$nstrata,ncol = stan_data$nknots_year)
+      b <- matrix(NA,nrow = stan_data$nstrata,
+                  ncol = stan_data$nknots_year)
       #scaling the neighbourhood matrix into a covariance matrix 
       sig_mat = (nmat*(sdyear_gam_sim[i]^2)) 
       diag(sig_mat) <- 1
@@ -204,9 +214,12 @@ Then we simulated the stratum-level trajectories using the real data from each p
       
       
       
-      #generate the simulated GAM coefficients using the mvrnorm function from MASS package.
+      #generate the simulated GAM coefficients using the mvrnorm 
+      #function from MASS package.
       for(k in 1:stan_data$nknots_year){
-      b[1:stan_data$nstrata,k] <- MASS::mvrnorm(mu = rep(0,stan_data$nstrata),Sigma = sig_mat$mat) + B[k] 
+      b[1:stan_data$nstrata,k] <- 
+        MASS::mvrnorm(mu = rep(0,stan_data$nstrata),
+                      Sigma = sig_mat$mat) + B[k] 
       
       }
     #generate the smooths using simulated coefficients
@@ -218,14 +231,19 @@ Then we simulated the stratum-level trajectories using the real data from each p
       
 
       for(y in 1:stan_data$nyears){
-        #temporary vector to hold the site-level predictions for each year, stratum, and site
+        #temporary vector to hold the site-level predictions 
+        #for each year, stratum, and site
         # addin gin the site-level variation is not actually necessary,
-        # we've retained it here just to make a clear link to the quantities estimated in the model
-        atmp_smo <- vector(mode = "numeric",length = stan_data$nsites_strat[s])
+        # we've retained it here just to make a clear link to the 
+        #quantities estimated in the model
+        atmp_smo <- vector(mode = "numeric",
+                           length = stan_data$nsites_strat[s])
         
        
         for(j in 1:stan_data$nsites_strat[s]){
-          atmp_smo[j] = exp(ALPHA1 + year_pred[y,s] + 0.5*(sdyear^2) + 0.5*(sdnoise^2) + alpha[stan_data$sites[j,s]])
+          atmp_smo[j] = exp(ALPHA1 + year_pred[y,s] + 
+                              0.5*(sdyear^2) + 0.5*(sdnoise^2) +
+                              alpha[stan_data$sites[j,s]])
         }
         nsmooth[i,s,y] = mean(atmp_smo)
       }
@@ -239,26 +257,32 @@ Then we simulated the stratum-level trajectories using the real data from each p
     
     #temporary matrix to contain the trend calcualtions
     Trends <- matrix(NA,nrow = niter,ncol = stan_data$nstrata)
-    # additional matrix to contain trends scaled as the ratio of end/start values of the trajectories
-    # will be used to calculate %/change of the population - a sometimes more intuitive metric of 
+    # additional matrix to contain trends scaled as the 
+    #ratio of end/start values of the trajectories
+    # will be used to calculate %/change of the population 
+    #- a sometimes more intuitive metric of 
     # long-term trend
     p_change <- Trends
     for(i in 1:niter){
         for(s in 1:stan_data$nstrata){
-          Trends[i,s] <- (((nsmooth[i,s,stan_data$nyears]/nsmooth[i,s,1])^(1/stan_data$nyears))-1)*100
+          Trends[i,s] <- (((nsmooth[i,s,stan_data$nyears]/
+                              nsmooth[i,s,1])^(1/stan_data$nyears))-1)*100
           p_change[i,s] <- ((nsmooth[i,s,stan_data$nyears]/nsmooth[i,s,1]))
         }
     }
 
-      # function to calculate the span i.e., the difference between two percentiles of a vector
+      # function to calculate the span i.e., the 
+    #difference between two percentiles of a vector
     span = function(x,q = 1){
       quantile(x,q)-quantile(x,1-q)
     }
 
     
-    # creating a dataframe to store the summaries of the simulations for this prior
+    # creating a dataframe to store the summaries of the 
+    #simulations for this prior
     Trends_df <- as.data.frame(Trends)
-    names(Trends_df) <- gsub(names(Trends_df),pattern = "V",replacement = "Strat_")
+    names(Trends_df) <- gsub(names(Trends_df),
+                             pattern = "V",replacement = "Strat_")
     Trends_df$prior_scale = paste0("gamma(2,",prior_rate,")")
     Trends_df$span95 = apply(Trends,1,FUN = span,q = 0.95)
     Trends_df$span = apply(Trends,1,FUN = span,q = 1)
@@ -276,14 +300,15 @@ The different priors capture a large range of variation in the stratum level tre
 
 The gamma(2,0.5) and gamma(2,1) include some prior mass at ranges of variation in the trends that are not reasonable to expect in a natural population. They each include substantial prior mass where 90% of the 39-year population trends vary by more than 30%/year for an overall stable population. E.g., they may include regional populations that have extreme declines (more than 15%/year over 39 years) and regional populations that have similarly extreme increases. The gamma(2,2) prior suggest fewer of these extreme levels of variation, although it still includes a long-tail allowing for unlikely levels of variation.
 
-```{r trend_distributions}
+```{r trend_distributions, message=FALSE, warning=FALSE, echo=FALSE}
  
  br = c(0,5,10,20,30,50,100,150)
  lb = paste0(br,"%") #x-axis labels
  ggh_t = ggplot(data = Trends_comp_out,aes(x = span95))+
    geom_histogram(bins = 50)+
    scale_x_continuous(breaks = br,labels = lb,limits = c(0,NA))+
-   xlab("Difference between 95th and 5th percentiles of stratum-level long-term trend estimates (%/year)")+
+   xlab("Difference between 95th and 5th percentiles of 
+        stratum-level long-term trend estimates (%/year)")+
    theme(text = element_text(family = "serif"))+
    facet_wrap(~prior_scale,scales = "free")
 
@@ -293,19 +318,24 @@ The gamma(2,0.5) and gamma(2,1) include some prior mass at ranges of variation i
 
 The gamma(2,4) prior allows for high levels of variation in the range of long-term trends, but the 10th and 90th percentiles of the stratum-level estimates of %-change in the population are largely limited to feasible values of local population change. Whereas the other priors include substantial prior mass at extremely unlikely levels of local population change (i.e., populations that have increased and decreased by more than 4 orders of magnitude)
 
-```{r change_distributions}
+```{r change_distributions, message=FALSE,echo=FALSE}
  
- ch_stack <- Trends_comp_out %>% select(prior_scale,p_ch_1,p_ch_9) %>%
+ ch_stack <- Trends_comp_out %>% 
+   select(prior_scale,p_ch_1,p_ch_9) %>%
    pivot_longer(.,cols = starts_with("p_ch"),
-                                              names_to = "quantile_population_change",
-                                              values_to = "Percent_change") %>% 
-   mutate(quantile_population_change = ifelse(quantile_population_change == "p_ch_1","10th percentile","90th percentile"))
+                names_to = "quantile_population_change",
+                values_to = "Percent_change") %>% 
+   mutate(quantile_population_change = 
+            ifelse(quantile_population_change == "p_ch_1",
+                   "10th percentile","90th percentile"))
 
 
  
- br = c(c(1/1000000000,1/1000000,1/10000,1/100),c(1,100,10000,1000000,1000000000))
+ br = c(c(1/1000000000,1/1000000,1/10000,1/100),
+        c(1,100,10000,1000000,1000000000))
  lb = paste0(c((br-1)*100),"%")
- ggh_p = ggplot(data = ch_stack,aes(x = Percent_change,fill = quantile_population_change))+
+ ggh_p = ggplot(data = ch_stack,
+                aes(x = Percent_change,fill = quantile_population_change))+
    geom_histogram()+
    scale_x_log10(breaks = br,labels = lb)+
    scale_fill_viridis_d(end = 0.8)+
